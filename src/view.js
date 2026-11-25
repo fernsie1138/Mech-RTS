@@ -4,6 +4,10 @@ import { TERRAIN, RENDER, CAMERA } from './config.js';
 import { TerrainMesh } from './terrain/chunks.js';
 import { RTSCamera } from './ui/camera.js';
 import { MarkerView } from './world/markers.js';
+import { Water } from './terrain/water.js';
+import { WaterMesh } from './terrain/watermesh.js';
+import { Forest } from './world/forest.js';
+import { TreeView } from './world/trees.js';
 
 export function createView(canvas, map, { maxRebuildsPerFrame = TERRAIN.maxRebuildsPerFrame } = {}) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
@@ -59,13 +63,27 @@ export function createView(canvas, map, { maxRebuildsPerFrame = TERRAIN.maxRebui
     return g;
   }
 
-  // Show a map (replaces the previous one).
+  // Show a map (replaces the previous one). Builds the live water and forest for it.
   function setMap(m) {
     if (view.terrain) { scene.remove(view.terrain.group); view.terrain.dispose(); }
+    if (view.waterMesh) { scene.remove(view.waterMesh.group); view.waterMesh.dispose(); }
     if (view.outside) scene.remove(view.outside);
     view.map = m;
     view.terrain = new TerrainMesh(m.hf, m.surface, { ...TERRAIN, maxRebuildsPerFrame });
     scene.add(view.terrain.group);
+    view.water = new Water(m.hf, m.surface);
+    view.waterMesh = new WaterMesh(view.water, { ...TERRAIN, maxRebuildsPerFrame });
+    scene.add(view.waterMesh.group);
+    view.forest = new Forest(Forest.fromSnapshot(m.trees || []), m.hf.size);
+    if (view.trees) view.trees.setForest(view.forest);
+    else view.trees = new TreeView(scene, view.forest, heightAt);
+    // When the ground changes, trees standing on it move with it.
+    m.hf.onChange((i0, j0, i1, j1) => {
+      if (m !== view.map) return;
+      const hf = m.hf, cx = (hf.wx(i0) + hf.wx(i1)) / 2, cz = (hf.wz(j0) + hf.wz(j1)) / 2;
+      const r = Math.hypot(hf.wx(i1) - hf.wx(i0), hf.wz(j1) - hf.wz(j0)) / 2 + 1;
+      for (const i of view.forest.near(cx, cz, r)) view.forest.changed.add(i);
+    });
     view.outside = makeOutside(m.hf.size);
     scene.add(view.outside);
     rts.mapSize = m.hf.size;
@@ -88,9 +106,15 @@ export function createView(canvas, map, { maxRebuildsPerFrame = TERRAIN.maxRebui
     return view.map.hf.raycast(ray.origin.x, ray.origin.y, ray.origin.z, ray.direction.x, ray.direction.y, ray.direction.z);
   }
 
+  // Reload trees from the map's static tree list (after editing / reset), and recompute water.
+  function reloadTrees() { view.forest.setTrees(Forest.fromSnapshot(view.map.trees || [])); }
+  function rebuildWater() { view.water.rebuild(); }
+
   // Per-frame: rebuild a few dirty chunks, move camera and sun, update markers. limit = chunk rebuild budget.
   function update(dt, limit) {
     view.terrain.update(limit);
+    view.waterMesh.update(limit);
+    view.trees.update(dt);
     rts.update(dt);
     updateSun();
     markers.update(heightAt, dt);
@@ -98,6 +122,6 @@ export function createView(canvas, map, { maxRebuildsPerFrame = TERRAIN.maxRebui
   function render() { renderer.render(scene, camera); }
 
   setMap(map);
-  Object.assign(view, { camera, rts, sun, markers, setMap, update, render, resize, pickGround, heightAt });
+  Object.assign(view, { camera, rts, sun, markers, setMap, update, render, resize, pickGround, heightAt, reloadTrees, rebuildWater });
   return view;
 }

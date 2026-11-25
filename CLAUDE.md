@@ -52,8 +52,11 @@ src/
     chunks.js         chunked terrain meshes, rebuild of dirty chunks
     surface.js        surface paint layers (grass/dirt/scorch/road)
     water.js          rivers, water level, flooding
+    watermesh.js      chunked water surface
   world/
-    trees.js          instanced trees and their damage states
+    forest.js         tree data, placement, damage states, fire (no three.js)
+    trees.js          instanced tree rendering
+    markers.js        HQ and capture-point markers
     buildings.js      modular destructible buildings and rubble
     props.js          rocks, debris, wrecks
   nav/
@@ -164,7 +167,7 @@ A separate page (`editor.html`), designed for **touch on iPad**:
 - **Save/load:** exports a map file to download (to be committed to `maps/`), and can import the two images from §7.1.
 
 ### 7.3 Map file
-- One JSON file per map. The height grid and the per-sample layers (ground type, feature bits) are embedded in it as gzipped, base64 blobs, so a map is a single file to save and move around on the iPad (~220 KB). It holds terrain, surface, water, trees, buildings, roads and gameplay markers.
+- One JSON file per map. The height grid, the per-sample layers (ground type, feature bits) and the tree list are embedded in it as gzipped, base64 blobs, so a map is a single file to save and move around on the iPad (~220 KB). It holds terrain, surface, water, trees, buildings, roads and gameplay markers.
 - Built-in maps are listed in `maps/index.json`; the game loads `index.html?map=<id>` (default `sample`).
 - It includes a `formatVersion` field so older maps can be upgraded.
 - **A match never modifies the map file.** Destruction happens on an in-memory copy.

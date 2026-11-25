@@ -1,5 +1,15 @@
 # Changelog
 
+## v5 — Milestone 4: water, trees and roads
+- Rivers hold water: the level is worked out from the river layer and the bank heights, so rivers follow the land. Drawn with a chunked water surface, shaded by depth. Rivers are mostly deep (impassable for mechs later), shallow at the edges.
+- Flooding: a crater beside water that dips below its level fills (water pours over low lips in the blast area). Floods stay local, so one shell can't drain a river over a whole plain; a chain of craters floods one crater at a time.
+- Trees: instanced low-poly conifers and broadleaf trees placed in forest areas (475 on the sample map). Blasts shatter nearby trees to stumps, knock others flat away from the blast and can set them alight. Fires spread slowly to neighbours, burn out to stumps and scorch the ground. Hooks ready for Titans crushing trees and for forest cover.
+- Map format v2 stores the tree list (v1 maps are upgraded by planting trees in their forest areas). Imported rivers are carved with steeper banks so they run nearly full.
+- Editor tools: **River** (draw a channel that fills with water), **Road** (flatten and paint), **Forest** (spray trees), **Tree** (tap one, or drag a row), **Erase** (trees, water, roads). All undoable; tool panel is now two columns.
+- Save / Test serialise faster (layers compressed in parallel, one serialisation for Test).
+- Debug overlay shows water triangles and tree counts.
+- Tests: `tests/world-unit.mjs`, `tests/world.mjs`.
+
 ## v4 — Milestone 3: map import and editor (part 1)
 - Map files: one JSON per map (`maps/*.json`, listed in `maps/index.json`) with versioned format and gzipped height / ground / feature layers (~220 KB). Matches never modify the file.
 - Image import (height map + feature map, see `maps/README.md`): rivers carve channels (and keep flowing under road crossings), roads flatten and paint, forests / building areas are recorded (shown as ground tints until trees and buildings arrive), capture points and HQs are found from coloured dots and squares, HQ pads are flattened.

@@ -36,4 +36,12 @@ node tests/editor-unit.mjs
 node tests/editor.mjs
 ```
 
+```bash
+node tests/world-unit.mjs
+```
+
+```bash
+node tests/world.mjs
+```
+
 Screenshots are written to `tests/out/` (not committed).

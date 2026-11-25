@@ -11,6 +11,8 @@
 //   "surface":  { "encoding": "u8-gzip-b64", "data": "..." },     ground type per sample (SURFACE)
 //   "features": { "encoding": "u8-gzip-b64", "data": "..." },     feature bits per sample (FEATURE)
 //   "markers":  { "playerHQ": {x,z} | null, "enemyHQ": {x,z} | null, "capturePoints": [{x,z}, ...] },
+//   "trees":    { "encoding": "trees6-gzip-b64", "count": n, "data": "..." }   (v2+) x, z (int16, 1/100 unit),
+//                                                                             scale (uint8, 1/100), type (uint8)
 //   "meta":     { ... free-form: import settings, editor info }
 // }
 // Heights are stored as 16-bit integers (step `scale` = 0.005 units, range about +/-163), each row
@@ -20,8 +22,9 @@
 import { Heightfield } from '../terrain/heightfield.js';
 import { Surface } from '../terrain/surface.js';
 import { TERRAIN } from '../config.js';
+import { generateTrees } from '../world/forest.js';
 
-export const FORMAT_VERSION = 1;
+export const FORMAT_VERSION = 2;
 const HEIGHT_SCALE = 0.005;
 
 // ---------- bytes <-> base64, gzip ----------
@@ -90,6 +93,28 @@ async function decodeBytes(layer, n, what) {
   return bytes;
 }
 
+// ---------- trees ----------
+async function encodeTrees(trees) {
+  const buf = new Uint8Array(trees.length * 6), dv = new DataView(buf.buffer);
+  trees.forEach((t, n) => {
+    dv.setInt16(n * 6, Math.round(t.x * 100), true);
+    dv.setInt16(n * 6 + 2, Math.round(t.z * 100), true);
+    dv.setUint8(n * 6 + 4, Math.max(1, Math.min(255, Math.round(t.s * 100))));
+    dv.setUint8(n * 6 + 5, t.t | 0);
+  });
+  return { encoding: 'trees6-gzip-b64', count: trees.length, data: bytesToBase64(await gzip(buf)) };
+}
+async function decodeTrees(layer) {
+  if (layer.encoding !== 'trees6-gzip-b64') throw new Error(`unknown trees encoding "${layer.encoding}"`);
+  const bytes = await gunzip(b64(layer.data, 'trees'), 'trees');
+  if (bytes.length !== layer.count * 6) throw new Error(`trees data has ${bytes.length / 6} trees, expected ${layer.count}`);
+  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.length), out = [];
+  for (let n = 0; n < layer.count; n++) {
+    out.push({ x: dv.getInt16(n * 6, true) / 100, z: dv.getInt16(n * 6 + 2, true) / 100, s: dv.getUint8(n * 6 + 4) / 100, t: dv.getUint8(n * 6 + 5) });
+  }
+  return out;
+}
+
 // ---------- markers ----------
 export function emptyMarkers() { return { playerHQ: null, enemyHQ: null, capturePoints: [] }; }
 function cleanMarkers(m = {}) {
@@ -104,7 +129,8 @@ function cleanMarkers(m = {}) {
 // ---------- versioning ----------
 // Upgrade older map JSON to the current version. Each step converts version n to n+1.
 const UPGRADES = {
-  // 1: json => { ...; json.formatVersion = 2; return json; },
+  // v1 had no tree list: trees are generated from the forest areas when the map is decoded.
+  1: json => ({ ...json, formatVersion: 2, trees: null }),
 };
 export function upgrade(json) {
   if (!json || typeof json !== 'object') throw new Error('not a map file (expected a JSON object)');
@@ -120,34 +146,46 @@ export function upgrade(json) {
 }
 
 // ---------- public API ----------
-// map = { name, hf, surface, markers, meta } -> JSON-able object
-export async function serializeMap({ name, hf, surface, markers, meta }) {
+// map = { name, hf, surface, markers, trees, meta } -> JSON-able object. trees: [{x, z, s, t}]
+export async function serializeMap({ name, hf, surface, markers, trees, meta }) {
+  // The layers compress independently, so do them at the same time.
+  const [height, surfaceLayer, features, treeLayer] = await Promise.all([
+    encodeHeights(hf.h, hf.verts), encodeBytes(surface.base), encodeBytes(surface.features), encodeTrees(trees || []),
+  ]);
   return {
     formatVersion: FORMAT_VERSION,
     name: name || 'Untitled',
     size: hf.size,
     cells: hf.cells,
     bedrock: hf.bedrock,
-    height: await encodeHeights(hf.h, hf.verts),
-    surface: await encodeBytes(surface.base),
-    features: await encodeBytes(surface.features),
+    height,
+    surface: surfaceLayer,
+    features,
     markers: cleanMarkers(markers),
+    trees: treeLayer,
     meta: meta || {},
   };
 }
 
-// JSON object -> { name, hf, surface, markers, meta }. Throws an Error with a readable message if invalid.
+// JSON object -> { name, hf, surface, markers, trees, meta }. Throws an Error with a readable message if invalid.
 export async function deserializeMap(json) {
   json = upgrade(json);
   const { size, cells } = json;
   if (!(size > 0) || !Number.isInteger(cells) || cells < 8 || cells > 2048) throw new Error(`bad map size ${size} / cells ${cells}`);
   const hf = new Heightfield({ size, cells, bedrock: json.bedrock ?? TERRAIN.bedrock, maxSlope: TERRAIN.maxSlope });
-  hf.h.set(await decodeHeights(json.height, hf.verts));
   const surface = new Surface(hf);
   const n = hf.verts * hf.verts;
-  if (json.surface) surface.base.set(await decodeBytes(json.surface, n, 'surface'));
-  if (json.features) surface.features.set(await decodeBytes(json.features, n, 'features'));
-  return { name: json.name || 'Untitled', hf, surface, markers: cleanMarkers(json.markers), meta: json.meta || {} };
+  const [h, base, feats, treeList] = await Promise.all([
+    decodeHeights(json.height, hf.verts),
+    json.surface ? decodeBytes(json.surface, n, 'surface') : null,
+    json.features ? decodeBytes(json.features, n, 'features') : null,
+    json.trees ? decodeTrees(json.trees) : null,
+  ]);
+  hf.h.set(h);
+  if (base) surface.base.set(base);
+  if (feats) surface.features.set(feats);
+  const trees = treeList || generateTrees(hf, surface).map(t => ({ x: t.x, z: t.z, s: t.s, t: t.t }));
+  return { name: json.name || 'Untitled', hf, surface, markers: cleanMarkers(json.markers), trees, meta: json.meta || {} };
 }
 
 // Copy map content (heights, ground types, features) from one map into another of the same size, in place.
@@ -158,6 +196,7 @@ export function copyMapInto(src, dst) {
   dst.surface.base.set(src.surface.base);
   dst.surface.features.set(src.surface.features);
   dst.markers = cleanMarkers(src.markers);
+  dst.trees = (src.trees || []).map(t => ({ ...t }));
   dst.name = src.name;
   dst.meta = { ...src.meta };
 }
