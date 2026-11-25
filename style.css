@@ -1,0 +1,22 @@
+/* Shared styles for the game (index.html) and the editor (editor.html). */
+html, body { margin:0; height:100%; overflow:hidden; background:#0b1015; overscroll-behavior:none; }
+body { font-family: -apple-system, "Helvetica Neue", Arial, sans-serif; color:#e8eef2;
+       -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;
+       -webkit-tap-highlight-color: transparent; touch-action:none; }
+#view { position:fixed; inset:0; width:100%; height:100%; touch-action:none; display:block; }
+.panel { background:rgba(14,20,26,.78); border:1px solid rgba(160,200,230,.25); border-radius:10px; }
+.btn { min-width:50px; height:44px; padding:0 12px; font-size:14px; font-weight:600; color:#e8eef2;
+       background:rgba(30,44,58,.9); border:1px solid rgba(160,200,230,.35); border-radius:10px;
+       display:flex; align-items:center; justify-content:center; touch-action:none; cursor:pointer; }
+.btn:active { background:rgba(60,90,120,.95); }
+.btn.on { background:rgba(40,90,60,.95); border-color:#7cff9a; }
+#ver { position:fixed; right:calc(env(safe-area-inset-right) + 10px); bottom:calc(env(safe-area-inset-bottom) + 6px);
+       font-size:12px; color:rgba(255,255,255,.55); pointer-events:none; }
+#ver.stale { color:#ff8a70; font-weight:700; }
+#debug { position:fixed; top:calc(env(safe-area-inset-top) + 10px); left:calc(env(safe-area-inset-left) + 12px);
+         padding:8px 12px; font:12px/1.5 ui-monospace, Menlo, monospace; pointer-events:none; display:none;
+         white-space:pre; z-index:5; }
+#fatal { position:fixed; inset:0; display:none; align-items:center; justify-content:center; padding:24px; z-index:50;
+         background:rgba(6,10,14,.92); text-align:center; font-size:16px; line-height:1.5; }
+#loading { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; font-size:18px;
+           color:#b9c7d2; background:#0b1015; z-index:40; }

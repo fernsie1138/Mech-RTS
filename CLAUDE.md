@@ -40,10 +40,13 @@ Built with **three.js**, played in **Safari on iPad** (touch first), with mouse 
 ```
 index.html            game entry (importmap, canvas, HUD)
 editor.html           map editor entry
+style.css             styles shared by both pages
 lib/three.module.js   vendored three.js
 src/
   main.js             game bootstrap and loop
+  view.js             renderer, scene, lights, camera and terrain shared by game and editor
   config.js           tunable numbers (unit stats, damage, costs)
+  version.js          version label (bump every change)
   terrain/
     heightfield.js    height grid data, sampling, deformation
     chunks.js         chunked terrain meshes, rebuild of dirty chunks
@@ -66,11 +69,13 @@ src/
   ai/enemy.js
   ui/hud.js, ui/input.js, ui/minimap.js
   maps/
-    loader.js         loads map files and the image import format
+    loader.js         loads map files (maps/, uploaded file, editor hand-off), decodes images
+    imageimport.js    image import format (§7.1)
     format.js         map file schema and versioning
 editor/
-  editor.js, tools/*.js
-maps/                 map files (*.json and their images)
+  editor.js, history.js, tools/*.js
+maps/                 map files (*.json), index.json listing them, and source images
+tools/                scripts that generate files (e.g. the sample map)
 tests/                headless test scripts (see §11)
 ```
 
@@ -159,7 +164,8 @@ A separate page (`editor.html`), designed for **touch on iPad**:
 - **Save/load:** exports a map file to download (to be committed to `maps/`), and can import the two images from §7.1.
 
 ### 7.3 Map file
-- One JSON file per map, plus a binary or PNG blob for the height grid. It holds terrain, surface, water, trees, buildings, roads and gameplay markers.
+- One JSON file per map. The height grid and the per-sample layers (ground type, feature bits) are embedded in it as gzipped, base64 blobs, so a map is a single file to save and move around on the iPad (~220 KB). It holds terrain, surface, water, trees, buildings, roads and gameplay markers.
+- Built-in maps are listed in `maps/index.json`; the game loads `index.html?map=<id>` (default `sample`).
 - It includes a `formatVersion` field so older maps can be upgraded.
 - **A match never modifies the map file.** Destruction happens on an in-memory copy.
 
@@ -235,7 +241,7 @@ Each milestone should end with something David can test on the iPad.
 ## 13. Open decisions
 
 - Final game name.
-- Map size in world units and the height-grid resolution (balance between detail and iPad performance).
+- Map size in world units and the height-grid resolution. Currently 256 × 256 units with 512 × 512 cells (0.5 units each), drawn as 64 chunks; to be confirmed on the iPad.
 - Art direction: realistic, stylised, or the low-poly look of the prototype.
 - Whether terrain damage should cost the attacker anything, or be purely a side effect.
 - Fog of war.

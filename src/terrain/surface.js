@@ -11,6 +11,10 @@
 
 export const SURFACE = { GRASS: 0, DIRT: 1, MUD: 2, ROAD: 3, RUBBLE: 4 };
 
+// Feature bits (from the map's feature layer). Trees, water and buildings are drawn from these in later
+// milestones; until then they tint the ground so imported maps show their layout.
+export const FEATURE = { WATER: 1, FOREST: 2, TREES: 4, BUILDING: 8 };
+
 // Linear RGB-ish colours (0..1). Tuned by eye; stylised low-poly palette.
 const COL = {
   grass:  [0.36, 0.50, 0.22],
@@ -23,6 +27,9 @@ const COL = {
   scorch: [0.17, 0.15, 0.13],
   rock:   [0.46, 0.44, 0.41],
   snow:   [0.88, 0.90, 0.92],
+  forest: [0.20, 0.33, 0.14],   // forest floor
+  bed:    [0.36, 0.33, 0.26],   // riverbed
+  lot:    [0.55, 0.50, 0.40],   // building lot (packed earth)
 };
 
 const BASE_COL = [COL.grass, COL.dirt, COL.mud, COL.road, COL.rubble];
@@ -40,6 +47,7 @@ export class Surface {
     this.base = new Uint8Array(n);
     this.damage = new Float32Array(n);
     this.scorch = new Float32Array(n);
+    this.features = new Uint8Array(n);
     this.listeners = [];
   }
 
@@ -54,6 +62,9 @@ export class Surface {
     }
     this.changed(i0, j0, i1, j1);
   }
+
+  // Clear everything (before loading a map).
+  clear() { this.base.fill(0); this.damage.fill(0); this.scorch.fill(0); this.features.fill(0); }
 
   // Blast wear around (x, z). `amount` adds to damage at the centre, `burn` to scorch; both fall off to the edge.
   wear(x, z, radius, amount, burn) {
@@ -87,6 +98,14 @@ export class Surface {
     if (this.base[k] === SURFACE.GRASS) {
       const t = hash(i >> 3, j >> 3) * 0.6 + n * 0.4;       // patchy light/dark grass
       r += (COL.grass2[0] - r) * t; g += (COL.grass2[1] - g) * t; b += (COL.grass2[2] - b) * t;
+    }
+    const f = this.features[k];
+    if (f) {
+      const blend = (c, t) => { r += (c[0] - r) * t; g += (c[1] - g) * t; b += (c[2] - b) * t; };
+      if (f & FEATURE.FOREST) blend(COL.forest, 0.75);
+      else if (f & FEATURE.TREES) blend(COL.forest, 0.4);
+      if (f & FEATURE.BUILDING) blend(COL.lot, 0.6);
+      if (f & FEATURE.WATER) blend(COL.bed, 0.85);
     }
     // Natural rock on steep slopes and snow on high peaks (only on undamaged ground).
     const rock = Math.min(1, Math.max(0, (slope - 0.55) / 0.4));

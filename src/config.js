@@ -38,6 +38,7 @@ export const CAMERA = {
   wheelZoomFactor: 0.0015,
   tapMaxMove: 12,                     // pixels: a touch that moves less than this is a tap
   tapMaxTime: 350,                    // ms
+  strokeHoldMs: 120,                  // editor: a finger held this long without moving starts painting
 };
 
 export const SIM = {
