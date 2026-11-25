@@ -1,5 +1,12 @@
 # Changelog
 
+## v9 — Bigger explosions, fires and drifting smoke; rotate and move buildings
+- Explosions rebuilt as pooled particles (one instanced mesh per kind): a flash that lights up the ground, a rolling fireball, a shockwave ring, showers of sparks, tumbling and bouncing debris (some trailing smoke), dust thrown out along the ground, and a billowing smoke column that lingers 6-10 s and drifts sideways on the wind.
+- Buildings that are hit catch fire for 6-12 s (flames and smoke; a fire goes out if its wall falls) and shed debris in their own colours; some rubble smoulders.
+- Trees caught in a blast burn for a few seconds and are left charred (a few still catch properly and can spread, as before). Burning trees give off drifting smoke.
+- Editor: a selected building shows its name and angle; turn it live with the **Angle** slider (or ⟲ / ⟳ 15°); **drag** it with one finger to move it. The angle also applies to the next building you place. All undoable.
+- Tests: `tests/effects.mjs`.
+
 ## v8 — Milestone 6: nav grid and pathfinding
 - Nav grid (1 cell per unit, 256 x 256) with a movement cost per unit size (Scout / Assault / Titan): slope (steep ground is a slow scramble, cliffs over 1.9 block everyone), deep water blocks, shallow water slows, intact road is faster, rubble slows, buildings block with clearance by size (Scouts fit through 3-unit gaps, Titans need 7), dense forest stops Assaults (Scouts squeeze through, Titans push through), bridge decks carry units over rivers until destroyed.
 - Only cells touched by craters, rubble, flooding, falling / burnt trees and collapsing buildings are recomputed; incremental updates match a full rebuild exactly.

@@ -30,6 +30,16 @@ export class Damage {
       for (const r of rubble) {
         addRubble(hf, surface, r);
         effects?.dust(r.x, hf.heightAt(r.x, r.z), r.z, Math.min(3, r.r * 0.7));
+        if (effects && Math.random() < 0.3) effects.burn(r.x, hf.heightAt(r.x, r.z) + 0.3, r.z, 0.7, 4 + Math.random() * 4);   // smouldering rubble
+      }
+      // Hit buildings catch fire for a while and shed pieces in their colours.
+      if (effects && weapon !== 'mg' && buildings.lastHit.length) {
+        const pieces = buildings.lastHit.map(i => [i, buildings.pieces[i]]);
+        for (const [, p] of pieces.slice(0, 6)) effects.rubble(p.px, p.py, p.pz, p.color, weapon === 'shell' ? 3 : 2, 1);
+        const standing = pieces.filter(([, p]) => p.alive && p.role !== 'deck' && p.role !== 'pillar');
+        for (const [i, p] of standing.sort(() => Math.random() - 0.5).slice(0, weapon === 'shell' ? 2 : 1)) {
+          effects.burn(p.px, p.py - p.sy * 0.2, p.pz, weapon === 'shell' ? 1.3 : 0.9, 6 + Math.random() * 6, () => buildings.pieces[i].alive);
+        }
       }
     }
     if (buildings && onGround && p.depth > 0) buildings.clearChunks(x, z, p.radius * 1.1);
@@ -52,8 +62,14 @@ export class Damage {
 
   // Per simulation step: fires burn and spread; burnt-out trees scorch the ground under them.
   update(dt) {
-    const { forest, surface } = this.world;
+    const { forest, surface, effects, hf } = this.world;
     if (!forest) return;
+    // Burning trees give off smoke that drifts away.
+    if (effects) for (const i of forest.burning) {
+      if (Math.random() > dt * 2.5) continue;
+      const t = forest.trees[i];
+      effects.smokePuff(t.x, hf.heightAt(t.x, t.z) + (t.state === 0 ? 3.5 : 1) * t.s, t.z, 1.1 * t.s);
+    }
     for (const i of forest.update(dt)) {
       const t = forest.trees[i];
       surface.wear(t.x, t.z, 2.4 * t.s, 0.4, 0.6);

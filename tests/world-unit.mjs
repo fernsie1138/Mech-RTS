@@ -119,6 +119,16 @@ function riverMap() {
   check(burnt[9] > 5, `fire spreads to neighbours (largest fire of 10: ${burnt[9]} trees)`);
   check(burnt[5] < trees.length * 0.5, `a single tree fire does not usually take the whole wood (median ${burnt[5]} of ${trees.length})`);
   check(results.every(r => r.left === 0 && r.stumps === r.burnt), 'every fire burns out (within 10 minutes), leaving stumps');
+  // Trees caught in a blast (not set properly alight) burn for a few seconds and are left charred.
+  {
+    const sf = new Forest(trees.map(t => newTree(t.x, t.z)), 256, 9);
+    sf.blast(0, 0, { fallR: 6.5, ignite: 0 });
+    const caught = sf.trees.filter(t => t.burn > 0);
+    check(caught.length > 3 && caught.every(t => t.short) && caught.every(t => t.burn <= 7), `${caught.length} trees in the blast burn briefly (at most 7 s)`);
+    for (let k = 0; k < 80; k++) sf.update(0.1);
+    const after = sf.trees.filter(t => t.charred);
+    check(sf.burning.size === 0 && after.some(t => t.state !== TREE.STUMP), 'short fires go out by themselves, leaving charred trees standing or lying (not stumps)');
+  }
   const h = new Forest(trees.map(t => newTree(t.x, t.z)), 256, 1);
   const n = h.crush(0, 0, 3, Math.PI / 2);
   check(n > 0 && h.trees[h.near(0, 0, 0.1)[0]].state === TREE.FALLEN, `crush() knocks trees flat (${n}) for Titans later`);
