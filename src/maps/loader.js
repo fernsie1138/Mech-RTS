@@ -10,6 +10,20 @@ import { emptyMarkers } from './format.js';
 export const TEST_KEY = 'mechrts.testmap';
 export const AUTOSAVE_KEY = 'mechrts.editor.autosave';
 
+// The browser served old cached code (it met a map from a newer version). Reload once with a fresh URL, which
+// makes Safari fetch the page, and through its import map every module, again. Returns true if reloading.
+export function reloadFresh(err) {
+  if (!err || !err.newerFormat) return false;
+  let tried = false;
+  try { tried = sessionStorage.getItem('mechrts.freshReload') === '1'; sessionStorage.setItem('mechrts.freshReload', '1'); } catch { /* storage blocked */ }
+  if (tried) return false;                       // already tried once: show the error instead of looping
+  const u = new URL(location.href);
+  u.searchParams.set('fresh', Date.now().toString(36));
+  location.replace(u.toString());
+  return true;
+}
+export function clearFreshReload() { try { sessionStorage.removeItem('mechrts.freshReload'); } catch { /* ignore */ } }
+
 // Built-in maps listed in maps/index.json.
 export async function listMaps() {
   const res = await fetch('maps/index.json', { cache: 'no-cache' });

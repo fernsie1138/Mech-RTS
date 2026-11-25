@@ -136,7 +136,11 @@ export function upgrade(json) {
   if (!json || typeof json !== 'object') throw new Error('not a map file (expected a JSON object)');
   let v = json.formatVersion;
   if (!Number.isInteger(v)) throw new Error('not a map file (no formatVersion)');
-  if (v > FORMAT_VERSION) throw new Error(`map formatVersion ${v} is newer than this game supports (${FORMAT_VERSION}). Reload to get the latest version.`);
+  if (v > FORMAT_VERSION) {
+    const e = new Error(`map formatVersion ${v} is newer than this game supports (${FORMAT_VERSION}). Reload to get the latest version.`);
+    e.newerFormat = true;     // the page is running old (cached) code: loader.reloadFresh() recovers
+    throw e;
+  }
   while (v < FORMAT_VERSION) {
     if (!UPGRADES[v]) throw new Error(`cannot upgrade map from formatVersion ${v}`);
     json = UPGRADES[v](json);

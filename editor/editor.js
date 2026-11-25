@@ -11,7 +11,7 @@ import { serializeMap } from '../src/maps/format.js';
 import { importImages, FEATURE_KEYS } from '../src/maps/imageimport.js';
 import {
   listMaps, loadMapUrl, loadMapFile, loadMapStorage, saveMapStorage, blankMap, decodeImage, downloadJSON,
-  snapshot, restore, TEST_KEY, AUTOSAVE_KEY,
+  snapshot, restore, reloadFresh, clearFreshReload, TEST_KEY, AUTOSAVE_KEY,
 } from '../src/maps/loader.js';
 import { DebugOverlay } from '../src/ui/debug.js';
 import { applyBrush } from './tools/terrain.js';
@@ -32,9 +32,11 @@ try {
   if (params.get('map') && /^[\w-]+$/.test(params.get('map'))) map = await loadMapUrl(`maps/${params.get('map')}.json`);
   else map = (await loadMapStorage(AUTOSAVE_KEY)) || await loadMapUrl('maps/sample.json');
 } catch (e) {
+  if (reloadFresh(e)) { $('loading').textContent = 'Updating to the latest version…'; await new Promise(() => {}); }
   console.warn('initial map failed, starting blank:', e);
   map = blankMap();
 }
+clearFreshReload();
 $('loading').style.display = 'none';
 
 // ---------- view ----------

@@ -1,3 +1,3 @@
-// Bump with every change, together with <meta name="build"> and every ?v= in index.html and editor.html,
-// and add a CHANGELOG.md entry.
-export const VERSION = 'v5';
+// Bump with every change by running:  node tools/bump-version.mjs vN
+// (updates this file, the build meta, labels, every ?v= and the import maps), and add a CHANGELOG.md entry.
+export const VERSION = 'v6';

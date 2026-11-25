@@ -20,6 +20,7 @@ Built with **three.js**, played in **Safari on iPad** (touch first), with mouse 
 - He describes himself as a **novice with command-line tools**. Any setup step he has to do himself (GitHub, Pages, settings) must be given as **exact, numbered, step-by-step instructions** with no assumed knowledge.
 - **Never claim a fix works without verifying it.** Verify with a test script, numerical checks or a headless runtime simulation (see §11) before reporting something as done. Say plainly what was and wasn't verified, especially anything that can only be checked on a real iPad (touch feel, performance).
 - Keep a visible **version label** in the game UI (e.g. `v12`) and bump it with every change, so David can confirm Safari isn't showing a cached build.
+  Bump with `node tools/bump-version.mjs vN`: it also versions every module URL in the import maps, which is what stops Safari mixing cached old modules with new ones. Never add a module without re-running it (the smoke test checks).
 - Add a short entry to `CHANGELOG.md` for every version.
 
 ---
