@@ -2,6 +2,11 @@
 // Touch: one-finger drag pans, two fingers pan + pinch zoom + twist to rotate. A quick touch is a tap.
 // Mouse: drag pans, wheel zooms, click is a tap. Keys: WASD / arrows pan, Q/E rotate, +/- zoom.
 // While panning, the ground point under the finger stays under the finger.
+//
+// Paint mode (editor, oneFingerPan = false): one finger / left mouse button paints strokes instead of
+// panning (onStrokeStart / onStrokeMove / onStrokeEnd); two fingers or the right/middle mouse button
+// move the camera. A stroke begins once the finger moves or is held, so a two-finger gesture whose
+// first finger lands slightly early doesn't leave a dab.
 import * as THREE from 'three';
 import { CAMERA, MAP_SIZE } from '../config.js';
 
@@ -17,6 +22,10 @@ export class RTSCamera {
     this.keys = new Set();
     this.pointers = new Map();        // id -> {x, y}
     this.onTap = null;                // fn(clientX, clientY)
+    this.oneFingerPan = true;
+    this.onStrokeStart = this.onStrokeMove = this.onStrokeEnd = null;   // fn(clientX, clientY)
+    this.stroke = null;               // { x, y, t, started }
+    this.mapSize = MAP_SIZE;
     this._ray = new THREE.Raycaster();
     this._plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
     this._ndc = new THREE.Vector2();
@@ -83,7 +92,12 @@ export class RTSCamera {
     const el = this.dom;
     el.addEventListener('pointerdown', e => {
       el.setPointerCapture?.(e.pointerId);
-      this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, mousePan: e.pointerType === 'mouse' && e.button !== 0 });
+      if (!this.oneFingerPan) {
+        if (this.pointers.size === 1 && !(e.pointerType === 'mouse' && e.button !== 0)) {
+          this.stroke = { x: e.clientX, y: e.clientY, t: performance.now(), started: false };
+        } else this._endStroke();     // second finger: this is a camera gesture
+      }
       if (this.pointers.size === 1) {
         this._gesture = { x: e.clientX, y: e.clientY, t: e.timeStamp, maxPointers: 1, moved: 0 };
       } else if (this._gesture) {
@@ -98,7 +112,15 @@ export class RTSCamera {
       p.x = e.clientX; p.y = e.clientY;
       const c = this._centroid();
       if (this._gesture) this._gesture.moved = Math.max(this._gesture.moved, Math.hypot(c.x - this._gesture.x, c.y - this._gesture.y));
-      if (this._last) this._panScreen(this._last.x, this._last.y, c.x, c.y);
+      if (this.stroke) {
+        if (!this.stroke.started && Math.hypot(e.clientX - this.stroke.x, e.clientY - this.stroke.y) > 6) this._startStroke();
+        if (this.stroke?.started) this.onStrokeMove?.(e.clientX, e.clientY);
+        this.stroke && (this.stroke.cx = e.clientX, this.stroke.cy = e.clientY);
+        this._last = c;
+        return;
+      }
+      const painting = !this.oneFingerPan && this.pointers.size === 1 && !p.mousePan;
+      if (this._last && !painting) this._panScreen(this._last.x, this._last.y, c.x, c.y);
       const pair = this._pair();
       if (pair && this._lastPair) {
         if (pair.spread > 0 && this._lastPair.spread > 0) this.zoomBy(this._lastPair.spread / pair.spread);
@@ -116,6 +138,10 @@ export class RTSCamera {
       this.pointers.delete(e.pointerId);
       this._last = this.pointers.size ? this._centroid() : null;
       this._lastPair = this._pair();
+      if (this.stroke && this.pointers.size === 0) {
+        if (this.stroke.started) this._endStroke();
+        else this.stroke = null;          // never started: it's a tap (handled below)
+      }
       if (this.pointers.size === 0 && this._gesture) {
         const g = this._gesture;
         this._gesture = null;
@@ -135,7 +161,22 @@ export class RTSCamera {
     window.addEventListener('blur', () => this.keys.clear());
   }
 
+  _startStroke() {
+    const s = this.stroke;
+    s.started = true;
+    s.cx = s.cx ?? s.x; s.cy = s.cy ?? s.y;
+    this.onStrokeStart?.(s.x, s.y);
+  }
+
+  _endStroke() {
+    const s = this.stroke;
+    this.stroke = null;
+    if (s?.started) this.onStrokeEnd?.(s.cx, s.cy);
+  }
+
   update(dt) {
+    // A finger held still in paint mode starts painting after a moment.
+    if (this.stroke && !this.stroke.started && performance.now() - this.stroke.t > CAMERA.strokeHoldMs) this._startStroke();
     const k = this.keys;
     if (dt > 0 && k.size) {
       const speed = CAMERA.keyPanSpeed * this.distance * dt;
@@ -165,7 +206,7 @@ export class RTSCamera {
 
   // Place the camera from target / distance / pitch / yaw.
   _apply() {
-    const half = MAP_SIZE / 2;
+    const half = this.mapSize / 2;
     this.target.x = THREE.MathUtils.clamp(this.target.x, -half, half);
     this.target.z = THREE.MathUtils.clamp(this.target.z, -half, half);
     const h = Math.sin(this.pitch) * this.distance;

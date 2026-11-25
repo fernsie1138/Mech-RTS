@@ -1,5 +1,14 @@
 # Changelog
 
+## v4 — Milestone 3: map import and editor (part 1)
+- Map files: one JSON per map (`maps/*.json`, listed in `maps/index.json`) with versioned format and gzipped height / ground / feature layers (~220 KB). Matches never modify the file.
+- Image import (height map + feature map, see `maps/README.md`): rivers carve channels (and keep flowing under road crossings), roads flatten and paint, forests / building areas are recorded (shown as ground tints until trees and buildings arrive), capture points and HQs are found from coloured dots and squares, HQ pads are flattened.
+- Sample map "River Crossing" built from `maps/sample-height.png` + `maps/sample-features.png`; the game now opens it by default (`?map=<id>` picks another).
+- Map editor (`editor.html`): Raise / Lower / Flatten / Smooth brushes with size and strength; Player HQ / Enemy HQ / Capture point tools; undo / redo (also Ctrl/Cmd+Z); New, Open (built-in or from file), Import images, Save (download), rename; autosave; **Test ▶** opens the current map in the game and **◀ Editor** comes back.
+- Editor touch: one finger paints, two fingers pan / pinch / rotate. Mouse: left paints, right or middle drag pans.
+- Game: HQ and capture-point markers, an Editor button, the map name, a loading message and readable load errors. The map edge has an earth wall so hills at the border don't float.
+- Tests: `tests/maps-unit.mjs`, `tests/editor-unit.mjs`, `tests/editor.mjs`.
+
 ## v3 — Milestone 2: deformable terrain
 - Height grid terrain: 256 x 256 world units, 512 x 512 cells (0.5 units each), drawn as 64 chunks. Only chunks touched by damage are rebuilt, at most 4 per frame, reusing their buffers.
 - Placeholder test landscape (until map import): rolling hills, a mountain (NE) with a snowy peak, a long ridge (NW), a dry riverbed and a road.

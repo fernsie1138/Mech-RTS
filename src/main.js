@@ -1,16 +1,14 @@
 // Game bootstrap and main loop.
-// Milestone 2: deformable chunked terrain with a test "fire" tap, surface wear and a damage map.
+// Loads a map (?map=<name> from maps/, ?map=@test from the editor, ?map=@procedural), then runs the
+// test-fire sandbox from milestone 2 on it.
 import * as THREE from 'three';
 import { VERSION } from './version.js';
 import * as config from './config.js';
-import { MAP_SIZE, TERRAIN, RENDER, CAMERA, SIM } from './config.js';
-import { Heightfield } from './terrain/heightfield.js';
-import { Surface } from './terrain/surface.js';
-import { TerrainMesh } from './terrain/chunks.js';
-import { buildTestMap } from './terrain/testmap.js';
+import { SIM } from './config.js';
+import { createView } from './view.js';
+import { loadMapUrl, loadMapStorage, proceduralMap, snapshot, restore, TEST_KEY } from './maps/loader.js';
 import { Effects } from './combat/effects.js';
 import { Damage } from './combat/damage.js';
-import { RTSCamera } from './ui/camera.js';
 import { DebugOverlay } from './ui/debug.js';
 
 // ---------- version label (warns if index.html and the JS are from different builds) ----------
@@ -22,85 +20,65 @@ if (htmlBuild && htmlBuild !== VERSION) {
   verEl.classList.add('stale');
 }
 
-// ---------- renderer ----------
-const canvas = document.getElementById('view');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, RENDER.maxPixelRatio));
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+const loading = document.getElementById('loading');
+function fatal(msg) {
+  const f = document.getElementById('fatal');
+  f.style.display = 'flex';
+  f.textContent = msg;
+  loading.style.display = 'none';
+}
 
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x9fb8c8);
-scene.fog = new THREE.Fog(0x9fb8c8, 220, 520);
+// ---------- which map ----------
+const params = new URLSearchParams(location.search);
+const mapParam = params.get('map') || 'sample';
+const fromEditor = mapParam === '@test';
 
-// ---------- terrain ----------
-const hf = new Heightfield({ size: MAP_SIZE, cells: TERRAIN.cells, bedrock: TERRAIN.bedrock, maxSlope: TERRAIN.maxSlope });
-const surface = new Surface(hf);
-buildTestMap(hf, surface);
-const terrain = new TerrainMesh(hf, surface, TERRAIN);
-scene.add(terrain.group);
-const heightAt = (x, z) => hf.heightAt(x, z);
-
-// Ground beyond the map edge (a frame around the map, so it never shows through the terrain).
-const outside = new THREE.Group();
-{
-  const mat = new THREE.MeshLambertMaterial({ color: 0x5f7f38 });
-  const far = 1500, half = MAP_SIZE / 2;
-  for (const [x, z, w, d] of [[0, -(half + far) / 2, 2 * far, far - half], [0, (half + far) / 2, 2 * far, far - half],
-                              [-(half + far) / 2, 0, far - half, 2 * half], [(half + far) / 2, 0, far - half, 2 * half]]) {
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d).rotateX(-Math.PI / 2), mat);
-    m.position.set(x, -0.02, z);
-    m.receiveShadow = true;
-    outside.add(m);
+async function loadChosenMap() {
+  if (mapParam === '@procedural') return proceduralMap();
+  if (fromEditor) {
+    const m = await loadMapStorage(TEST_KEY);
+    if (!m) throw new Error('No map from the editor was found. Open the editor and press Test again.');
+    return m;
   }
+  if (!/^[\w-]+$/.test(mapParam)) throw new Error(`Bad map name "${mapParam}"`);
+  return loadMapUrl(`maps/${mapParam}.json`);
 }
-scene.add(outside);
 
-const camera = new THREE.PerspectiveCamera(CAMERA.fov, 1, 1, 1200);
-const rts = new RTSCamera(camera, canvas, heightAt);
-
-// ---------- lights: one directional light whose shadow box follows the camera target ----------
-scene.add(new THREE.HemisphereLight(0xdfeeff, 0x4a4030, 1.0));
-const sun = new THREE.DirectionalLight(0xfff2dd, 2.3);
-const sunOffset = new THREE.Vector3(70, 110, 45);
-sun.castShadow = true;
-sun.shadow.mapSize.set(RENDER.shadowMapSize, RENDER.shadowMapSize);
-const sc = sun.shadow.camera;
-sc.left = -RENDER.shadowArea; sc.right = RENDER.shadowArea;
-sc.top = RENDER.shadowArea; sc.bottom = -RENDER.shadowArea;
-sc.near = 10; sc.far = 400;
-sun.shadow.bias = -0.0006;
-sun.shadow.normalBias = 0.4;
-scene.add(sun, sun.target);
-
-function updateSun() {
-  // Snap to shadow texels so shadows don't shimmer while panning.
-  const texel = (RENDER.shadowArea * 2) / RENDER.shadowMapSize;
-  const tx = Math.round(rts.target.x / texel) * texel;
-  const tz = Math.round(rts.target.z / texel) * texel;
-  sun.target.position.set(tx, 0, tz);
-  sun.position.set(tx + sunOffset.x, sunOffset.y, tz + sunOffset.z);
+let map;
+try {
+  map = await loadChosenMap();
+} catch (e) {
+  fatal(`Could not load the map: ${e.message}`);
+  await new Promise(() => {});     // stop here; the message stays on screen
 }
+loading.style.display = 'none';
+const pristine = snapshot(map);   // matches never modify the map file: Reset restores this copy
+
+// Editor button: back to the editor (with this map if it came from there).
+const btnEditor = document.getElementById('btnEditor');
+btnEditor.textContent = fromEditor ? '◀ Editor' : 'Editor';
+btnEditor.addEventListener('pointerup', () => {
+  location.href = fromEditor ? 'editor.html' : `editor.html?map=${encodeURIComponent(mapParam)}`;
+});
+document.getElementById('mapname').textContent = map.name;
+
+// ---------- view ----------
+const canvas = document.getElementById('view');
+const view = createView(canvas, map);
+const { renderer, scene, camera, rts } = view;
+const { hf, surface } = map;
+const heightAt = view.heightAt;
+// Start looking at the player HQ if the map has one.
+if (map.markers.playerHQ) { rts.target.set(map.markers.playerHQ.x, heightAt(map.markers.playerHQ.x, map.markers.playerHQ.z), map.markers.playerHQ.z - 30); rts.update(0); }
 
 // ---------- effects and damage ----------
 const effects = new Effects(scene);
 const damage = new Damage({ hf, surface, effects });
 
-// ---------- resize ----------
-function resize() {
-  const w = window.innerWidth, h = window.innerHeight;
-  renderer.setSize(w, h, false);
-  camera.aspect = w / h;
-  camera.updateProjectionMatrix();
-}
-window.addEventListener('resize', resize);
-window.addEventListener('orientationchange', () => setTimeout(resize, 200));
-resize();
-
 // ---------- debug overlay ----------
 const debug = new DebugOverlay(document.getElementById('debug'), document.getElementById('btnDebug'), renderer);
-debug.extra = () => `chunks     ${terrain.chunks.length} (dirty ${terrain.dirty.size})\n` +
-                    `rebuilds   ${terrain.rebuildCount}`;
+debug.extra = () => `chunks     ${view.terrain.chunks.length} (dirty ${view.terrain.dirty.size})\n` +
+                    `rebuilds   ${view.terrain.rebuildCount}`;
 
 // ---------- simulation (fixed step) ----------
 const state = { time: 0, steps: 0, weapon: 'cannon', pending: [] };   // pending: scheduled impacts {at, x, z, weapon}
@@ -115,12 +93,7 @@ function simStep(dt) {
   effects.update(dt);
 }
 
-// Terrain point under a screen position (ray against the heightfield).
-function pickGround(clientX, clientY) {
-  const ray = rts.screenRay(clientX, clientY);
-  return hf.raycast(ray.origin.x, ray.origin.y, ray.origin.z, ray.direction.x, ray.direction.y, ray.direction.z);
-}
-
+const pickGround = view.pickGround;
 function fireAt(x, z, weapon = state.weapon) { return damage.explode(x, z, weapon); }
 
 // Barrage: shells land at random around a point over a few seconds.
@@ -138,9 +111,8 @@ function barrage(cx, cz, { count = 24, radius = 22, seconds = 3, weapon = 'shell
 
 function resetTerrain() {
   state.pending.length = 0;
-  surface.base.fill(0); surface.damage.fill(0); surface.scorch.fill(0);
-  buildTestMap(hf, surface);
-  terrain.rebuildAll();
+  restore(map, pristine);
+  view.terrain.rebuildAll();
 }
 
 // ---------- HUD: test-fire toolbar ----------
@@ -182,10 +154,8 @@ function frame(now) {
     }
     if (n === SIM.maxStepsPerFrame) accum = 0;   // fell behind: drop time rather than spiral
   }
-  terrain.update();
-  rts.update(dt);
-  updateSun();
-  renderer.render(scene, camera);
+  view.update(dt);
+  view.render();
   debug.frame(dt);
   requestAnimationFrame(frame);
 }
@@ -195,8 +165,8 @@ requestAnimationFrame(frame);
 window.__game = {
   version: VERSION,
   config,               // live tunables (tests may adjust, e.g. tap timing under slow software rendering)
-  THREE, renderer, scene, camera, rts, state, debug,
-  hf, surface, terrain, effects, damage,
+  THREE, renderer, scene, camera, rts, state, debug, view, map,
+  hf, surface, terrain: view.terrain, effects, damage,
   heightAt, pickGround, fireAt, barrage, resetTerrain, selectWeapon,
   pause(on = true) { paused = on; },
   // Advance the simulation by `seconds` in fixed steps, independent of real time.
@@ -206,7 +176,7 @@ window.__game = {
     return state.time;
   },
   // Rebuild dirty chunks (all, or up to `limit`) and render one frame immediately.
-  render(limit = Infinity) { terrain.update(limit); rts.update(0); updateSun(); renderer.render(scene, camera); return debug.stats(); },
+  render(limit = Infinity) { view.update(0, limit); view.render(); return debug.stats(); },
   stats: () => debug.stats(),
   ready: true,
 };

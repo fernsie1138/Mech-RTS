@@ -2,7 +2,8 @@
 
 A three.js real-time strategy game where mechs fight across hand-designed, fully destructible landscapes. Built for Safari on iPad.
 
-- Play: https://fernsie1138.github.io/Mech-RTS/ (once GitHub Pages is enabled)
+- Play: https://fernsie1138.github.io/Mech-RTS/
+- Map editor: https://fernsie1138.github.io/Mech-RTS/editor.html (how to make maps: [maps/README.md](maps/README.md))
 - Design and plan: [CLAUDE.md](CLAUDE.md)
 - Changes: [CHANGELOG.md](CHANGELOG.md)
 - Early prototype (flat terrain): [prototype/index.html](prototype/index.html)
@@ -21,6 +22,18 @@ node tests/terrain-unit.mjs
 
 ```bash
 node tests/terrain.mjs
+```
+
+```bash
+node tests/maps-unit.mjs
+```
+
+```bash
+node tests/editor-unit.mjs
+```
+
+```bash
+node tests/editor.mjs
 ```
 
 Screenshots are written to `tests/out/` (not committed).

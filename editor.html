@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0b1015">
+<!-- Must match VERSION in src/version.js. -->
+<meta name="build" content="v4">
+<title>Mech RTS Editor</title>
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" type="image/png" href="icons/icon-180.png">
+<link rel="stylesheet" href="style.css?v=4">
+<style>
+  .bar { position:fixed; display:flex; gap:8px; padding:8px; align-items:center; }
+  #top { top:calc(env(safe-area-inset-top) + 8px); left:calc(env(safe-area-inset-left) + 8px); right:calc(env(safe-area-inset-right) + 8px);
+         justify-content:space-between; padding:0; background:none; border:none; }
+  #top .grp { display:flex; gap:8px; padding:8px; align-items:center; }
+  #mapname { font-size:15px; font-weight:700; padding:0 10px; max-width:260px; overflow:hidden; text-overflow:ellipsis;
+             white-space:nowrap; cursor:pointer; text-decoration:underline dotted rgba(255,255,255,.4); }
+  #tools { top:calc(env(safe-area-inset-top) + 76px); left:calc(env(safe-area-inset-left) + 8px); flex-direction:column; }
+  #tools .btn { width:96px; }
+  #tools .hdr { font-size:11px; color:#7f97a8; text-transform:uppercase; letter-spacing:1px; margin:4px 0 -2px 4px; align-self:flex-start; }
+  #brush { bottom:calc(env(safe-area-inset-bottom) + 10px); left:50%; transform:translateX(-50%); gap:18px; padding:8px 16px; }
+  #brush label { display:flex; align-items:center; gap:10px; font-size:14px; color:#b9c7d2; }
+  #brush input[type=range] { width:180px; height:36px; }
+  #brush .val { min-width:36px; color:#e8eef2; font-weight:600; }
+  #hint { position:fixed; bottom:calc(env(safe-area-inset-bottom) + 76px); left:50%; transform:translateX(-50%);
+          font-size:13px; color:rgba(255,255,255,.75); text-shadow:0 1px 3px #000; pointer-events:none; white-space:nowrap; }
+  #status { position:fixed; right:calc(env(safe-area-inset-right) + 12px); bottom:calc(env(safe-area-inset-bottom) + 24px);
+            font-size:12px; color:rgba(255,255,255,.6); pointer-events:none; }
+  .btn.dis { opacity:.4; }
+  .btn.go { background:rgba(40,110,60,.95); border-color:#7cff9a; }
+  label.btn input[type=file] { display:none; }
+  .dialog { position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(6,10,14,.7); z-index:20; }
+  .dialog.open { display:flex; }
+  .dialog .box { width:min(560px, calc(100% - 32px)); max-height:calc(100% - 40px); overflow:auto; padding:20px 22px; -webkit-user-select:text; user-select:text; }
+  .dialog h2 { margin:0 0 12px; font-size:20px; }
+  .dialog p, .dialog li { color:#b9c7d2; font-size:14px; line-height:1.45; }
+  .dialog .row { display:flex; gap:10px; align-items:center; margin:10px 0; flex-wrap:wrap; }
+  .dialog .row > span { min-width:120px; font-size:14px; }
+  .dialog input[type=number] { width:80px; height:36px; font-size:16px; border-radius:8px; border:1px solid #567; background:#0e141a; color:#fff; padding:0 8px; }
+  .dialog .file { font-size:13px; color:#9fd18b; }
+  .dialog .actions { display:flex; gap:10px; justify-content:flex-end; margin-top:16px; }
+  .dialog .list .btn { justify-content:flex-start; width:100%; margin:6px 0; }
+  .dialog .warn { color:#ffb36b; }
+  .keys { display:grid; grid-template-columns:auto 1fr; gap:2px 12px; font-size:13px; color:#b9c7d2; }
+  .sw { display:inline-block; width:14px; height:14px; border:1px solid #888; vertical-align:middle; margin-right:4px; }
+</style>
+<script type="importmap">
+{ "imports": { "three": "./lib/three.module.js" } }
+</script>
+</head>
+<body>
+<canvas id="view"></canvas>
+<div id="debug" class="panel"></div>
+
+<div id="top" class="bar">
+  <div class="grp panel">
+    <div class="btn" id="btnNew">New</div>
+    <div class="btn" id="btnOpen">Open</div>
+    <div class="btn" id="btnImport">Import images</div>
+    <div class="btn" id="btnSave">Save</div>
+    <div id="mapname" title="Tap to rename"></div>
+  </div>
+  <div class="grp panel">
+    <div class="btn dis" id="btnUndo">Undo</div>
+    <div class="btn dis" id="btnRedo">Redo</div>
+    <div class="btn" id="btnDebug" title="Debug overlay (`)">FPS</div>
+    <div class="btn go" id="btnTest">Test ▶</div>
+  </div>
+</div>
+
+<div id="tools" class="bar panel">
+  <div class="hdr">Terrain</div>
+  <div class="btn" data-tool="raise">Raise</div>
+  <div class="btn" data-tool="lower">Lower</div>
+  <div class="btn" data-tool="flatten">Flatten</div>
+  <div class="btn" data-tool="smooth">Smooth</div>
+  <div class="hdr">Gameplay</div>
+  <div class="btn" data-tool="playerHQ">Player HQ</div>
+  <div class="btn" data-tool="enemyHQ">Enemy HQ</div>
+  <div class="btn" data-tool="capture">Capture pt</div>
+</div>
+
+<div id="brush" class="bar panel">
+  <label>Size <input type="range" id="size" min="2" max="40" step="1" value="10"><span class="val" id="sizeVal"></span></label>
+  <label>Strength <input type="range" id="strength" min="0.05" max="1" step="0.05" value="0.5"><span class="val" id="strengthVal"></span></label>
+</div>
+<div id="hint"></div>
+<div id="status"></div>
+<div id="ver">v4</div>
+
+<div class="dialog" id="dlgOpen"><div class="box panel scroll">
+  <h2>Open a map</h2>
+  <div class="list" id="mapList"></div>
+  <label class="btn" style="justify-content:flex-start">Map file from this device…<input type="file" id="fileMap" accept=".json,application/json"></label>
+  <div class="actions"><div class="btn" data-close>Cancel</div></div>
+</div></div>
+
+<div class="dialog" id="dlgImport"><div class="box panel scroll">
+  <h2>Import images</h2>
+  <p>Two PNGs of the same size (512 × 512 recommended). The top of the image is north (the enemy side).</p>
+  <div class="row"><span>Height map</span><label class="btn">Choose…<input type="file" id="fileHeight" accept="image/*"></label><span class="file" id="nameHeight">none</span></div>
+  <div class="row"><span>Feature map</span><label class="btn">Choose…<input type="file" id="fileFeatures" accept="image/*"></label><span class="file" id="nameFeatures">none</span></div>
+  <div class="row"><span>White height</span><input type="number" id="impMaxHeight" value="30" min="1" max="80"> units above flat ground</div>
+  <div class="row"><span>Black depth</span><input type="number" id="impMaxDepth" value="6" min="0" max="8"> units below flat ground</div>
+  <p><b>Height map:</b> greyscale. Black = lowest, white = highest, mid-grey (128) = flat ground.</p>
+  <p><b>Feature map:</b> flat colours, no blur:</p>
+  <div class="keys" id="keyList"></div>
+  <p id="impReport"></p>
+  <div class="actions"><div class="btn" data-close>Cancel</div><div class="btn go" id="btnDoImport">Import</div></div>
+</div></div>
+
+<div id="loading">Loading editor…</div>
+<div id="fatal"></div>
+<script src="src/ui/page.js?v=4"></script>
+<script type="module" src="editor/editor.js?v=4"></script>
+</body>
+</html>

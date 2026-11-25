@@ -1,0 +1,351 @@
+// Map editor (CLAUDE.md §7.2), part 1: image import, terrain brushes, gameplay markers, undo/redo,
+// save/load and a Test button that opens the current map in the game.
+//
+// Touch: one finger paints with the current tool, two fingers pan / pinch-zoom / twist-rotate.
+// Mouse: left button paints, right or middle drag pans, wheel zooms.
+import * as THREE from 'three';
+import { VERSION } from '../src/version.js';
+import * as config from '../src/config.js';
+import { createView } from '../src/view.js';
+import { serializeMap } from '../src/maps/format.js';
+import { importImages, FEATURE_KEYS } from '../src/maps/imageimport.js';
+import {
+  listMaps, loadMapUrl, loadMapFile, loadMapStorage, saveMapStorage, blankMap, decodeImage, downloadJSON,
+  snapshot, restore, TEST_KEY, AUTOSAVE_KEY,
+} from '../src/maps/loader.js';
+import { DebugOverlay } from '../src/ui/debug.js';
+import { applyBrush } from './tools/terrain.js';
+import { placeMarker } from './tools/markers.js';
+import { History, copyRect, pasteRect } from './history.js';
+
+const $ = id => document.getElementById(id);
+const verEl = $('ver');
+verEl.textContent = VERSION;
+const htmlBuild = document.querySelector('meta[name="build"]')?.content;
+if (htmlBuild && htmlBuild !== VERSION) { verEl.textContent = `${VERSION} (page ${htmlBuild}: stale cache, reload)`; verEl.classList.add('stale'); }
+
+// ---------- initial map: ?map=<id>, else the autosave, else the sample ----------
+const params = new URLSearchParams(location.search);
+let map;
+try {
+  if (params.get('map') && /^[\w-]+$/.test(params.get('map'))) map = await loadMapUrl(`maps/${params.get('map')}.json`);
+  else map = (await loadMapStorage(AUTOSAVE_KEY)) || await loadMapUrl('maps/sample.json');
+} catch (e) {
+  console.warn('initial map failed, starting blank:', e);
+  map = blankMap();
+}
+$('loading').style.display = 'none';
+
+// ---------- view ----------
+const view = createView($('view'), map, { maxRebuildsPerFrame: 16 });
+const { rts, renderer } = view;
+rts.oneFingerPan = false;
+const debug = new DebugOverlay($('debug'), $('btnDebug'), renderer);
+
+// Brush cursor: a ring that follows the ground.
+const CURSOR_PTS = 64;
+const cursor = new THREE.LineLoop(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, depthTest: false }));
+cursor.geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(CURSOR_PTS * 3), 3));
+cursor.renderOrder = 20;
+cursor.frustumCulled = false;
+cursor.visible = false;
+view.scene.add(cursor);
+function placeCursor(x, z, r) {
+  const pos = cursor.geometry.attributes.position.array;
+  for (let n = 0; n < CURSOR_PTS; n++) {
+    const a = (n / CURSOR_PTS) * Math.PI * 2, px = x + Math.cos(a) * r, pz = z + Math.sin(a) * r;
+    pos[n * 3] = px; pos[n * 3 + 1] = map.hf.heightAt(px, pz) + 0.3; pos[n * 3 + 2] = pz;
+  }
+  cursor.geometry.attributes.position.needsUpdate = true;
+  cursor.visible = true;
+}
+
+// ---------- state ----------
+const state = { tool: 'raise', size: 10, strength: 0.5, stroke: null, dirty: false };
+const history = new History();
+const BRUSH_TOOLS = new Set(['raise', 'lower', 'flatten', 'smooth']);
+const HINTS = {
+  raise: 'Drag one finger to raise ground · two fingers to move the view',
+  lower: 'Drag one finger to lower ground · two fingers to move the view',
+  flatten: 'Drag from the height you want to keep · two fingers to move the view',
+  smooth: 'Drag one finger to smooth bumps · two fingers to move the view',
+  playerHQ: 'Tap to place the player HQ (blue)',
+  enemyHQ: 'Tap to place the enemy HQ (red)',
+  capture: 'Tap to add a capture point · tap an existing one to remove it',
+};
+
+function selectTool(t) {
+  state.tool = t;
+  document.querySelectorAll('[data-tool]').forEach(b => b.classList.toggle('on', b.dataset.tool === t));
+  $('hint').textContent = HINTS[t];
+  document.getElementById('brush').style.visibility = BRUSH_TOOLS.has(t) ? 'visible' : 'hidden';
+  if (!BRUSH_TOOLS.has(t)) cursor.visible = false;
+}
+document.querySelectorAll('[data-tool]').forEach(b => b.addEventListener('pointerup', () => selectTool(b.dataset.tool)));
+
+for (const [id, key, fmt] of [['size', 'size', v => v], ['strength', 'strength', v => Math.round(v * 100) + '%']]) {
+  const input = $(id), out = $(id + 'Val');
+  input.value = state[key];
+  const sync = () => { state[key] = +input.value; out.textContent = fmt(state[key]); };
+  input.addEventListener('input', sync);
+  sync();
+}
+
+function setName(n) { map.name = n || 'Untitled'; $('mapname').textContent = map.name; }
+$('mapname').addEventListener('pointerup', () => {
+  const n = prompt('Map name', map.name);
+  if (n !== null && n.trim()) { setName(n.trim()); markDirty(); }
+});
+setName(map.name);
+
+function status(msg) { $('status').textContent = msg; }
+
+// ---------- undo / redo ----------
+function applyEntry(e, which) {
+  if (e.kind === 'heights') {
+    pasteRect(map.hf.h, map.hf.verts, e.rect, e[which]);
+    map.hf.changed(e.rect.i0, e.rect.j0, e.rect.i1, e.rect.j1);
+  } else if (e.kind === 'markers') {
+    map.markers = e[which];
+    view.markers.set(map.markers);
+  } else if (e.kind === 'map') {
+    restore(map, e[which].snap);
+    map.markers = e[which].markers;
+    setName(e[which].name);
+    view.markers.set(map.markers);
+    view.terrain.rebuildAll();
+  }
+  markDirty();
+}
+const undo = () => history.undo(applyEntry);
+const redo = () => history.redo(applyEntry);
+history.onChange = () => {
+  $('btnUndo').classList.toggle('dis', !history.canUndo());
+  $('btnRedo').classList.toggle('dis', !history.canRedo());
+};
+$('btnUndo').addEventListener('pointerup', undo);
+$('btnRedo').addEventListener('pointerup', redo);
+window.addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); }
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); }
+});
+
+// Whole-map changes (import / open / new) are undoable too.
+function replaceMap(next, label) {
+  const before = { snap: snapshot(map), markers: map.markers, name: map.name };
+  if (next.hf.verts !== map.hf.verts || next.hf.size !== map.hf.size) {
+    // Different size: switch maps outright (can't be undone).
+    map = next;
+    view.setMap(map);
+    history.clear();
+  } else {
+    restore(map, snapshot(next));
+    map.markers = next.markers;
+    map.meta = next.meta || {};
+    view.markers.set(map.markers);
+    view.terrain.rebuildAll();
+    history.push({ kind: 'map', before, after: { snap: snapshot(map), markers: map.markers, name: next.name } });
+  }
+  setName(next.name);
+  markDirty();
+  status(label);
+}
+
+// ---------- painting ----------
+function groundAt(cx, cy) { return view.pickGround(cx, cy); }
+
+rts.onStrokeStart = (cx, cy) => {
+  if (!BRUSH_TOOLS.has(state.tool)) return;
+  const p = groundAt(cx, cy);
+  if (!p) return;
+  state.stroke = {
+    tool: state.tool, x: p.x, z: p.z, lastX: p.x, lastZ: p.z, cx, cy,
+    target: map.hf.heightAt(p.x, p.z),
+    before: Float32Array.from(map.hf.h), rect: null,
+  };
+};
+rts.onStrokeMove = (cx, cy) => {
+  if (!state.stroke) return;
+  state.stroke.cx = cx; state.stroke.cy = cy;
+};
+rts.onStrokeEnd = () => endStroke();
+
+function unionRect(a, b) {
+  if (!b) return a;
+  if (!a) return { ...b };
+  return { i0: Math.min(a.i0, b.i0), j0: Math.min(a.j0, b.j0), i1: Math.max(a.i1, b.i1), j1: Math.max(a.j1, b.j1) };
+}
+
+// Apply the brush along the path since the last frame, so fast swipes leave no gaps.
+function paintStep(dt) {
+  const s = state.stroke;
+  if (!s) return;
+  const p = groundAt(s.cx, s.cy);
+  if (p) { s.x = p.x; s.z = p.z; }
+  const dist = Math.hypot(s.x - s.lastX, s.z - s.lastZ);
+  const n = Math.max(1, Math.ceil(dist / (state.size * 0.3)));
+  for (let k = 1; k <= n; k++) {
+    const x = s.lastX + (s.x - s.lastX) * (k / n), z = s.lastZ + (s.z - s.lastZ) * (k / n);
+    s.rect = unionRect(s.rect, applyBrush(map.hf, s.tool, x, z, { radius: state.size, strength: state.strength, dt: dt / n, target: s.target }));
+  }
+  s.lastX = s.x; s.lastZ = s.z;
+}
+
+function endStroke() {
+  const s = state.stroke;
+  state.stroke = null;
+  if (!s || !s.rect) return;
+  const V = map.hf.verts;
+  history.push({ kind: 'heights', rect: s.rect, before: copyRect(s.before, V, s.rect), after: copyRect(map.hf.h, V, s.rect) });
+  markDirty();
+}
+
+// A tap: one dab of brush, or place a marker.
+rts.onTap = (cx, cy) => {
+  const p = groundAt(cx, cy);
+  if (!p) return;
+  if (BRUSH_TOOLS.has(state.tool)) {
+    const before = Float32Array.from(map.hf.h);
+    const rect = applyBrush(map.hf, state.tool, p.x, p.z, { radius: state.size, strength: state.strength, dt: 0.15, target: map.hf.heightAt(p.x, p.z) });
+    if (rect) history.push({ kind: 'heights', rect, before: copyRect(before, map.hf.verts, rect), after: copyRect(map.hf.h, map.hf.verts, rect) });
+  } else {
+    const before = map.markers;
+    map.markers = placeMarker(map.markers, state.tool, p.x, p.z);
+    view.markers.set(map.markers);
+    history.push({ kind: 'markers', before, after: map.markers });
+  }
+  markDirty();
+};
+
+// Mouse hover shows the brush cursor.
+$('view').addEventListener('pointermove', e => {
+  if (e.pointerType !== 'mouse' || !BRUSH_TOOLS.has(state.tool)) return;
+  const p = groundAt(e.clientX, e.clientY);
+  if (p) placeCursor(p.x, p.z, state.size); else cursor.visible = false;
+});
+
+// ---------- autosave (survives Safari reloading the tab) ----------
+let saveTimer = null;
+function markDirty() {
+  state.dirty = true;
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(autosave, 1200);
+}
+async function autosave() {
+  const ok = await saveMapStorage(AUTOSAVE_KEY, map);
+  status(ok ? 'Autosaved' : 'Autosave failed (storage full?)');
+}
+
+// ---------- dialogs ----------
+function openDialog(id) { $(id).classList.add('open'); }
+function closeDialogs() { document.querySelectorAll('.dialog').forEach(d => d.classList.remove('open')); }
+document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('pointerup', closeDialogs));
+
+// New
+$('btnNew').addEventListener('pointerup', () => {
+  if (!confirm('Start a new flat map? (You can undo this.)')) return;
+  replaceMap(blankMap(), 'New map');
+});
+
+// Open
+$('btnOpen').addEventListener('pointerup', async () => {
+  const list = $('mapList');
+  list.textContent = 'Loading list…';
+  openDialog('dlgOpen');
+  try {
+    const maps = await listMaps();
+    list.textContent = '';
+    for (const m of maps) {
+      const b = document.createElement('div');
+      b.className = 'btn';
+      b.textContent = m.name;
+      b.addEventListener('pointerup', async () => {
+        closeDialogs();
+        try { replaceMap(await loadMapUrl(`maps/${m.id}.json`), `Opened ${m.name}`); } catch (e) { alert(e.message); }
+      });
+      list.appendChild(b);
+    }
+  } catch (e) { list.textContent = `Could not list maps: ${e.message}`; }
+});
+$('fileMap').addEventListener('change', async e => {
+  const f = e.target.files[0];
+  e.target.value = '';
+  if (!f) return;
+  closeDialogs();
+  try { replaceMap(await loadMapFile(f), `Opened ${f.name}`); } catch (err) { alert(err.message); }
+});
+
+// Save: download the map file.
+$('btnSave').addEventListener('pointerup', async () => {
+  const json = await serializeMap(map);
+  const slug = (map.name || 'map').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'map';
+  downloadJSON(json, `${slug}.json`);
+  status(`Saved ${slug}.json`);
+});
+
+// Import images
+const imp = { height: null, features: null };
+$('keyList').innerHTML = FEATURE_KEYS.map(k => {
+  const c = k.colors[0];
+  const hex = '#' + c.map(v => v.toString(16).padStart(2, '0')).join('').toUpperCase();
+  return `<span><span class="sw" style="background:${hex}"></span>${hex}</span><span>${k.label}</span>`;
+}).join('') + '<span>other</span><span>Open ground</span>';
+$('btnImport').addEventListener('pointerup', () => { $('impReport').textContent = ''; openDialog('dlgImport'); });
+for (const [id, key, label] of [['fileHeight', 'height', 'nameHeight'], ['fileFeatures', 'features', 'nameFeatures']]) {
+  $(id).addEventListener('change', async e => {
+    const f = e.target.files[0];
+    if (!f) return;
+    try {
+      imp[key] = await decodeImage(f);
+      $(label).textContent = `${f.name} (${imp[key].width} × ${imp[key].height})`;
+    } catch (err) { imp[key] = null; $(label).textContent = err.message; }
+  });
+}
+$('btnDoImport').addEventListener('pointerup', () => {
+  if (!imp.height && !imp.features) { $('impReport').textContent = 'Choose at least one image.'; return; }
+  const r = importImages({
+    heightImg: imp.height, featureImg: imp.features,
+    maxHeight: +$('impMaxHeight').value || 30, maxDepth: +$('impMaxDepth').value || 0,
+  });
+  replaceMap({ ...r, name: map.name === 'Untitled' ? 'Imported map' : map.name }, 'Imported images');
+  const rep = r.report;
+  $('impReport').innerHTML = `Imported: ${rep.markers.capturePoints} capture points, player HQ ${rep.markers.playerHQ ? 'found' : 'missing'}, ` +
+    `enemy HQ ${rep.markers.enemyHQ ? 'found' : 'missing'}.` + rep.warnings.map(w => `<br><span class="warn">⚠ ${w}</span>`).join('');
+  state.lastImportReport = rep;
+  if (!rep.warnings.length) closeDialogs();
+});
+
+// Test: hand the map to the game through localStorage and open it.
+$('btnTest').addEventListener('pointerup', async () => {
+  status('Starting test…');
+  const ok = await saveMapStorage(TEST_KEY, map);
+  if (!ok) { alert('Could not hand the map to the game (browser storage full or blocked).'); return; }
+  await saveMapStorage(AUTOSAVE_KEY, map);
+  location.href = 'index.html?map=@test';
+});
+
+// ---------- loop ----------
+let lastT = performance.now();
+function frame(now) {
+  const dt = Math.min((now - lastT) / 1000, 0.1);
+  lastT = now;
+  paintStep(dt);
+  if (state.stroke) placeCursor(state.stroke.x, state.stroke.z, state.size);
+  else if (BRUSH_TOOLS.has(state.tool) && cursor.visible && !matchMedia('(hover: hover)').matches) cursor.visible = false;
+  view.update(dt);
+  view.render();
+  debug.frame(dt);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+selectTool('raise');
+history.onChange();
+
+// ---------- test hook ----------
+window.__editor = {
+  version: VERSION, config, THREE, view, history, state,
+  get map() { return map; },
+  selectTool, undo, redo, replaceMap, autosave,
+  paintStep, endStroke,
+  ready: true,
+};

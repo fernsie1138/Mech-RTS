@@ -18,6 +18,7 @@ export class TerrainMesh {
     this.dirty = new Set();
     this.rebuildCount = 0;                             // total rebuilds (for tests)
     for (let cz = 0; cz < this.n; cz++) for (let cx = 0; cx < this.n; cx++) this._makeChunk(cx, cz);
+    this._makeSkirt();
     const mark = (i0, j0, i1, j1) => this.markDirty(i0, j0, i1, j1);
     hf.onChange(mark);
     surface.onChange(mark);
@@ -57,6 +58,48 @@ export class TerrainMesh {
     this.group.add(mesh);
   }
 
+  // A vertical earth wall around the map edge, from the edge heights down below bedrock, so maps with
+  // hills at the border don't float above the ground outside.
+  _makeSkirt() {
+    const V = this.hf.verts, n = 4 * (V - 1);          // edge samples going round the border
+    const pos = new Float32Array(n * 2 * 3), idx = [];
+    for (let e = 0; e < n; e++) {
+      const a = e * 2, b = ((e + 1) % n) * 2;
+      idx.push(a, a + 1, b, b, a + 1, b + 1);
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3).setUsage(THREE.DynamicDrawUsage));
+    geo.setIndex(idx);
+    const mat = new THREE.MeshLambertMaterial({ color: 0x4a3c2c, side: THREE.DoubleSide });
+    this.skirt = new THREE.Mesh(geo, mat);
+    this.skirt.name = 'skirt';
+    this.skirt.frustumCulled = false;
+    this.group.add(this.skirt);
+    this.skirtDirty = true;
+  }
+
+  // Edge sample e (0 .. 4*(V-1)-1) walking round the border -> [i, j].
+  _edge(e) {
+    const L = this.hf.verts - 1;
+    if (e < L) return [e, 0];
+    if (e < 2 * L) return [L, e - L];
+    if (e < 3 * L) return [3 * L - e, L];
+    return [0, 4 * L - e];
+  }
+
+  _rebuildSkirt() {
+    const hf = this.hf, pos = this.skirt.geometry.attributes.position.array;
+    const n = 4 * (hf.verts - 1), bottom = hf.bedrock - 4;
+    for (let e = 0; e < n; e++) {
+      const [i, j] = this._edge(e), x = hf.wx(i), z = hf.wz(j), k = e * 6;
+      pos[k] = x; pos[k + 1] = hf.h[hf.index(i, j)]; pos[k + 2] = z;
+      pos[k + 3] = x; pos[k + 4] = bottom; pos[k + 5] = z;
+    }
+    this.skirt.geometry.attributes.position.needsUpdate = true;
+    this.skirt.geometry.computeVertexNormals();
+    this.skirtDirty = false;
+  }
+
   // Mark every chunk overlapping the sample rectangle. Expanded by one sample because a chunk's
   // edge normals depend on its neighbour's heights.
   markDirty(i0, j0, i1, j1) {
@@ -64,11 +107,14 @@ export class TerrainMesh {
     const cx0 = Math.max(0, Math.floor((i0 - 1) / C)), cx1 = Math.min(n - 1, Math.floor((i1 + 1) / C));
     const cz0 = Math.max(0, Math.floor((j0 - 1) / C)), cz1 = Math.min(n - 1, Math.floor((j1 + 1) / C));
     for (let cz = cz0; cz <= cz1; cz++) for (let cx = cx0; cx <= cx1; cx++) this.dirty.add(cz * n + cx);
+    const v = this.hf.verts - 1;
+    if (i0 <= 0 || j0 <= 0 || i1 >= v || j1 >= v) this.skirtDirty = true;
   }
 
   rebuildAll() {
     for (const c of this.chunks) this._rebuild(c);
     this.dirty.clear();
+    this._rebuildSkirt();
   }
 
   // Rebuild up to maxRebuilds dirty chunks. Returns how many were rebuilt.
@@ -80,6 +126,7 @@ export class TerrainMesh {
       this._rebuild(this.chunks[id]);
       done++;
     }
+    if (this.skirtDirty && this.dirty.size === 0) this._rebuildSkirt();
     return done;
   }
 
