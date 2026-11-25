@@ -295,7 +295,7 @@ export class Buildings {
       if (Math.hypot(b.def.x - x, b.def.z - z) > Math.hypot(b.footprint.hw, b.footprint.hd) + pad + 1) continue;
       for (let i = b.first; i < b.first + b.count; i++) {
         const p = this.pieces[i];
-        if (p.alive && p.structural && p.role !== 'deck' && p.py - p.sy / 2 < this.hf.heightAt(p.px, p.pz) + 1.5 && inBox(p, x, z, pad)) return true;
+        if (p.alive && p.structural && p.role !== 'deck' && p.role !== 'pillar' && p.py - p.sy / 2 < this.hf.heightAt(p.px, p.pz) + 1.5 && inBox(p, x, z, pad)) return true;
       }
     }
     return false;

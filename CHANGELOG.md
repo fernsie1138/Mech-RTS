@@ -1,5 +1,14 @@
 # Changelog
 
+## v8 — Milestone 6: nav grid and pathfinding
+- Nav grid (1 cell per unit, 256 x 256) with a movement cost per unit size (Scout / Assault / Titan): slope (steep ground is a slow scramble, cliffs over 1.9 block everyone), deep water blocks, shallow water slows, intact road is faster, rubble slows, buildings block with clearance by size (Scouts fit through 3-unit gaps, Titans need 7), dense forest stops Assaults (Scouts squeeze through, Titans push through), bridge decks carry units over rivers until destroyed.
+- Only cells touched by craters, rubble, flooding, falling / burnt trees and collapsing buildings are recomputed; incremental updates match a full rebuild exactly.
+- A* paths (8-way, no corner cutting) smoothed without cutting across slower ground; unreachable goals go to the closest reachable point.
+- Test units (placeholders until mechs arrive): follow paths at their class speed, re-plan when the ground on their route changes or they stop making progress, steer round each other, spread into a formation at the target, and always escape if a crater or rubble lands on them.
+- Game: **Move** mode (default): tap the ground to send the selected units, tap a unit to select it, **All**, **+Squad**. **Nav** button tints ground the selected unit can't cross (red) or crosses slowly (yellow). Path lines show the route.
+- Fixed: forest lookups near the map edge counted some trees twice.
+- Tests: `tests/nav-unit.mjs`, `tests/nav.mjs`.
+
 ## v7 — Milestone 5: buildings, rubble and bridges
 - Modular buildings: house, factory, bunker, wall, bridge. Each is made of pieces (wall tiles in rows, roof, floor, blocks, deck, pillars, rails) with their own hit points, drawn with 2 instanced meshes.
 - Pieces rest on supports: knocking out a lower wall tile drops the one above (holes); the roof falls when half its walls are gone; a bridge deck falls when its pillars go. Buildings go intact -> damaged -> ruin -> rubble. Falling pieces tumble down.

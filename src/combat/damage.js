@@ -1,11 +1,12 @@
 // Single entry point for all damage, to units and to the world (CLAUDE.md §4).
-// Terrain (craters, wear, flooding) and trees take damage here; units and buildings hook in later.
+// Terrain (craters, wear, flooding), trees and buildings take damage here; units hook in later. Every change is
+// reported to the nav grid (world.nav) so paths re-plan around new craters, rubble and fallen trees.
 import { TERRAIN_DAMAGE } from '../config.js';
 import { BUILDING_DAMAGE, addRubble } from '../world/buildings.js';
 
 export class Damage {
   constructor(world) {
-    this.world = world;        // { hf, surface, effects, water?, forest? }
+    this.world = world;        // { hf, surface, effects, water?, forest?, buildings?, nav? }
     this.log = [];             // recent impacts, for tests/debugging
   }
 
@@ -38,6 +39,11 @@ export class Damage {
     }
     if (forest && onGround) trees = forest.blast(x, z, { fallR: p.treeFall, ignite: p.ignite });
     if (effects) effects.explosion(x, onGround ? hf.heightAt(x, z) : by, z, p.fxSize, (a, b) => hf.heightAt(a, b));
+    // Terrain and water changes reach the nav grid through their own change events; trees and buildings don't.
+    if (this.world.nav && (trees || rubble.length || p.treeFall)) {
+      const fall = buildings && rubble.length ? Math.max(...rubble.map(r => Math.hypot(r.x - x, r.z - z) + r.r)) : 0;
+      this.world.nav.markDirty(x, z, Math.max(p.treeFall || 0, fall) + 2);
+    }
     const hit = { x, z, y: by, weapon, y0, y1: hf.heightAt(x, z), flooded, trees, pieces: rubble.length, ...result };
     this.log.push(hit);
     if (this.log.length > 50) this.log.shift();
@@ -51,6 +57,7 @@ export class Damage {
     for (const i of forest.update(dt)) {
       const t = forest.trees[i];
       surface.wear(t.x, t.z, 2.4 * t.s, 0.4, 0.6);
+      this.world.nav?.markDirty(t.x, t.z, 2);        // a burnt-out tree no longer blocks
     }
   }
 }

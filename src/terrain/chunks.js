@@ -154,6 +154,7 @@ export class TerrainMesh {
         nrm[k] = nx / l; nrm[k + 1] = ny / l; nrm[k + 2] = nz / l;
         const slope = Math.hypot(dx, dz) / e2;
         sf.colorAt(gi, gj, slope, y, rgb);
+        if (this.overlay) this.overlay(gi, gj, rgb);      // debug tint (e.g. the nav grid)
         // Palette is authored in sRGB; vertex colours are linear in three.js.
         col[k] = rgb[0] ** 2.2; col[k + 1] = rgb[1] ** 2.2; col[k + 2] = rgb[2] ** 2.2;
       }

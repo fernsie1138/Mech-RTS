@@ -10,6 +10,9 @@ import { loadMapUrl, loadMapStorage, proceduralMap, snapshot, restore, reloadFre
 import { Effects } from './combat/effects.js';
 import { Damage } from './combat/damage.js';
 import { DebugOverlay } from './ui/debug.js';
+import { NavGrid, NAV_CLASSES } from './nav/navgrid.js';
+import { Movers } from './units/movers.js';
+import { MoverView } from './units/moverview.js';
 
 // ---------- version label (warns if index.html and the JS are from different builds) ----------
 const htmlBuild = document.querySelector('meta[name="build"]')?.content;
@@ -75,13 +78,50 @@ if (map.markers.playerHQ) { rts.target.set(map.markers.playerHQ.x, heightAt(map.
 
 // ---------- effects and damage ----------
 const effects = new Effects(scene);
-const damage = new Damage({ hf, surface, effects, get water() { return view.water; }, get forest() { return view.forest; }, get buildings() { return view.buildings; } });
+const world = { hf, surface, get water() { return view.water; }, get forest() { return view.forest; }, get buildings() { return view.buildings; } };
+const damage = new Damage({ hf, surface, effects,
+  get water() { return view.water; }, get forest() { return view.forest; }, get buildings() { return view.buildings; }, get nav() { return nav; } });
+
+// ---------- nav grid and test units (milestone 6) ----------
+const nav = new NavGrid(world);
+hf.onChange((i0, j0, i1, j1) => nav.markSamples(i0, j0, i1, j1));
+let waterHooked = null;
+function hookWater() { if (waterHooked !== view.water) { waterHooked = view.water; view.water.onChange((i0, j0, i1, j1) => nav.markSamples(i0, j0, i1, j1)); } }
+hookWater();
+const movers = new Movers(nav);
+const moverView = new MoverView(scene);
+const selected = new Set();
+function spawnSquad(x, z) {
+  const out = [];
+  [0, 1, 2].forEach((cls, k) => {
+    const p = nav.nearestPassable(cls, x + (k - 1) * 6, z, 30) || { x, z };
+    out.push(movers.add(p.x, p.z, cls));
+  });
+  return out;
+}
+if (map.markers.playerHQ) spawnSquad(map.markers.playerHQ.x, map.markers.playerHQ.z - 16).forEach(m => selected.add(m));
+// Nav overlay: tint ground the selected (or medium) class can't cross red, slow ground yellow.
+const navOverlay = { on: false };
+function overlayClass() { const s = [...selected][0]; return s ? s.cls : 1; }
+function setNavOverlay(on) {
+  navOverlay.on = on;
+  view.terrain.overlay = on ? (gi, gj, rgb) => {
+    const c = nav.cost[overlayClass()][nav.idx(hf.wx(gi), hf.wz(gj))];
+    const t = c === Infinity ? 0.6 : c > 2 ? 0.3 : 0, col = c === Infinity ? [0.9, 0.1, 0.05] : [0.95, 0.8, 0.1];
+    for (let q = 0; q < 3; q++) rgb[q] += (col[q] - rgb[q]) * t;
+  } : null;
+  view.terrain.rebuildAll();
+  document.getElementById('btnNav').classList.toggle('on', on);
+}
+document.getElementById('btnNav').addEventListener('pointerup', () => setNavOverlay(!navOverlay.on));
 
 // ---------- debug overlay ----------
 const debug = new DebugOverlay(document.getElementById('debug'), document.getElementById('btnDebug'), renderer);
 debug.extra = () => {
   const c = view.forest.counts();
-  return `chunks     ${view.terrain.chunks.length} (dirty ${view.terrain.dirty.size})\n` +
+  return `units      ${movers.list.length} (${movers.list.filter(m => m.state !== 'idle').length} moving) paths ${movers.stats.paths}\n` +
+         `nav queue  ${nav.queue.length}  escapes ${movers.stats.escapes}  replans ${movers.stats.replans}\n` +
+         `chunks     ${view.terrain.chunks.length} (dirty ${view.terrain.dirty.size})\n` +
          `rebuilds   ${view.terrain.rebuildCount}\n` +
          `water tris ${view.waterMesh.triangleCount()}\n` +
          `trees      ${view.forest.trees.length} (${c.fallen} down, ${c.burning} burning, ${c.stump} gone)\n` +
@@ -89,7 +129,7 @@ debug.extra = () => {
 };
 
 // ---------- simulation (fixed step) ----------
-const state = { time: 0, steps: 0, weapon: 'cannon', pending: [] };   // pending: scheduled impacts {at, x, z, weapon}
+const state = { time: 0, steps: 0, weapon: 'move', pending: [] };   // weapon 'move' = Move mode. pending: scheduled impacts
 
 function simStep(dt) {
   state.time += dt;
@@ -99,6 +139,13 @@ function simStep(dt) {
     damage.explode(s.x, s.z, s.weapon);
   }
   damage.update(dt);
+  // Nav changes: apply a couple of dirty rectangles per step, refreshing the overlay there.
+  for (let k = 0; k < 2 && nav.queue.length; k++) {
+    const r = nav.queue[0];
+    nav.update();
+    if (navOverlay.on && r) view.terrain.markDirty(hf.gx(nav.cx(r[0]) - 4), hf.gz(nav.cz(r[1]) - 4), hf.gx(nav.cx(r[2]) + 4), hf.gz(nav.cz(r[3]) + 4));
+  }
+  movers.step(dt);
   effects.update(dt);
 }
 
@@ -125,11 +172,26 @@ function resetTerrain() {
   view.rebuildWater();
   view.reloadTrees();
   view.reloadBuildings();
+  hookWater();
+  nav.queue.length = 0;
+  nav.rebuild();
+  if (navOverlay.on) view.terrain.rebuildAll();
 }
 
 // ---------- HUD: test-fire toolbar ----------
-// Tap: fire at the building piece or ground under the finger, whichever is nearer.
+// Move mode: tap a unit to select it, tap the ground to send the selected units (all, if none) there.
+// Fire modes: tap fires at the building piece or ground under the finger, whichever is nearer.
+function moveTap(cx, cy) {
+  const hit = moverView.pick(rts.screenRay(cx, cy), movers);
+  if (hit) { selected.clear(); selected.add(hit); if (navOverlay.on) view.terrain.rebuildAll(); return; }
+  const g = pickGround(cx, cy);
+  if (!g) return;
+  const group = selected.size ? [...selected] : movers.list;
+  movers.order(group, g.x, g.z);
+  effects.dust(g.x, g.y, g.z, 0.6);
+}
 rts.onTap = (cx, cy) => {
+  if (state.weapon === 'move') { moveTap(cx, cy); return; }
   const g = pickGround(cx, cy), b = view.pickBuilding(cx, cy);
   const camPos = camera.position;
   if (b && (!g || b.point.distanceTo(camPos) < Math.hypot(g.x - camPos.x, g.y - camPos.y, g.z - camPos.z))) {
@@ -143,9 +205,15 @@ function selectWeapon(w) {
 }
 weaponBtns.forEach(b => b.addEventListener('pointerup', () => selectWeapon(b.dataset.weapon)));
 selectWeapon(state.weapon);
+document.getElementById('btnAll').addEventListener('pointerup', () => { movers.list.forEach(m => selected.add(m)); if (navOverlay.on) view.terrain.rebuildAll(); });
+document.getElementById('btnSpawn').addEventListener('pointerup', () => {
+  const sq = spawnSquad(rts.target.x, rts.target.z);
+  selected.clear(); sq.forEach(m => selected.add(m));
+});
 document.getElementById('btnBarrage').addEventListener('pointerup', () => barrage(rts.target.x, rts.target.z, { seed: (state.steps % 9973) + 1 }));
 document.getElementById('btnReset').addEventListener('pointerup', resetTerrain);
 window.addEventListener('keydown', e => {
+  if (e.key === '0') selectWeapon('move');
   if (e.key === '1') selectWeapon('mg');
   if (e.key === '2') selectWeapon('cannon');
   if (e.key === '3') selectWeapon('shell');
@@ -171,6 +239,7 @@ function frame(now) {
     if (n === SIM.maxStepsPerFrame) accum = 0;   // fell behind: drop time rather than spiral
   }
   view.update(dt);
+  moverView.update(movers, selected, (x, z) => nav.standHeight(x, z));
   view.render();
   debug.frame(dt);
   requestAnimationFrame(frame);
@@ -185,6 +254,7 @@ window.__game = {
   hf, surface, terrain: view.terrain, effects, damage,
   get water() { return view.water; }, get forest() { return view.forest; }, get buildings() { return view.buildings; },
   heightAt, pickGround, fireAt, barrage, resetTerrain, selectWeapon,
+  nav, movers, moverView, selected, spawnSquad, setNavOverlay, moveTap, NAV_CLASSES,
   pause(on = true) { paused = on; },
   // Advance the simulation by `seconds` in fixed steps, independent of real time.
   step(seconds) {
@@ -193,7 +263,7 @@ window.__game = {
     return state.time;
   },
   // Rebuild dirty chunks (all, or up to `limit`) and render one frame immediately.
-  render(limit = Infinity) { view.update(0, limit); view.render(); return debug.stats(); },
+  render(limit = Infinity) { view.update(0, limit); moverView.update(movers, selected, (x, z) => nav.standHeight(x, z)); view.render(); return debug.stats(); },
   stats: () => debug.stats(),
   ready: true,
 };
