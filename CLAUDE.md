@@ -65,6 +65,8 @@ src/
     navgrid.js        walkability/cost grid, updated as terrain changes
     pathfinding.js    A* and/or flow fields
   units/
+    movers.js         path following, re-planning, unsticking, separation (no three.js)
+    moverview.js      placeholder unit bodies, selection rings, path lines
     mech.js           mech model, animation, movement, weapons
     types.js          unit definitions
   combat/
@@ -182,6 +184,7 @@ A separate page (`editor.html`), designed for **touch on iPad**:
 - When terrain or objects change, only the **affected cells** are updated.
 - Paths use A* (or flow fields for large groups). Paths are recomputed when the cells they cross change.
 - Unit size matters: Scouts can squeeze through gaps that Titans can't, and Titans can push through light forest.
+- Slope limits per class are soft (a slow scramble); only cliffs steeper than 1.9 block everyone. Crater walls never exceed 1.6, so craters can never trap a unit.
 - Units must never get stuck in new craters or rubble. This needs automated tests (§11).
 
 ---

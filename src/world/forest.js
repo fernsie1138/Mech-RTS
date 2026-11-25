@@ -89,8 +89,10 @@ export class Forest {
   // Indices of trees within r of (x, z).
   near(x, z, r) {
     const C = FOREST.cell, h = this.size / 2, out = [];
-    const ci0 = Math.floor((x - r + h) / C), ci1 = Math.floor((x + r + h) / C);
-    const cj0 = Math.floor((z - r + h) / C), cj1 = Math.floor((z + r + h) / C);
+    // Clamp to the grid: out-of-range cells would wrap into neighbouring rows and count trees twice.
+    const top = this.gridN - 1, cl = v => Math.max(0, Math.min(top, v));
+    const ci0 = cl(Math.floor((x - r + h) / C)), ci1 = cl(Math.floor((x + r + h) / C));
+    const cj0 = cl(Math.floor((z - r + h) / C)), cj1 = cl(Math.floor((z + r + h) / C));
     for (let cj = cj0; cj <= cj1; cj++) for (let ci = ci0; ci <= ci1; ci++) {
       const list = this.grid.get(cj * this.gridN + ci);
       if (!list) continue;
