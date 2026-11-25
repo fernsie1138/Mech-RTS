@@ -6,7 +6,7 @@ import { VERSION } from './version.js';
 import * as config from './config.js';
 import { SIM } from './config.js';
 import { createView } from './view.js';
-import { loadMapUrl, loadMapStorage, proceduralMap, snapshot, restore, TEST_KEY } from './maps/loader.js';
+import { loadMapUrl, loadMapStorage, proceduralMap, snapshot, restore, reloadFresh, clearFreshReload, TEST_KEY } from './maps/loader.js';
 import { Effects } from './combat/effects.js';
 import { Damage } from './combat/damage.js';
 import { DebugOverlay } from './ui/debug.js';
@@ -48,9 +48,11 @@ let map;
 try {
   map = await loadChosenMap();
 } catch (e) {
+  if (reloadFresh(e)) { loading.textContent = 'Updating to the latest version…'; await new Promise(() => {}); }
   fatal(`Could not load the map: ${e.message}`);
   await new Promise(() => {});     // stop here; the message stays on screen
 }
+clearFreshReload();
 loading.style.display = 'none';
 const pristine = snapshot(map);   // matches never modify the map file: Reset restores this copy
 

@@ -1,5 +1,11 @@
 # Changelog
 
+## v6 — Fix: "map formatVersion 2 is newer than this game supports"
+- Cause: Safari kept old cached copies of the game's modules (GitHub Pages lets browsers cache files for up to 10 minutes) while loading the new map, so old code met a new map file.
+- Every module is now loaded through an import map with `?v=N` on every file, so a new version always fetches all-new code. `node tools/bump-version.mjs vN` updates the version, labels and import maps in one step.
+- If old cached code still meets a newer map, the game / editor reloads itself once with a fresh URL instead of showing the error.
+- Smoke test checks every module is versioned and simulates a stale cache.
+
 ## v5 — Milestone 4: water, trees and roads
 - Rivers hold water: the level is worked out from the river layer and the bank heights, so rivers follow the land. Drawn with a chunked water surface, shaded by depth. Rivers are mostly deep (impassable for mechs later), shallow at the edges.
 - Flooding: a crater beside water that dips below its level fills (water pours over low lips in the blast area). Floods stay local, so one shell can't drain a river over a whole plain; a chain of craters floods one crater at a time.

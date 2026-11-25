@@ -18,6 +18,56 @@ check(html.includes(`<meta name="build" content="${VERSION}">`), `index.html bui
 check(html.includes(`src/main.js?v=${VERSION.slice(1)}`), `index.html main.js cache-buster matches ${VERSION}`);
 check(html.includes(`<div id="ver">${VERSION}</div>`), `index.html fallback label matches ${VERSION}`);
 
+// ---------------- Cache safety: every module is versioned ----------------
+{
+  const { readdirSync, statSync } = await import('node:fs');
+  const walk = d => readdirSync(new URL(`../${d}`, import.meta.url)).flatMap(n => {
+    const p = `${d}/${n}`;
+    return statSync(new URL(`../${p}`, import.meta.url)).isDirectory() ? walk(p) : n.endsWith('.js') ? [p] : [];
+  });
+  const modules = [...walk('src'), ...walk('editor')].filter(p => p !== 'src/ui/page.js');
+  for (const pageFile of ['index.html', 'editor.html']) {
+    const text = await readFile(new URL(`../${pageFile}`, import.meta.url), 'utf8');
+    const map = JSON.parse(text.match(/<script type="importmap">([\s\S]*?)<\/script>/)[1]).imports;
+    const missing = modules.filter(m => map[`./${m}`] !== `./${m}?v=${VERSION.slice(1)}`);
+    check(missing.length === 0 && map.three === `./lib/three.module.js?v=${VERSION.slice(1)}`,
+      `${pageFile} import map versions all ${modules.length} modules + three.js with ?v=${VERSION.slice(1)}${missing.length ? ' (missing/wrong: ' + missing.join(', ') + ')' : ''}`);
+    const vs = [...text.matchAll(/\?v=(\d+)/g)].map(m => m[1]);
+    check(vs.every(v => v === VERSION.slice(1)), `${pageFile}: every ?v= is ${VERSION.slice(1)}`);
+  }
+  const ctx = await browser.newContext({ viewport: { width: 800, height: 600 } });
+  const page = await ctx.newPage();
+  const unversioned = [];
+  page.on('request', r => { const u = new URL(r.url()); if (/\/(src|editor|lib)\/.*\.js$/.test(u.pathname) && u.searchParams.get('v') !== VERSION.slice(1)) unversioned.push(u.pathname + u.search); });
+  for (const path of ['index.html', 'editor.html']) {
+    await page.goto(server.url + path);
+    await page.waitForFunction(() => window.__game?.ready || window.__editor?.ready, null, { timeout: 30000 });
+  }
+  check(unversioned.length === 0, `game and editor request every module with ?v=${VERSION.slice(1)}${unversioned.length ? ': ' + unversioned.join(', ') : ''}`);
+  await ctx.close();
+}
+
+// ---------------- Stale cached code meets a newer map: reload once, then play ----------------
+{
+  const ctx = await browser.newContext({ viewport: { width: 800, height: 600 } });
+  const page = await ctx.newPage();
+  let staleServed = 0, alwaysStale = false;
+  await page.route(/format\.js/, async route => {
+    const res = await route.fetch();
+    let body = await res.text();
+    if (staleServed === 0 || alwaysStale) { body = body.replace(/FORMAT_VERSION = \d+/, 'FORMAT_VERSION = 1'); staleServed++; }
+    await route.fulfill({ response: res, body });
+  });
+  await page.goto(server.url + 'index.html');
+  await page.waitForFunction(() => window.__game?.ready, null, { timeout: 30000 });
+  check(staleServed === 1 && /fresh=/.test(page.url()), `stale code reloads itself once with a fresh URL and the game starts (${page.url().split('?')[1]})`);
+  alwaysStale = true;
+  await page.goto(server.url + 'index.html?map=sample');
+  await page.waitForFunction(() => document.getElementById('fatal').style.display === 'flex', null, { timeout: 30000 });
+  check(/newer than this game supports/.test(await page.textContent('#fatal')) && staleServed <= 3, `if the code stays stale it shows the error instead of reloading forever (${staleServed} stale loads)`);
+  await ctx.close();
+}
+
 // ---------------- iPad (touch) ----------------
 {
   const ctx = await browser.newContext({ ...devices['iPad Pro 11 landscape'] });
