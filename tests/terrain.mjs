@@ -121,12 +121,12 @@ await page.screenshot({ path: join(out, 'terrain-barrage-mid.png') });
 await page.evaluate(() => window.__game.step(3.0));
 const fired = await page.evaluate(n0 => ({ n: window.__game.damage.log.length - n0, pending: window.__game.state.pending.length }), n0);
 check(fired.n === 24 && fired.pending === 0, `all 24 barrage shells land within 3 s (${fired.n}, pending ${fired.pending})`);
-await page.evaluate(() => window.__game.step(2.0));
+await page.evaluate(() => window.__game.step(16.0));
 await page.evaluate(() => window.__game.render());
 await page.screenshot({ path: join(out, 'terrain-barrage-after.png') });
 const fin = await page.evaluate(() => window.__game.hf.h.every(Number.isFinite) && window.__game.surface.damage.every(Number.isFinite));
 check(fin, 'heights and damage map are finite after the barrage');
-check(await page.evaluate(() => window.__game.effects.activeCount()) === 0, 'all pooled explosion effects finished and returned to the pool');
+check(await page.evaluate(() => window.__game.effects.activeCount()) === 0, 'all explosion effects (smoke lasts ~10 s) finished and returned to the pool');
 
 const dmg = await page.evaluate(() => { let s = 0; for (const v of window.__game.surface.damage) s += v; return s; });
 await page.tap('#btnReset');

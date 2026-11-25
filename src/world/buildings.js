@@ -186,6 +186,7 @@ export class Buildings {
   // drop into the river and leave no mound). `power`/`radius` from BUILDING_DAMAGE.
   blast(x, y, z, { power, radius }) {
     const hit = new Set();
+    this.lastHit = [];            // pieces damaged by this blast (for fire and debris effects)
     for (const b of this.list) {
       const fr = Math.hypot(b.footprint.hw, b.footprint.hd) + radius + 6;
       if (Math.hypot(b.def.x - x, b.def.z - z) > fr) continue;
@@ -197,6 +198,7 @@ export class Buildings {
         if (d >= radius) continue;
         p.hp -= power * (1 - d / radius) ** 2;
         this.changed.add(i);
+        this.lastHit.push(i);
         if (p.hp <= 0) this._destroy(i, x, y, z);
         hit.add(p.b);
       }

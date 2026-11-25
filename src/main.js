@@ -77,7 +77,7 @@ const heightAt = view.heightAt;
 if (map.markers.playerHQ) { rts.target.set(map.markers.playerHQ.x, heightAt(map.markers.playerHQ.x, map.markers.playerHQ.z), map.markers.playerHQ.z - 30); rts.update(0); }
 
 // ---------- effects and damage ----------
-const effects = new Effects(scene);
+const effects = new Effects(scene, (x, z) => hf.heightAt(x, z));
 const world = { hf, surface, get water() { return view.water; }, get forest() { return view.forest; }, get buildings() { return view.buildings; } };
 const damage = new Damage({ hf, surface, effects,
   get water() { return view.water; }, get forest() { return view.forest; }, get buildings() { return view.buildings; }, get nav() { return nav; } });

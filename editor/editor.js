@@ -90,6 +90,7 @@ const HINTS = {
   bunker: 'Tap to place a bunker · tap a building to select it',
   wall: 'Tap to place a wall section · tap a building to select it',
   bridge: 'Tap on a river to bridge it (fits itself) · tap a building to select it',
+  select: 'Selected: drag it to move · Angle slider or ⟲ ⟳ to turn · Delete',
 };
 
 function selectTool(t) {
@@ -196,9 +197,17 @@ function replaceMap(next, label) {
 function groundAt(cx, cy) { return view.pickGround(cx, cy); }
 
 rts.onStrokeStart = (cx, cy) => {
-  if (!BRUSH_TOOLS.has(state.tool)) return;
   const p = groundAt(cx, cy);
   if (!p) return;
+  if (BUILD_TOOLS.has(state.tool)) {
+    // A one-finger drag that starts on the selected building moves it.
+    if (selected >= 0 && view.buildings.at(p.x, p.z) === selected) {
+      const d = map.buildings[selected];
+      state.drag = { i: selected, dx: d.x - p.x, dz: d.z - p.z, before: buildingSnapshot(), cx, cy };
+    }
+    return;
+  }
+  if (!BRUSH_TOOLS.has(state.tool)) return;
   state.stroke = beginStroke(state.tool, p.x, p.z, cx, cy);
 };
 
@@ -225,10 +234,11 @@ function stamp(s, x, z, dt) {
   }
 }
 rts.onStrokeMove = (cx, cy) => {
+  if (state.drag) { dragBuilding(cx, cy); return; }
   if (!state.stroke) return;
   state.stroke.cx = cx; state.stroke.cy = cy;
 };
-rts.onStrokeEnd = () => endStroke();
+rts.onStrokeEnd = () => { if (state.drag) endDrag(); else endStroke(); };
 
 function unionRect(a, b) {
   if (!b) return a;
@@ -305,11 +315,17 @@ outline.geometry.setAttribute('position', new THREE.BufferAttribute(new Float32A
 outline.renderOrder = 21; outline.frustumCulled = false; outline.visible = false;
 view.scene.add(outline);
 
+const deg = r => ((Math.round(r * 180 / Math.PI) % 360) + 360) % 360;
+const NAMES = { house: 'House', factory: 'Factory', bunker: 'Bunker', wall: 'Wall', bridge: 'Bridge' };
 function select(i) {
   selected = i;
   const d = map.buildings?.[i];
   outline.visible = !!d;
   $('bdel').classList.toggle('dis', !d);
+  $('bname').textContent = d ? `${NAMES[d.type]}: ${deg(d.rot || 0)}°` : `New: ${deg(state.rot || 0)}°`;
+  $('bangle').value = deg(d ? d.rot || 0 : state.rot || 0);
+  if (d) $('hint').textContent = HINTS.select;
+  else if (BUILD_TOOLS.has(state.tool)) $('hint').textContent = HINTS[state.tool];
   if (!d) return;
   const fp = blueprint(d).footprint, c = Math.cos(d.rot || 0), s = Math.sin(d.rot || 0), pos = outline.geometry.attributes.position.array;
   const y = view.buildings.list[i]?.y ?? map.hf.heightAt(d.x, d.z);
@@ -320,11 +336,18 @@ function select(i) {
   outline.geometry.attributes.position.needsUpdate = true;
 }
 
+function buildingSnapshot() {
+  return { h: Float32Array.from(map.hf.h), base: Uint8Array.from(map.surface.base), features: Uint8Array.from(map.surface.features),
+           trees: map.trees, buildings: map.buildings.map(b => ({ ...b })) };
+}
+
 // An undoable change to the building list (and the ground it levels). fn() returns the changed sample rect or null.
-function editBuildings(fn) {
-  const before = { h: Float32Array.from(map.hf.h), base: Uint8Array.from(map.surface.base), features: Uint8Array.from(map.surface.features),
-                   trees: map.trees, buildings: map.buildings.map(b => ({ ...b })) };
-  const rect = fn() || { i0: 0, j0: 0, i1: 1, j1: 1 };
+// `before`: a snapshot taken before live edits (dragging, the angle slider); default: now.
+function editBuildings(fn, before = buildingSnapshot()) {
+  const rect0 = fn() || { i0: 0, j0: 0, i1: 1, j1: 1 };
+  // A live edit may have moved the building: cover where it started as well.
+  const startRect = before.rect;
+  const rect = startRect ? union(rect0, startRect) : rect0;
   view.reloadBuildings();
   const V = map.hf.verts;
   history.push({
@@ -360,7 +383,7 @@ function buildingTap(x, z) {
 
 function rotateSelected(dir) {
   state.rot = ((state.rot || 0) + dir * Math.PI / 12);
-  if (selected < 0) return;
+  if (selected < 0) { select(-1); return; }
   const old = map.buildings[selected];
   let def = { ...old, rot: (old.rot || 0) + dir * Math.PI / 12 };
   if (def.type === 'bridge') def = fitBridge(map.hf, view.water, old.x, old.z, def.rot) || old;
@@ -368,6 +391,50 @@ function rotateSelected(dir) {
   editBuildings(() => { map.buildings[i] = def; return settle(def); });
   select(i);
 }
+// Live preview while dragging / turning (no levelling until the edit is committed).
+function preview(i, def) {
+  map.buildings[i] = def;
+  view.reloadBuildings();
+  select(i);
+}
+function dragBuilding(cx, cy) {
+  const g = state.drag, p = groundAt(cx, cy);
+  if (!p) return;
+  const old = map.buildings[g.i];
+  let def = { ...old, x: p.x + g.dx, z: p.z + g.dz };
+  if (def.type === 'bridge') def = fitBridge(map.hf, view.water, def.x, def.z, old.rot) || old;
+  preview(g.i, def);
+}
+function endDrag() {
+  const g = state.drag;
+  state.drag = null;
+  const d0 = g.before.buildings[g.i], d = map.buildings[g.i];
+  if (Math.hypot(d.x - d0.x, d.z - d0.z) < 0.01) return;
+  g.before.rect = map.hf.rect(d0.x, d0.z, 14);
+  editBuildings(() => settle(d), g.before);
+  select(g.i);
+}
+
+// Angle slider: turns the selected building live (or sets the angle for new buildings); one undo step on release.
+let angleBefore = null;
+$('bangle').addEventListener('input', () => {
+  const r = +$('bangle').value * Math.PI / 180;
+  state.rot = r;
+  if (selected < 0) { $('bname').textContent = `New: ${deg(r)}°`; return; }
+  angleBefore ||= buildingSnapshot();
+  const old = map.buildings[selected];
+  let def = { ...old, rot: r };
+  if (def.type === 'bridge') def = fitBridge(map.hf, view.water, old.x, old.z, r) || old;
+  preview(selected, def);
+});
+$('bangle').addEventListener('change', () => {
+  if (selected < 0 || !angleBefore) { angleBefore = null; return; }
+  const i = selected, before = angleBefore;
+  angleBefore = null;
+  editBuildings(() => settle(map.buildings[i]), before);
+  select(i);
+});
+
 $('brotL').addEventListener('pointerup', () => rotateSelected(1));
 $('brotR').addEventListener('pointerup', () => rotateSelected(-1));
 $('bdel').addEventListener('pointerup', () => {
@@ -511,7 +578,7 @@ history.onChange();
 window.__editor = {
   version: VERSION, config, THREE, view, history, state,
   get map() { return map; },
-  selectTool, undo, redo, replaceMap, autosave, buildingTap, rotateSelected, get selected() { return selected; },
+  selectTool, undo, redo, replaceMap, autosave, buildingTap, rotateSelected, get selected() { return selected; }, select,
   paintStep, endStroke,
   ready: true,
 };

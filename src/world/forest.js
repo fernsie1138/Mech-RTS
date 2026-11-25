@@ -2,7 +2,8 @@
 //
 // Each tree: { x, z, s (scale), t (type: 0 conifer, 1 broadleaf), state, dir, burn, charred }
 //   state: STANDING -> FALLEN (knocked flat, lying along `dir`) -> STUMP (stump / ash)
-//   burn:  seconds of burning left (0 = not burning). Burning trees can ignite neighbours and end as STUMP.
+//   burn:  seconds of burning left (0 = not burning). A full fire can spread to neighbours and ends as a STUMP;
+//          a short fire (short = true, trees caught in a blast) burns a few seconds and leaves the tree charred.
 import { FEATURE } from '../terrain/surface.js';
 
 export const TREE = { STANDING: 0, FALLEN: 1, STUMP: 2 };
@@ -11,7 +12,8 @@ export const FOREST = {
   denseSpacing: 2.6,          // jittered grid cell (world units) in dense forest
   sparseSpacing: 6.5,         // ... and for scattered trees
   maxSlope: 1.1,              // no trees on steeper ground
-  burnTime: [9, 15],          // seconds a tree burns
+  burnTime: [9, 15],          // seconds a tree burns (full fire)
+  shortBurn: [3, 7],          // seconds a tree caught in a blast burns (no spreading)
   spreadRadius: 3.2,          // fire reaches trees this close
   spreadChance: 0.06,         // per neighbour per second (one tree alight burns ~10% of a forest, sometimes half)
   cell: 8,                    // spatial grid cell size
@@ -103,9 +105,23 @@ export class Forest {
 
   ignite(i) {
     const t = this.trees[i];
-    if (t.burn > 0 || t.state === TREE.STUMP) return false;
+    if ((t.burn > 0 && !t.short) || t.state === TREE.STUMP) return false;
     const [a, b] = FOREST.burnTime;
     t.burn = a + (b - a) * this.rng();
+    t.short = false;
+    t.charred = true;
+    this.burning.add(i);
+    this.changed.add(i);
+    return true;
+  }
+
+  // A short fire from a blast: flames for a few seconds, the tree is left charred (no spreading).
+  scorch(i) {
+    const t = this.trees[i];
+    if (t.burn > 0 || t.state === TREE.STUMP) return false;
+    const [a, b] = FOREST.shortBurn;
+    t.burn = a + (b - a) * this.rng();
+    t.short = true;
     t.charred = true;
     this.burning.add(i);
     this.changed.add(i);
@@ -123,6 +139,7 @@ export class Forest {
       if (d < stumpR) { t.state = TREE.STUMP; t.burn = 0; this.burning.delete(i); hit++; }
       else if (d < fallR && t.state === TREE.STANDING) { t.state = TREE.FALLEN; t.dir = Math.atan2(t.z - z, t.x - x); hit++; }
       if (t.state !== TREE.STUMP && this.rng() < ignite) this.ignite(i);
+      else if (t.state !== TREE.STUMP && t.burn <= 0 && fallR > 0) this.scorch(i);    // caught in the blast: burns briefly
       this.changed.add(i);
     }
     return hit;
@@ -147,11 +164,15 @@ export class Forest {
     const spreadP = 1 - Math.pow(1 - FOREST.spreadChance, dt);
     for (const i of [...this.burning]) {
       const t = this.trees[i];
-      for (const j of this.near(t.x, t.z, FOREST.spreadRadius)) {
-        if (j !== i && this.rng() < spreadP) this.ignite(j);
+      if (!t.short) for (const j of this.near(t.x, t.z, FOREST.spreadRadius)) {
+        if (j !== i && this.rng() < spreadP && (this.trees[j].burn <= 0 || this.trees[j].short)) this.ignite(j);
       }
       t.burn -= dt;
-      if (t.burn <= 0) {
+      if (t.burn <= 0 && t.short) {           // short fire out: charred, still standing (or lying)
+        t.burn = 0; t.short = false;
+        this.burning.delete(i);
+        this.changed.add(i);
+      } else if (t.burn <= 0) {
         t.burn = 0; t.state = TREE.STUMP;
         this.burning.delete(i);
         this.changed.add(i);
