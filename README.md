@@ -15,4 +15,12 @@ Headless tests use Playwright with Chromium and a built-in static server (no ins
 node tests/smoke.mjs
 ```
 
+```bash
+node tests/terrain-unit.mjs
+```
+
+```bash
+node tests/terrain.mjs
+```
+
 Screenshots are written to `tests/out/` (not committed).

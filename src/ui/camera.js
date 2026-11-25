@@ -1,33 +1,42 @@
 // RTS camera: looks down at a target point on the ground at a fixed pitch.
-// Touch: one-finger drag pans, two fingers pan + pinch zoom.
-// Mouse: drag pans, wheel zooms. Keys: WASD / arrows pan, +/- zoom.
-// The point under the finger stays under the finger while panning (ground-anchored).
+// Touch: one-finger drag pans, two fingers pan + pinch zoom + twist to rotate. A quick touch is a tap.
+// Mouse: drag pans, wheel zooms, click is a tap. Keys: WASD / arrows pan, Q/E rotate, +/- zoom.
+// While panning, the ground point under the finger stays under the finger.
 import * as THREE from 'three';
 import { CAMERA, MAP_SIZE } from '../config.js';
 
 export class RTSCamera {
-  constructor(camera, dom) {
+  constructor(camera, dom, heightAt) {
     this.camera = camera;
     this.dom = dom;
-    this.target = new THREE.Vector3(0, 0, 0);
+    this.heightAt = heightAt || (() => 0);
+    this.target = new THREE.Vector3(0, this.heightAt(0, 0), 0);
     this.distance = CAMERA.startDistance;
     this.pitch = THREE.MathUtils.degToRad(CAMERA.pitchDeg);
     this.yaw = 0;
     this.keys = new Set();
     this.pointers = new Map();        // id -> {x, y}
+    this.onTap = null;                // fn(clientX, clientY)
     this._ray = new THREE.Raycaster();
     this._plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
     this._ndc = new THREE.Vector2();
+    this._gesture = null;
     this._bind();
     this.update(0);
   }
 
-  // World point on the ground plane under a screen position, or null.
-  groundPoint(clientX, clientY, out = new THREE.Vector3()) {
+  // Ray from the camera through a screen position.
+  screenRay(clientX, clientY) {
     const r = this.dom.getBoundingClientRect();
     this._ndc.set(((clientX - r.left) / r.width) * 2 - 1, -((clientY - r.top) / r.height) * 2 + 1);
     this._ray.setFromCamera(this._ndc, this.camera);
-    return this._ray.ray.intersectPlane(this._plane, out);
+    return this._ray.ray;
+  }
+
+  // Point on the horizontal pan plane (at the target's height) under a screen position, or null.
+  groundPoint(clientX, clientY, out = new THREE.Vector3()) {
+    this._plane.constant = -this.target.y;
+    return this.screenRay(clientX, clientY).intersectPlane(this._plane, out);
   }
 
   _centroid() {
@@ -37,25 +46,37 @@ export class RTSCamera {
     return { x: x / n, y: y / n };
   }
 
-  _spread() {
+  _pair() {
     const pts = [...this.pointers.values()];
-    if (pts.length < 2) return 0;
-    return Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+    if (pts.length < 2) return null;
+    return { spread: Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y),
+             angle: Math.atan2(pts[1].y - pts[0].y, pts[1].x - pts[0].x) };
   }
 
-  // Move the target so that world point `a` (under the old screen pos) ends up under the new screen pos.
+  // Move the target so the world point under (oldX, oldY) ends up under (newX, newY).
   _panScreen(oldX, oldY, newX, newY) {
     const a = this.groundPoint(oldX, oldY, new THREE.Vector3());
     const b = this.groundPoint(newX, newY, new THREE.Vector3());
     if (!a || !b) return;
     this.target.x += a.x - b.x;
     this.target.z += a.z - b.z;
-    this.update(0);
+    this._apply();
   }
 
   zoomBy(factor) {
     this.distance = THREE.MathUtils.clamp(this.distance * factor, CAMERA.minDistance, CAMERA.maxDistance);
-    this.update(0);
+    this._apply();
+  }
+
+  // Rotate around the point under screen position (cx, cy) so it stays put.
+  rotateBy(dYaw, cx, cy) {
+    const before = cx !== undefined ? this.groundPoint(cx, cy, new THREE.Vector3()) : null;
+    this.yaw += dYaw;
+    this._apply();
+    if (before) {
+      const after = this.groundPoint(cx, cy, new THREE.Vector3());
+      if (after) { this.target.x += before.x - after.x; this.target.z += before.z - after.z; this._apply(); }
+    }
   }
 
   _bind() {
@@ -63,24 +84,45 @@ export class RTSCamera {
     el.addEventListener('pointerdown', e => {
       el.setPointerCapture?.(e.pointerId);
       this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (this.pointers.size === 1) {
+        this._gesture = { x: e.clientX, y: e.clientY, t: e.timeStamp, maxPointers: 1, moved: 0 };
+      } else if (this._gesture) {
+        this._gesture.maxPointers = Math.max(this._gesture.maxPointers, this.pointers.size);
+      }
       this._last = this._centroid();
-      this._lastSpread = this._spread();
+      this._lastPair = this._pair();
     });
     el.addEventListener('pointermove', e => {
       const p = this.pointers.get(e.pointerId);
       if (!p) return;
       p.x = e.clientX; p.y = e.clientY;
       const c = this._centroid();
+      if (this._gesture) this._gesture.moved = Math.max(this._gesture.moved, Math.hypot(c.x - this._gesture.x, c.y - this._gesture.y));
       if (this._last) this._panScreen(this._last.x, this._last.y, c.x, c.y);
-      const s = this._spread();
-      if (s > 0 && this._lastSpread > 0) this.zoomBy(this._lastSpread / s);
+      const pair = this._pair();
+      if (pair && this._lastPair) {
+        if (pair.spread > 0 && this._lastPair.spread > 0) this.zoomBy(this._lastPair.spread / pair.spread);
+        let da = pair.angle - this._lastPair.angle;
+        if (da > Math.PI) da -= 2 * Math.PI;
+        if (da < -Math.PI) da += 2 * Math.PI;
+        // Ignore tiny twists so pinching doesn't wobble the view.
+        if (Math.abs(da) > 0.002) this.rotateBy(da, c.x, c.y);
+      }
       this._last = c;
-      this._lastSpread = s;
+      this._lastPair = pair;
     });
     const up = e => {
+      if (!this.pointers.has(e.pointerId)) return;
       this.pointers.delete(e.pointerId);
       this._last = this.pointers.size ? this._centroid() : null;
-      this._lastSpread = this._spread();
+      this._lastPair = this._pair();
+      if (this.pointers.size === 0 && this._gesture) {
+        const g = this._gesture;
+        this._gesture = null;
+        const isTap = e.type === 'pointerup' && g.maxPointers === 1 && g.moved < CAMERA.tapMaxMove &&
+          e.timeStamp - g.t < CAMERA.tapMaxTime;   // event times, so a slow frame cannot turn a tap into a hold
+        if (isTap && this.onTap) this.onTap(e.clientX, e.clientY);
+      }
     };
     el.addEventListener('pointerup', up);
     el.addEventListener('pointercancel', up);
@@ -105,21 +147,35 @@ export class RTSCamera {
       const c = Math.cos(this.yaw), s = Math.sin(this.yaw);
       this.target.x += (dx * c + dz * s) * speed;
       this.target.z += (-dx * s + dz * c) * speed;
+      if (k.has('q')) this.yaw += CAMERA.keyRotateSpeed * dt;
+      if (k.has('e')) this.yaw -= CAMERA.keyRotateSpeed * dt;
       if (k.has('=') || k.has('+')) this.distance *= 1 - dt;
       if (k.has('-') || k.has('_')) this.distance *= 1 + dt;
       this.distance = THREE.MathUtils.clamp(this.distance, CAMERA.minDistance, CAMERA.maxDistance);
     }
+    // Follow the ground height under the target smoothly, but not mid-gesture (keeps the finger anchored).
+    if (dt > 0 && this.pointers.size === 0) {
+      const t = this.target, r = 8;
+      const g = (this.heightAt(t.x, t.z) * 2 + this.heightAt(t.x + r, t.z) + this.heightAt(t.x - r, t.z) +
+                 this.heightAt(t.x, t.z + r) + this.heightAt(t.x, t.z - r)) / 6;
+      t.y += (g - t.y) * Math.min(1, dt * 3);
+    }
+    this._apply();
+  }
+
+  // Place the camera from target / distance / pitch / yaw.
+  _apply() {
     const half = MAP_SIZE / 2;
     this.target.x = THREE.MathUtils.clamp(this.target.x, -half, half);
     this.target.z = THREE.MathUtils.clamp(this.target.z, -half, half);
-
     const h = Math.sin(this.pitch) * this.distance;
     const back = Math.cos(this.pitch) * this.distance;
-    this.camera.position.set(
-      this.target.x + Math.sin(this.yaw) * back,
-      this.target.y + h,
-      this.target.z + Math.cos(this.yaw) * back,
-    );
+    const cx = this.target.x + Math.sin(this.yaw) * back, cz = this.target.z + Math.cos(this.yaw) * back;
+    let cy = this.target.y + h;
+    const floor = this.heightAt(cx, cz) + CAMERA.minClearance;
+    if (cy < floor) cy = floor;
+    this.camera.position.set(cx, cy, cz);
     this.camera.lookAt(this.target);
+    this.camera.updateMatrixWorld();
   }
 }

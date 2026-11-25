@@ -57,6 +57,7 @@ export class DebugOverlay {
       `draw calls ${s.calls}\n` +
       `triangles  ${s.triangles.toLocaleString()}\n` +
       `geo / tex  ${s.geometries} / ${s.textures}\n` +
-      `pixel rat. ${s.pixelRatio}`;
+      `pixel rat. ${s.pixelRatio}` +
+      (this.extra ? '\n' + this.extra() : '');
   }
 }
