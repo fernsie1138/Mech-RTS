@@ -75,7 +75,7 @@ if (map.markers.playerHQ) { rts.target.set(map.markers.playerHQ.x, heightAt(map.
 
 // ---------- effects and damage ----------
 const effects = new Effects(scene);
-const damage = new Damage({ hf, surface, effects, get water() { return view.water; }, get forest() { return view.forest; } });
+const damage = new Damage({ hf, surface, effects, get water() { return view.water; }, get forest() { return view.forest; }, get buildings() { return view.buildings; } });
 
 // ---------- debug overlay ----------
 const debug = new DebugOverlay(document.getElementById('debug'), document.getElementById('btnDebug'), renderer);
@@ -84,7 +84,8 @@ debug.extra = () => {
   return `chunks     ${view.terrain.chunks.length} (dirty ${view.terrain.dirty.size})\n` +
          `rebuilds   ${view.terrain.rebuildCount}\n` +
          `water tris ${view.waterMesh.triangleCount()}\n` +
-         `trees      ${view.forest.trees.length} (${c.fallen} down, ${c.burning} burning, ${c.stump} gone)`;
+         `trees      ${view.forest.trees.length} (${c.fallen} down, ${c.burning} burning, ${c.stump} gone)\n` +
+         `buildings  ${view.buildings.list.length} (${Object.entries(view.buildings.counts()).filter(e => e[1]).map(e => e[1] + ' ' + e[0]).join(', ')})`;
 };
 
 // ---------- simulation (fixed step) ----------
@@ -123,12 +124,17 @@ function resetTerrain() {
   view.terrain.rebuildAll();
   view.rebuildWater();
   view.reloadTrees();
+  view.reloadBuildings();
 }
 
 // ---------- HUD: test-fire toolbar ----------
+// Tap: fire at the building piece or ground under the finger, whichever is nearer.
 rts.onTap = (cx, cy) => {
-  const p = pickGround(cx, cy);
-  if (p) fireAt(p.x, p.z);
+  const g = pickGround(cx, cy), b = view.pickBuilding(cx, cy);
+  const camPos = camera.position;
+  if (b && (!g || b.point.distanceTo(camPos) < Math.hypot(g.x - camPos.x, g.y - camPos.y, g.z - camPos.z))) {
+    damage.explode(b.point.x, b.point.z, state.weapon, b.point.y);
+  } else if (g) fireAt(g.x, g.z);
 };
 const weaponBtns = document.querySelectorAll('[data-weapon]');
 function selectWeapon(w) {
@@ -177,7 +183,7 @@ window.__game = {
   config,               // live tunables (tests may adjust, e.g. tap timing under slow software rendering)
   THREE, renderer, scene, camera, rts, state, debug, view, map,
   hf, surface, terrain: view.terrain, effects, damage,
-  get water() { return view.water; }, get forest() { return view.forest; },
+  get water() { return view.water; }, get forest() { return view.forest; }, get buildings() { return view.buildings; },
   heightAt, pickGround, fireAt, barrage, resetTerrain, selectWeapon,
   pause(on = true) { paused = on; },
   // Advance the simulation by `seconds` in fixed steps, independent of real time.

@@ -17,6 +17,7 @@ import { DebugOverlay } from '../src/ui/debug.js';
 import { applyBrush } from './tools/terrain.js';
 import { placeMarker } from './tools/markers.js';
 import { riverStamp, roadStamp, forestStamp, treeStamp, eraseStamp } from './tools/features.js';
+import { blueprint, flattenFootprint, fitBridge, fillLots } from '../src/world/buildings.js';
 import { History, copyRect, pasteRect } from './history.js';
 
 const $ = id => document.getElementById(id);
@@ -69,7 +70,8 @@ const history = new History();
 const HEIGHT_TOOLS = new Set(['raise', 'lower', 'flatten', 'smooth']);
 const FEATURE_TOOLS = new Set(['river', 'road', 'forest', 'tree', 'erase']);
 const BRUSH_TOOLS = new Set([...HEIGHT_TOOLS, ...FEATURE_TOOLS]);
-const NO_SIZE = new Set(['tree']);
+const BUILD_TOOLS = new Set(['house', 'factory', 'bunker', 'wall', 'bridge']);
+const NO_SIZE = new Set(['tree', ...BUILD_TOOLS]);
 const HINTS = {
   raise: 'Drag one finger to raise ground · two fingers to move the view',
   lower: 'Drag one finger to lower ground · two fingers to move the view',
@@ -83,6 +85,11 @@ const HINTS = {
   forest: 'Spray trees with one finger (Strength = density) · two fingers to move the view',
   tree: 'Tap to place a tree, or drag to plant a row',
   erase: 'Rub out trees, water and roads (the ground shape stays)',
+  house: 'Tap to place a house (the ground is levelled) · tap a building to select it',
+  factory: 'Tap to place a factory · tap a building to select it',
+  bunker: 'Tap to place a bunker · tap a building to select it',
+  wall: 'Tap to place a wall section · tap a building to select it',
+  bridge: 'Tap on a river to bridge it (fits itself) · tap a building to select it',
 };
 
 function selectTool(t) {
@@ -90,6 +97,8 @@ function selectTool(t) {
   document.querySelectorAll('[data-tool]').forEach(b => b.classList.toggle('on', b.dataset.tool === t));
   $('hint').textContent = HINTS[t];
   document.getElementById('brush').style.visibility = BRUSH_TOOLS.has(t) && !NO_SIZE.has(t) ? 'visible' : 'hidden';
+  document.getElementById('bpanel').style.display = BUILD_TOOLS.has(t) ? 'flex' : 'none';
+  if (!BUILD_TOOLS.has(t)) select(-1);
   if (!BRUSH_TOOLS.has(t)) cursor.visible = false;
 }
 document.querySelectorAll('[data-tool]').forEach(b => b.addEventListener('pointerup', () => selectTool(b.dataset.tool)));
@@ -123,6 +132,8 @@ function applyEntry(e, which) {
     pasteRect(map.surface.features, V, r, e[which].features);
     map.trees = e[which].trees;
     view.reloadTrees();
+    if (e[which].buildings) { map.buildings = e[which].buildings.map(b => ({ ...b })); select(-1); }
+    view.reloadBuildings();
     map.hf.changed(r.i0, r.j0, r.i1, r.j1);
     map.surface.changed(r.i0, r.j0, r.i1, r.j1);
     view.rebuildWater();
@@ -137,8 +148,10 @@ function applyEntry(e, which) {
     view.terrain.rebuildAll();
     view.reloadTrees();
     view.rebuildWater();
+    view.reloadBuildings();
+    select(-1);
   }
-  if (e.kind === 'heights') view.rebuildWater();
+  if (e.kind === 'heights') { view.rebuildWater(); view.reloadBuildings(); }
   markDirty();
 }
 const undo = () => history.undo(applyEntry);
@@ -170,6 +183,8 @@ function replaceMap(next, label) {
     view.terrain.rebuildAll();
     view.reloadTrees();
     view.rebuildWater();
+    view.reloadBuildings();
+    select(-1);
     history.push({ kind: 'map', before, after: { snap: snapshot(map), markers: map.markers, name: next.name } });
   }
   setName(next.name);
@@ -260,6 +275,7 @@ function commitStroke(s) {
     history.push({ kind: 'heights', rect: r, before: copyRect(s.before, V, r), after: copyRect(map.hf.h, V, r) });
   }
   view.rebuildWater();
+  view.reloadBuildings();          // buildings sit on the (edited) ground
   markDirty();
 }
 
@@ -267,6 +283,7 @@ function commitStroke(s) {
 rts.onTap = (cx, cy) => {
   const p = groundAt(cx, cy);
   if (!p) return;
+  if (BUILD_TOOLS.has(state.tool)) { buildingTap(p.x, p.z); return; }
   if (BRUSH_TOOLS.has(state.tool)) {
     const s = beginStroke(state.tool, p.x, p.z);
     s.rect = stamp(s, p.x, p.z, 0.15);
@@ -280,6 +297,91 @@ rts.onTap = (cx, cy) => {
   }
   markDirty();
 };
+
+// ---------- buildings ----------
+let selected = -1;
+const outline = new THREE.LineLoop(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0xffd23a, depthTest: false }));
+outline.geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(15), 3));
+outline.renderOrder = 21; outline.frustumCulled = false; outline.visible = false;
+view.scene.add(outline);
+
+function select(i) {
+  selected = i;
+  const d = map.buildings?.[i];
+  outline.visible = !!d;
+  $('bdel').classList.toggle('dis', !d);
+  if (!d) return;
+  const fp = blueprint(d).footprint, c = Math.cos(d.rot || 0), s = Math.sin(d.rot || 0), pos = outline.geometry.attributes.position.array;
+  const y = view.buildings.list[i]?.y ?? map.hf.heightAt(d.x, d.z);
+  [[-1, -1], [1, -1], [1, 1], [-1, 1], [-1, -1]].forEach(([u, v], n) => {
+    const lx = u * (fp.hw + 0.5), lz = v * (fp.hd + 0.5);
+    pos[n * 3] = d.x + lx * c + lz * s; pos[n * 3 + 1] = y + 0.4; pos[n * 3 + 2] = d.z - lx * s + lz * c;
+  });
+  outline.geometry.attributes.position.needsUpdate = true;
+}
+
+// An undoable change to the building list (and the ground it levels). fn() returns the changed sample rect or null.
+function editBuildings(fn) {
+  const before = { h: Float32Array.from(map.hf.h), base: Uint8Array.from(map.surface.base), features: Uint8Array.from(map.surface.features),
+                   trees: map.trees, buildings: map.buildings.map(b => ({ ...b })) };
+  const rect = fn() || { i0: 0, j0: 0, i1: 1, j1: 1 };
+  view.reloadBuildings();
+  const V = map.hf.verts;
+  history.push({
+    kind: 'region', rect,
+    before: { h: copyRect(before.h, V, rect), base: copyRect(before.base, V, rect), features: copyRect(before.features, V, rect), trees: before.trees, buildings: before.buildings },
+    after: { h: copyRect(map.hf.h, V, rect), base: copyRect(map.surface.base, V, rect), features: copyRect(map.surface.features, V, rect), trees: map.trees, buildings: map.buildings.map(b => ({ ...b })) },
+  });
+  view.rebuildWater();
+  markDirty();
+}
+
+// Level the ground for a building and clear trees under it. Returns the changed rect.
+function settle(def) {
+  if (def.type !== 'bridge') flattenFootprint(map.hf, def);
+  const fp = blueprint(def).footprint, R = Math.hypot(fp.hw, fp.hd) + 3;
+  view.forest.removeNear(def.x, def.z, def.type === 'bridge' ? 0 : Math.hypot(fp.hw, fp.hd) + 1.8);   // + canopy
+  map.trees = view.forest.snapshot();
+  return map.hf.rect(def.x, def.z, R);
+}
+const union = (a, b) => !a ? b : { i0: Math.min(a.i0, b.i0), j0: Math.min(a.j0, b.j0), i1: Math.max(a.i1, b.i1), j1: Math.max(a.j1, b.j1) };
+
+function buildingTap(x, z) {
+  const hit = view.buildings.at(x, z);
+  if (hit >= 0) { select(hit); return; }
+  let def = { type: state.tool, x, z, rot: state.rot || 0 };
+  if (state.tool === 'bridge') {
+    def = fitBridge(map.hf, view.water, x, z);
+    if (!def) { status('Tap on a river to place a bridge'); return; }
+  }
+  editBuildings(() => { const r = settle(def); map.buildings.push(def); return r; });
+  select(map.buildings.length - 1);
+}
+
+function rotateSelected(dir) {
+  state.rot = ((state.rot || 0) + dir * Math.PI / 12);
+  if (selected < 0) return;
+  const old = map.buildings[selected];
+  let def = { ...old, rot: (old.rot || 0) + dir * Math.PI / 12 };
+  if (def.type === 'bridge') def = fitBridge(map.hf, view.water, old.x, old.z, def.rot) || old;
+  const i = selected;
+  editBuildings(() => { map.buildings[i] = def; return settle(def); });
+  select(i);
+}
+$('brotL').addEventListener('pointerup', () => rotateSelected(1));
+$('brotR').addEventListener('pointerup', () => rotateSelected(-1));
+$('bdel').addEventListener('pointerup', () => {
+  if (selected < 0) return;
+  const i = selected;
+  editBuildings(() => { map.buildings.splice(i, 1); return null; });
+  select(-1);
+});
+$('bfill').addEventListener('pointerup', () => {
+  const add = fillLots(map.hf, map.surface, map.buildings);
+  if (!add.length) { status('No empty building areas (red on the feature map) to fill'); return; }
+  editBuildings(() => { let r = null; for (const d of add) { r = union(r, settle(d)); map.buildings.push(d); } return r; });
+  status(`Placed ${add.length} buildings`);
+});
 
 // Mouse hover shows the brush cursor.
 $('view').addEventListener('pointermove', e => {
@@ -409,7 +511,7 @@ history.onChange();
 window.__editor = {
   version: VERSION, config, THREE, view, history, state,
   get map() { return map; },
-  selectTool, undo, redo, replaceMap, autosave,
+  selectTool, undo, redo, replaceMap, autosave, buildingTap, rotateSelected, get selected() { return selected; },
   paintStep, endStroke,
   ready: true,
 };

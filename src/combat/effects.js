@@ -63,6 +63,16 @@ export class Effects {
     }
   }
 
+  // Dust cloud only (collapsing walls): reuses a pooled explosion slot without the flash or debris.
+  dust(x, y, z, size) {
+    const fx = this.pool[this.next];
+    this.next = (this.next + 1) % this.pool.length;
+    fx.t = FLASH_TIME; fx.size = size;
+    fx.flash.visible = false;
+    fx.smoke.position.set(x, y + size * 0.4, z);
+    fx.smoke.visible = true;
+  }
+
   update(dt) {
     for (const fx of this.pool) {
       if (fx.t === Infinity) continue;

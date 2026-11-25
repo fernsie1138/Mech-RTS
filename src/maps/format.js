@@ -13,6 +13,8 @@
 //   "markers":  { "playerHQ": {x,z} | null, "enemyHQ": {x,z} | null, "capturePoints": [{x,z}, ...] },
 //   "trees":    { "encoding": "trees6-gzip-b64", "count": n, "data": "..." }   (v2+) x, z (int16, 1/100 unit),
 //                                                                             scale (uint8, 1/100), type (uint8)
+//   "buildings": [{ "type": "house" | "factory" | "bunker" | "wall" | "bridge", "x", "z", "rot",
+//                   bridges also "len", "drop", "y" (deck height) }]          (v3+)
 //   "meta":     { ... free-form: import settings, editor info }
 // }
 // Heights are stored as 16-bit integers (step `scale` = 0.005 units, range about +/-163), each row
@@ -23,8 +25,10 @@ import { Heightfield } from '../terrain/heightfield.js';
 import { Surface } from '../terrain/surface.js';
 import { TERRAIN } from '../config.js';
 import { generateTrees } from '../world/forest.js';
+import { autoBridges, BUILDING_TYPES } from '../world/buildings.js';
+import { Water } from '../terrain/water.js';
 
-export const FORMAT_VERSION = 2;
+export const FORMAT_VERSION = 3;
 const HEIGHT_SCALE = 0.005;
 
 // ---------- bytes <-> base64, gzip ----------
@@ -131,7 +135,18 @@ function cleanMarkers(m = {}) {
 const UPGRADES = {
   // v1 had no tree list: trees are generated from the forest areas when the map is decoded.
   1: json => ({ ...json, formatVersion: 2, trees: null }),
+  // v2 had no buildings: bridges are placed where roads cross rivers when the map is decoded.
+  2: json => ({ ...json, formatVersion: 3, buildings: null }),
 };
+
+function cleanBuildings(list) {
+  if (!Array.isArray(list)) return [];
+  return list.filter(b => b && BUILDING_TYPES.includes(b.type) && Number.isFinite(b.x) && Number.isFinite(b.z)).map(b => {
+    const o = { type: b.type, x: +b.x, z: +b.z, rot: +b.rot || 0 };
+    for (const k of ['len', 'drop', 'y']) if (Number.isFinite(b[k])) o[k] = +b[k];
+    return o;
+  });
+}
 export function upgrade(json) {
   if (!json || typeof json !== 'object') throw new Error('not a map file (expected a JSON object)');
   let v = json.formatVersion;
@@ -151,7 +166,7 @@ export function upgrade(json) {
 
 // ---------- public API ----------
 // map = { name, hf, surface, markers, trees, meta } -> JSON-able object. trees: [{x, z, s, t}]
-export async function serializeMap({ name, hf, surface, markers, trees, meta }) {
+export async function serializeMap({ name, hf, surface, markers, trees, buildings, meta }) {
   // The layers compress independently, so do them at the same time.
   const [height, surfaceLayer, features, treeLayer] = await Promise.all([
     encodeHeights(hf.h, hf.verts), encodeBytes(surface.base), encodeBytes(surface.features), encodeTrees(trees || []),
@@ -167,11 +182,12 @@ export async function serializeMap({ name, hf, surface, markers, trees, meta }) 
     features,
     markers: cleanMarkers(markers),
     trees: treeLayer,
+    buildings: cleanBuildings(buildings).map(b => Object.fromEntries(Object.entries(b).map(([k, v]) => [k, typeof v === 'number' && k !== 'type' ? Math.round(v * 1000) / 1000 : v]))),
     meta: meta || {},
   };
 }
 
-// JSON object -> { name, hf, surface, markers, trees, meta }. Throws an Error with a readable message if invalid.
+// JSON object -> { name, hf, surface, markers, trees, buildings, meta }. Throws an Error with a readable message if invalid.
 export async function deserializeMap(json) {
   json = upgrade(json);
   const { size, cells } = json;
@@ -189,7 +205,8 @@ export async function deserializeMap(json) {
   if (base) surface.base.set(base);
   if (feats) surface.features.set(feats);
   const trees = treeList || generateTrees(hf, surface).map(t => ({ x: t.x, z: t.z, s: t.s, t: t.t }));
-  return { name: json.name || 'Untitled', hf, surface, markers: cleanMarkers(json.markers), trees, meta: json.meta || {} };
+  const buildings = json.buildings ? cleanBuildings(json.buildings) : autoBridges(hf, surface, new Water(hf, surface));
+  return { name: json.name || 'Untitled', hf, surface, markers: cleanMarkers(json.markers), trees, buildings, meta: json.meta || {} };
 }
 
 // Copy map content (heights, ground types, features) from one map into another of the same size, in place.
@@ -201,6 +218,7 @@ export function copyMapInto(src, dst) {
   dst.surface.features.set(src.surface.features);
   dst.markers = cleanMarkers(src.markers);
   dst.trees = (src.trees || []).map(t => ({ ...t }));
+  dst.buildings = (src.buildings || []).map(b => ({ ...b }));
   dst.name = src.name;
   dst.meta = { ...src.meta };
 }

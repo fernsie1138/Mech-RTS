@@ -8,11 +8,11 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0b1015">
 <!-- Must match VERSION in src/version.js. -->
-<meta name="build" content="v6">
+<meta name="build" content="v7">
 <title>Mech RTS Editor</title>
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" type="image/png" href="icons/icon-180.png">
-<link rel="stylesheet" href="style.css?v=6">
+<link rel="stylesheet" href="style.css?v=7">
 <style>
   .bar { position:fixed; display:flex; gap:8px; padding:8px; align-items:center; }
   #top { top:calc(env(safe-area-inset-top) + 8px); left:calc(env(safe-area-inset-left) + 8px); right:calc(env(safe-area-inset-right) + 8px);
@@ -28,6 +28,7 @@
   #brush label { display:flex; align-items:center; gap:10px; font-size:14px; color:#b9c7d2; }
   #brush input[type=range] { width:180px; height:36px; }
   #brush .val { min-width:36px; color:#e8eef2; font-weight:600; }
+  #bpanel { bottom:calc(env(safe-area-inset-bottom) + 10px); left:50%; transform:translateX(-50%); }
   #hint { position:fixed; bottom:calc(env(safe-area-inset-bottom) + 76px); left:50%; transform:translateX(-50%);
           font-size:13px; color:rgba(255,255,255,.75); text-shadow:0 1px 3px #000; pointer-events:none; white-space:nowrap; }
   #status { position:fixed; right:calc(env(safe-area-inset-right) + 12px); bottom:calc(env(safe-area-inset-bottom) + 24px);
@@ -53,32 +54,34 @@
 <script type="importmap">
 {
   "imports": {
-    "three": "./lib/three.module.js?v=6",
-    "./editor/editor.js": "./editor/editor.js?v=6",
-    "./editor/history.js": "./editor/history.js?v=6",
-    "./editor/tools/features.js": "./editor/tools/features.js?v=6",
-    "./editor/tools/markers.js": "./editor/tools/markers.js?v=6",
-    "./editor/tools/terrain.js": "./editor/tools/terrain.js?v=6",
-    "./src/combat/damage.js": "./src/combat/damage.js?v=6",
-    "./src/combat/effects.js": "./src/combat/effects.js?v=6",
-    "./src/config.js": "./src/config.js?v=6",
-    "./src/main.js": "./src/main.js?v=6",
-    "./src/maps/format.js": "./src/maps/format.js?v=6",
-    "./src/maps/imageimport.js": "./src/maps/imageimport.js?v=6",
-    "./src/maps/loader.js": "./src/maps/loader.js?v=6",
-    "./src/terrain/chunks.js": "./src/terrain/chunks.js?v=6",
-    "./src/terrain/heightfield.js": "./src/terrain/heightfield.js?v=6",
-    "./src/terrain/surface.js": "./src/terrain/surface.js?v=6",
-    "./src/terrain/testmap.js": "./src/terrain/testmap.js?v=6",
-    "./src/terrain/water.js": "./src/terrain/water.js?v=6",
-    "./src/terrain/watermesh.js": "./src/terrain/watermesh.js?v=6",
-    "./src/ui/camera.js": "./src/ui/camera.js?v=6",
-    "./src/ui/debug.js": "./src/ui/debug.js?v=6",
-    "./src/version.js": "./src/version.js?v=6",
-    "./src/view.js": "./src/view.js?v=6",
-    "./src/world/forest.js": "./src/world/forest.js?v=6",
-    "./src/world/markers.js": "./src/world/markers.js?v=6",
-    "./src/world/trees.js": "./src/world/trees.js?v=6"
+    "three": "./lib/three.module.js?v=7",
+    "./editor/editor.js": "./editor/editor.js?v=7",
+    "./editor/history.js": "./editor/history.js?v=7",
+    "./editor/tools/features.js": "./editor/tools/features.js?v=7",
+    "./editor/tools/markers.js": "./editor/tools/markers.js?v=7",
+    "./editor/tools/terrain.js": "./editor/tools/terrain.js?v=7",
+    "./src/combat/damage.js": "./src/combat/damage.js?v=7",
+    "./src/combat/effects.js": "./src/combat/effects.js?v=7",
+    "./src/config.js": "./src/config.js?v=7",
+    "./src/main.js": "./src/main.js?v=7",
+    "./src/maps/format.js": "./src/maps/format.js?v=7",
+    "./src/maps/imageimport.js": "./src/maps/imageimport.js?v=7",
+    "./src/maps/loader.js": "./src/maps/loader.js?v=7",
+    "./src/terrain/chunks.js": "./src/terrain/chunks.js?v=7",
+    "./src/terrain/heightfield.js": "./src/terrain/heightfield.js?v=7",
+    "./src/terrain/surface.js": "./src/terrain/surface.js?v=7",
+    "./src/terrain/testmap.js": "./src/terrain/testmap.js?v=7",
+    "./src/terrain/water.js": "./src/terrain/water.js?v=7",
+    "./src/terrain/watermesh.js": "./src/terrain/watermesh.js?v=7",
+    "./src/ui/camera.js": "./src/ui/camera.js?v=7",
+    "./src/ui/debug.js": "./src/ui/debug.js?v=7",
+    "./src/version.js": "./src/version.js?v=7",
+    "./src/view.js": "./src/view.js?v=7",
+    "./src/world/buildings.js": "./src/world/buildings.js?v=7",
+    "./src/world/buildingview.js": "./src/world/buildingview.js?v=7",
+    "./src/world/forest.js": "./src/world/forest.js?v=7",
+    "./src/world/markers.js": "./src/world/markers.js?v=7",
+    "./src/world/trees.js": "./src/world/trees.js?v=7"
   }
 }
 </script>
@@ -115,6 +118,12 @@
   <div class="btn" data-tool="forest">Forest</div>
   <div class="btn" data-tool="tree">Tree</div>
   <div class="btn" data-tool="erase">Erase</div>
+  <div class="hdr">Buildings</div>
+  <div class="btn" data-tool="house">House</div>
+  <div class="btn" data-tool="factory">Factory</div>
+  <div class="btn" data-tool="bunker">Bunker</div>
+  <div class="btn" data-tool="wall">Wall</div>
+  <div class="btn" data-tool="bridge">Bridge</div>
   <div class="hdr">Gameplay</div>
   <div class="btn" data-tool="playerHQ">Player HQ</div>
   <div class="btn" data-tool="enemyHQ">Enemy HQ</div>
@@ -125,9 +134,15 @@
   <label>Size <input type="range" id="size" min="2" max="40" step="1" value="10"><span class="val" id="sizeVal"></span></label>
   <label>Strength <input type="range" id="strength" min="0.05" max="1" step="0.05" value="0.5"><span class="val" id="strengthVal"></span></label>
 </div>
+<div id="bpanel" class="bar panel" style="display:none">
+  <div class="btn" id="brotL" title="Rotate left 15°">⟲ 15°</div>
+  <div class="btn" id="brotR" title="Rotate right 15°">15° ⟳</div>
+  <div class="btn dis" id="bdel">Delete</div>
+  <div class="btn" id="bfill" title="Fill the building areas from the feature map">Fill lots</div>
+</div>
 <div id="hint"></div>
 <div id="status"></div>
-<div id="ver">v6</div>
+<div id="ver">v7</div>
 
 <div class="dialog" id="dlgOpen"><div class="box panel scroll">
   <h2>Open a map</h2>
@@ -152,7 +167,7 @@
 
 <div id="loading">Loading editor…</div>
 <div id="fatal"></div>
-<script src="src/ui/page.js?v=6"></script>
-<script type="module" src="editor/editor.js?v=6"></script>
+<script src="src/ui/page.js?v=7"></script>
+<script type="module" src="editor/editor.js?v=7"></script>
 </body>
 </html>

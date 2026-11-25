@@ -7,6 +7,8 @@ import { Surface, SURFACE, FEATURE } from '../terrain/surface.js';
 import { TERRAIN, MAP_SIZE } from '../config.js';
 import { emptyMarkers } from './format.js';
 import { generateTrees } from '../world/forest.js';
+import { autoBridges } from '../world/buildings.js';
+import { Water } from '../terrain/water.js';
 
 // Feature-map key colours. Each class accepts a few common shades; a pixel snaps to the nearest key
 // colour within MATCH_DISTANCE, anything further away (or transparent) is open ground.
@@ -210,7 +212,7 @@ export function importImages({ heightImg = null, featureImg = null, size = MAP_S
   // ---- feature bits ----
   for (let k = 0; k < N; k++) {
     const c = sampleCls[k];
-    if (c === CLASS.water) surface.features[k] |= FEATURE.WATER;
+    if (water[k]) surface.features[k] |= FEATURE.WATER;          // includes river under road crossings
     if (c === CLASS.forest) surface.features[k] |= FEATURE.FOREST;
     if (c === CLASS.trees) surface.features[k] |= FEATURE.TREES;
     if (c === CLASS.building) surface.features[k] |= FEATURE.BUILDING;
@@ -222,5 +224,8 @@ export function importImages({ heightImg = null, featureImg = null, size = MAP_S
   report.markers = { playerHQ: !!markers.playerHQ, enemyHQ: !!markers.enemyHQ, capturePoints: markers.capturePoints.length };
   const trees = generateTrees(hf, surface).map(t => ({ x: t.x, z: t.z, s: t.s, t: t.t }));
   report.trees = trees.length;
-  return { hf, surface, markers, trees, report, meta: { import: { maxHeight: o.maxHeight, maxDepth: o.maxDepth } } };
+  // Bridges where roads cross rivers. (Houses go on the building areas in the editor: "Fill lots".)
+  const buildings = autoBridges(hf, surface, new Water(hf, surface));
+  report.bridges = buildings.length;
+  return { hf, surface, markers, trees, buildings, report, meta: { import: { maxHeight: o.maxHeight, maxDepth: o.maxDepth } } };
 }

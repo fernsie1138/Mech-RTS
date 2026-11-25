@@ -1,5 +1,15 @@
 # Changelog
 
+## v7 — Milestone 5: buildings, rubble and bridges
+- Modular buildings: house, factory, bunker, wall, bridge. Each is made of pieces (wall tiles in rows, roof, floor, blocks, deck, pillars, rails) with their own hit points, drawn with 2 instanced meshes.
+- Pieces rest on supports: knocking out a lower wall tile drops the one above (holes); the roof falls when half its walls are gone; a bridge deck falls when its pillars go. Buildings go intact -> damaged -> ruin -> rubble. Falling pieces tumble down.
+- Rubble: fallen pieces raise a real rubble mound in the terrain (a collapsed house leaves a heap ~1.7 high), painted as rubble with loose chunks. It is cover and an obstacle, and shells dig into it.
+- Bridges: placed automatically where roads cross rivers (import and older maps); walkable deck (`deckAt`) for units later; shelling the middle cuts the crossing.
+- Weapons damage buildings (MG chips, cannon breaks tiles, shells wreck houses; a bunker takes ~17 shells). Tapping a building fires at the building itself; bursts above the ground don't crater it.
+- Editor: House, Factory, Bunker, Wall, Bridge tools (tap to place on levelled ground, tap a building to select), rotate 15°, Delete, Fill lots (builds on the red building areas). All undoable.
+- Map format v3 stores buildings (v2 maps get bridges at road crossings). Sample map: a town of houses, a bridge, bunkers by the HQs and a wall.
+- Tests: `tests/buildings-unit.mjs`, `tests/buildings.mjs`.
+
 ## v6 — Fix: "map formatVersion 2 is newer than this game supports"
 - Cause: Safari kept old cached copies of the game's modules (GitHub Pages lets browsers cache files for up to 10 minutes) while loading the new map, so old code met a new map file.
 - Every module is now loaded through an import map with `?v=N` on every file, so a new version always fetches all-new code. `node tools/bump-version.mjs vN` updates the version, labels and import maps in one step.

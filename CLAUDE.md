@@ -58,7 +58,8 @@ src/
     forest.js         tree data, placement, damage states, fire (no three.js)
     trees.js          instanced tree rendering
     markers.js        HQ and capture-point markers
-    buildings.js      modular destructible buildings and rubble
+    buildings.js      modular destructible buildings, bridges and rubble (no three.js)
+    buildingview.js   instanced building rendering
     props.js          rocks, debris, wrecks
   nav/
     navgrid.js        walkability/cost grid, updated as terrain changes

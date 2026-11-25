@@ -44,4 +44,12 @@ node tests/world-unit.mjs
 node tests/world.mjs
 ```
 
+```bash
+node tests/buildings-unit.mjs
+```
+
+```bash
+node tests/buildings.mjs
+```
+
 Screenshots are written to `tests/out/` (not committed).
