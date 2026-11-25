@@ -38,10 +38,10 @@ export function loadMapStorage(key) {
   return deserializeMap(JSON.parse(text));
 }
 
-// Save to localStorage. Returns true if it fit.
-export async function saveMapStorage(key, map) {
+// Save to localStorage under one or more keys (serialised once). Returns true if it fit.
+export async function saveMapStorage(keys, map) {
   const text = JSON.stringify(await serializeMap(map));
-  try { localStorage.setItem(key, text); return true; } catch { return false; }
+  try { for (const k of [].concat(keys)) localStorage.setItem(k, text); return true; } catch { return false; }
 }
 
 // The procedural test landscape from milestone 2 (?map=@procedural).
@@ -49,13 +49,13 @@ export function proceduralMap() {
   const hf = new Heightfield({ size: MAP_SIZE, cells: TERRAIN.cells, bedrock: TERRAIN.bedrock, maxSlope: TERRAIN.maxSlope });
   const surface = new Surface(hf);
   buildTestMap(hf, surface);
-  return { name: 'Procedural test', hf, surface, markers: emptyMarkers(), meta: {} };
+  return { name: 'Procedural test', hf, surface, markers: emptyMarkers(), trees: [], meta: {} };
 }
 
 // A flat empty map (new map in the editor).
 export function blankMap(name = 'New map') {
   const hf = new Heightfield({ size: MAP_SIZE, cells: TERRAIN.cells, bedrock: TERRAIN.bedrock, maxSlope: TERRAIN.maxSlope });
-  return { name, hf, surface: new Surface(hf), markers: emptyMarkers(), meta: {} };
+  return { name, hf, surface: new Surface(hf), markers: emptyMarkers(), trees: [], meta: {} };
 }
 
 // Decode an image File/Blob to { width, height, data } RGBA (for the importer).
@@ -85,11 +85,13 @@ export function downloadJSON(obj, filename) {
 
 // Snapshot of the editable content of a map (for reset in the game).
 export function snapshot(map) {
-  return { h: Float32Array.from(map.hf.h), base: Uint8Array.from(map.surface.base), features: Uint8Array.from(map.surface.features) };
+  return { h: Float32Array.from(map.hf.h), base: Uint8Array.from(map.surface.base), features: Uint8Array.from(map.surface.features),
+           trees: (map.trees || []).map(t => ({ x: t.x, z: t.z, s: t.s, t: t.t })) };
 }
 export function restore(map, snap) {
   map.hf.h.set(snap.h);
   map.surface.clear();
   map.surface.base.set(snap.base);
   map.surface.features.set(snap.features);
+  map.trees = snap.trees.map(t => ({ ...t }));
 }

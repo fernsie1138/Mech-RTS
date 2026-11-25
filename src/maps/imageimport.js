@@ -6,6 +6,7 @@ import { Heightfield } from '../terrain/heightfield.js';
 import { Surface, SURFACE, FEATURE } from '../terrain/surface.js';
 import { TERRAIN, MAP_SIZE } from '../config.js';
 import { emptyMarkers } from './format.js';
+import { generateTrees } from '../world/forest.js';
 
 // Feature-map key colours. Each class accepts a few common shades; a pixel snaps to the nearest key
 // colour within MATCH_DISTANCE, anything further away (or transparent) is open ground.
@@ -26,7 +27,7 @@ export const IMPORT_DEFAULTS = {
   maxHeight: 30,      // white = this many units above flat ground
   maxDepth: 6,        // black = this many units below flat ground
   smooth: 2,          // blur passes on the height map (hides 8-bit steps)
-  riverDepth: 2.5,    // extra depth carved under water
+  riverDepth: 3,      // extra depth carved under water
   hqPad: 9,           // radius flattened around each HQ
   crossingGap: 6,     // samples: road crossings up to twice this wide keep the river flowing under them
 };
@@ -174,7 +175,7 @@ export function importImages({ heightImg = null, featureImg = null, size = MAP_S
     const closed = erode(dilate(water, V, o.crossingGap), V, o.crossingGap);
     for (let k = 0; k < N; k++) if (!water[k] && closed[k] && sampleCls[k] === CLASS.road) water[k] = 1;
   }
-  const waterSoft = boxBlur(water, V, 2, 2);
+  const waterSoft = boxBlur(water, V, 1, 1);       // steep banks: the river runs nearly full
   for (let k = 0; k < N; k++) {
     const m = Math.min(1, waterSoft[k] * 1.6);
     h[k] -= o.riverDepth * m * m * (3 - 2 * m);
@@ -219,5 +220,7 @@ export function importImages({ heightImg = null, featureImg = null, size = MAP_S
   for (let k = 0; k < N; k++) h[k] = Math.max(hf.bedrock, h[k]);
   hf.h.set(h);
   report.markers = { playerHQ: !!markers.playerHQ, enemyHQ: !!markers.enemyHQ, capturePoints: markers.capturePoints.length };
-  return { hf, surface, markers, report, meta: { import: { maxHeight: o.maxHeight, maxDepth: o.maxDepth } } };
+  const trees = generateTrees(hf, surface).map(t => ({ x: t.x, z: t.z, s: t.s, t: t.t }));
+  report.trees = trees.length;
+  return { hf, surface, markers, trees, report, meta: { import: { maxHeight: o.maxHeight, maxDepth: o.maxDepth } } };
 }

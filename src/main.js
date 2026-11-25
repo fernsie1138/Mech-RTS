@@ -73,12 +73,17 @@ if (map.markers.playerHQ) { rts.target.set(map.markers.playerHQ.x, heightAt(map.
 
 // ---------- effects and damage ----------
 const effects = new Effects(scene);
-const damage = new Damage({ hf, surface, effects });
+const damage = new Damage({ hf, surface, effects, get water() { return view.water; }, get forest() { return view.forest; } });
 
 // ---------- debug overlay ----------
 const debug = new DebugOverlay(document.getElementById('debug'), document.getElementById('btnDebug'), renderer);
-debug.extra = () => `chunks     ${view.terrain.chunks.length} (dirty ${view.terrain.dirty.size})\n` +
-                    `rebuilds   ${view.terrain.rebuildCount}`;
+debug.extra = () => {
+  const c = view.forest.counts();
+  return `chunks     ${view.terrain.chunks.length} (dirty ${view.terrain.dirty.size})\n` +
+         `rebuilds   ${view.terrain.rebuildCount}\n` +
+         `water tris ${view.waterMesh.triangleCount()}\n` +
+         `trees      ${view.forest.trees.length} (${c.fallen} down, ${c.burning} burning, ${c.stump} gone)`;
+};
 
 // ---------- simulation (fixed step) ----------
 const state = { time: 0, steps: 0, weapon: 'cannon', pending: [] };   // pending: scheduled impacts {at, x, z, weapon}
@@ -90,6 +95,7 @@ function simStep(dt) {
     const s = state.pending.shift();
     damage.explode(s.x, s.z, s.weapon);
   }
+  damage.update(dt);
   effects.update(dt);
 }
 
@@ -113,6 +119,8 @@ function resetTerrain() {
   state.pending.length = 0;
   restore(map, pristine);
   view.terrain.rebuildAll();
+  view.rebuildWater();
+  view.reloadTrees();
 }
 
 // ---------- HUD: test-fire toolbar ----------
@@ -167,6 +175,7 @@ window.__game = {
   config,               // live tunables (tests may adjust, e.g. tap timing under slow software rendering)
   THREE, renderer, scene, camera, rts, state, debug, view, map,
   hf, surface, terrain: view.terrain, effects, damage,
+  get water() { return view.water; }, get forest() { return view.forest; },
   heightAt, pickGround, fireAt, barrage, resetTerrain, selectWeapon,
   pause(on = true) { paused = on; },
   // Advance the simulation by `seconds` in fixed steps, independent of real time.

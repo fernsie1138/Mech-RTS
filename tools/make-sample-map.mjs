@@ -86,7 +86,7 @@ const out = await page.evaluate(async () => {
   const hd = h.getImageData(0, 0, S, S);
   const r = importImages({ heightImg: hd, featureImg: fd });
   const { serializeMap } = await import('/src/maps/format.js');
-  const json = await serializeMap({ name: 'Sample: River Crossing', hf: r.hf, surface: r.surface, markers: r.markers, meta: { ...r.meta, source: 'tools/make-sample-map.mjs' } });
+  const json = await serializeMap({ name: 'Sample: River Crossing', hf: r.hf, surface: r.surface, markers: r.markers, trees: r.trees, meta: { ...r.meta, source: 'tools/make-sample-map.mjs' } });
   return { height: hc.toDataURL('image/png'), features: fc.toDataURL('image/png'), json: JSON.stringify(json), report: r.report };
 });
 

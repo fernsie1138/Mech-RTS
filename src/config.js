@@ -14,10 +14,11 @@ export const TERRAIN = {
 //   rim: rim height as a fraction of depth   erode: how much a hit flattens peaks/ridges (0..1)
 //   wear: damage added at the centre (1 = grass fully churned to dirt)   scorch: burn added (0..1)
 //   wearRadius: wear/scorch radius as a multiple of crater radius   fxSize: explosion effect size
+//   treeFall: trees within this radius are knocked flat (inner 45% shattered to stumps)   ignite: chance to set trees alight
 export const TERRAIN_DAMAGE = {
-  mg:     { radius: 0.7, depth: 0.06, rim: 0,    erode: 0,    wear: 0.35, scorch: 0.15, wearRadius: 1.4, fxSize: 0.35 },
-  cannon: { radius: 1.8, depth: 0.7,  rim: 0.3,  erode: 0.25, wear: 1.2,  scorch: 0.3,   wearRadius: 1.8, fxSize: 1.2 },
-  shell:  { radius: 3.6, depth: 1.7,  rim: 0.3,  erode: 0.4,  wear: 1.6,  scorch: 0.45,  wearRadius: 1.8, fxSize: 2.6 },
+  mg:     { radius: 0.7, depth: 0.06, rim: 0,   erode: 0,    wear: 0.35, scorch: 0.15, wearRadius: 1.4, fxSize: 0.35, treeFall: 0,   ignite: 0.03 },
+  cannon: { radius: 1.8, depth: 0.7,  rim: 0.3, erode: 0.25, wear: 1.2,  scorch: 0.3,  wearRadius: 1.8, fxSize: 1.2,  treeFall: 3,   ignite: 0.15 },
+  shell:  { radius: 3.6, depth: 1.7,  rim: 0.3, erode: 0.4,  wear: 1.6,  scorch: 0.45, wearRadius: 1.8, fxSize: 2.6,  treeFall: 6.5, ignite: 0.4 },
 };
 
 export const RENDER = {

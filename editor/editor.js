@@ -16,6 +16,7 @@ import {
 import { DebugOverlay } from '../src/ui/debug.js';
 import { applyBrush } from './tools/terrain.js';
 import { placeMarker } from './tools/markers.js';
+import { riverStamp, roadStamp, forestStamp, treeStamp, eraseStamp } from './tools/features.js';
 import { History, copyRect, pasteRect } from './history.js';
 
 const $ = id => document.getElementById(id);
@@ -63,7 +64,10 @@ function placeCursor(x, z, r) {
 // ---------- state ----------
 const state = { tool: 'raise', size: 10, strength: 0.5, stroke: null, dirty: false };
 const history = new History();
-const BRUSH_TOOLS = new Set(['raise', 'lower', 'flatten', 'smooth']);
+const HEIGHT_TOOLS = new Set(['raise', 'lower', 'flatten', 'smooth']);
+const FEATURE_TOOLS = new Set(['river', 'road', 'forest', 'tree', 'erase']);
+const BRUSH_TOOLS = new Set([...HEIGHT_TOOLS, ...FEATURE_TOOLS]);
+const NO_SIZE = new Set(['tree']);
 const HINTS = {
   raise: 'Drag one finger to raise ground · two fingers to move the view',
   lower: 'Drag one finger to lower ground · two fingers to move the view',
@@ -72,13 +76,18 @@ const HINTS = {
   playerHQ: 'Tap to place the player HQ (blue)',
   enemyHQ: 'Tap to place the enemy HQ (red)',
   capture: 'Tap to add a capture point · tap an existing one to remove it',
+  river: 'Draw a river with one finger (Size = width) · two fingers to move the view',
+  road: 'Draw a road with one finger (Size = width) · two fingers to move the view',
+  forest: 'Spray trees with one finger (Strength = density) · two fingers to move the view',
+  tree: 'Tap to place a tree, or drag to plant a row',
+  erase: 'Rub out trees, water and roads (the ground shape stays)',
 };
 
 function selectTool(t) {
   state.tool = t;
   document.querySelectorAll('[data-tool]').forEach(b => b.classList.toggle('on', b.dataset.tool === t));
   $('hint').textContent = HINTS[t];
-  document.getElementById('brush').style.visibility = BRUSH_TOOLS.has(t) ? 'visible' : 'hidden';
+  document.getElementById('brush').style.visibility = BRUSH_TOOLS.has(t) && !NO_SIZE.has(t) ? 'visible' : 'hidden';
   if (!BRUSH_TOOLS.has(t)) cursor.visible = false;
 }
 document.querySelectorAll('[data-tool]').forEach(b => b.addEventListener('pointerup', () => selectTool(b.dataset.tool)));
@@ -105,6 +114,16 @@ function applyEntry(e, which) {
   if (e.kind === 'heights') {
     pasteRect(map.hf.h, map.hf.verts, e.rect, e[which]);
     map.hf.changed(e.rect.i0, e.rect.j0, e.rect.i1, e.rect.j1);
+  } else if (e.kind === 'region') {
+    const V = map.hf.verts, r = e.rect;
+    pasteRect(map.hf.h, V, r, e[which].h);
+    pasteRect(map.surface.base, V, r, e[which].base);
+    pasteRect(map.surface.features, V, r, e[which].features);
+    map.trees = e[which].trees;
+    view.reloadTrees();
+    map.hf.changed(r.i0, r.j0, r.i1, r.j1);
+    map.surface.changed(r.i0, r.j0, r.i1, r.j1);
+    view.rebuildWater();
   } else if (e.kind === 'markers') {
     map.markers = e[which];
     view.markers.set(map.markers);
@@ -114,7 +133,10 @@ function applyEntry(e, which) {
     setName(e[which].name);
     view.markers.set(map.markers);
     view.terrain.rebuildAll();
+    view.reloadTrees();
+    view.rebuildWater();
   }
+  if (e.kind === 'heights') view.rebuildWater();
   markDirty();
 }
 const undo = () => history.undo(applyEntry);
@@ -144,6 +166,8 @@ function replaceMap(next, label) {
     map.meta = next.meta || {};
     view.markers.set(map.markers);
     view.terrain.rebuildAll();
+    view.reloadTrees();
+    view.rebuildWater();
     history.push({ kind: 'map', before, after: { snap: snapshot(map), markers: map.markers, name: next.name } });
   }
   setName(next.name);
@@ -158,12 +182,31 @@ rts.onStrokeStart = (cx, cy) => {
   if (!BRUSH_TOOLS.has(state.tool)) return;
   const p = groundAt(cx, cy);
   if (!p) return;
-  state.stroke = {
-    tool: state.tool, x: p.x, z: p.z, lastX: p.x, lastZ: p.z, cx, cy,
-    target: map.hf.heightAt(p.x, p.z),
-    before: Float32Array.from(map.hf.h), rect: null,
-  };
+  state.stroke = beginStroke(state.tool, p.x, p.z, cx, cy);
 };
+
+function beginStroke(tool, x, z, cx = -1, cy = -1) {
+  const s = { tool, x, z, lastX: x, lastZ: z, cx, cy, target: map.hf.heightAt(x, z), before: Float32Array.from(map.hf.h), rect: null };
+  if (FEATURE_TOOLS.has(tool)) {
+    s.baseBefore = Uint8Array.from(map.surface.base);
+    s.featBefore = Uint8Array.from(map.surface.features);
+    s.treesBefore = view.forest.snapshot();
+  }
+  return s;
+}
+
+// One stamp of the current tool at (x, z); `dt` is the share of brush time for this stamp.
+function stamp(s, x, z, dt) {
+  const hf = map.hf, sf = map.surface, f = view.forest, r = state.size;
+  switch (s.tool) {
+    case 'river': return riverStamp(hf, sf, x, z, r * 0.5, s.before);
+    case 'road': return roadStamp(hf, sf, x, z, r * 0.3, s.before, f);
+    case 'forest': return forestStamp(hf, sf, x, z, r, f, Math.max(1, Math.round(Math.PI * r * r / 7 * state.strength * dt * 4)));
+    case 'tree': return treeStamp(hf, sf, x, z, f);
+    case 'erase': return eraseStamp(hf, sf, x, z, r, f);
+    default: return applyBrush(hf, s.tool, x, z, { radius: r, strength: state.strength, dt, target: s.target });
+  }
+}
 rts.onStrokeMove = (cx, cy) => {
   if (!state.stroke) return;
   state.stroke.cx = cx; state.stroke.cy = cy;
@@ -183,10 +226,14 @@ function paintStep(dt) {
   const p = groundAt(s.cx, s.cy);
   if (p) { s.x = p.x; s.z = p.z; }
   const dist = Math.hypot(s.x - s.lastX, s.z - s.lastZ);
-  const n = Math.max(1, Math.ceil(dist / (state.size * 0.3)));
+  // Path tools stamp along the path only (not while the finger rests); brushes keep working while held.
+  const pathTool = s.tool === 'river' || s.tool === 'road' || s.tool === 'tree';
+  const spacing = s.tool === 'tree' ? 3 : Math.max(0.5, state.size * (pathTool ? 0.15 : 0.3));
+  if (pathTool && dist < spacing && s.rect) return;
+  const n = Math.max(1, Math.ceil(dist / spacing));
   for (let k = 1; k <= n; k++) {
     const x = s.lastX + (s.x - s.lastX) * (k / n), z = s.lastZ + (s.z - s.lastZ) * (k / n);
-    s.rect = unionRect(s.rect, applyBrush(map.hf, s.tool, x, z, { radius: state.size, strength: state.strength, dt: dt / n, target: s.target }));
+    s.rect = unionRect(s.rect, stamp(s, x, z, dt / n));
   }
   s.lastX = s.x; s.lastZ = s.z;
 }
@@ -195,8 +242,22 @@ function endStroke() {
   const s = state.stroke;
   state.stroke = null;
   if (!s || !s.rect) return;
-  const V = map.hf.verts;
-  history.push({ kind: 'heights', rect: s.rect, before: copyRect(s.before, V, s.rect), after: copyRect(map.hf.h, V, s.rect) });
+  commitStroke(s);
+}
+
+function commitStroke(s) {
+  const V = map.hf.verts, r = s.rect;
+  if (FEATURE_TOOLS.has(s.tool)) {
+    map.trees = view.forest.snapshot();
+    history.push({
+      kind: 'region', rect: r,
+      before: { h: copyRect(s.before, V, r), base: copyRect(s.baseBefore, V, r), features: copyRect(s.featBefore, V, r), trees: s.treesBefore },
+      after: { h: copyRect(map.hf.h, V, r), base: copyRect(map.surface.base, V, r), features: copyRect(map.surface.features, V, r), trees: map.trees },
+    });
+  } else {
+    history.push({ kind: 'heights', rect: r, before: copyRect(s.before, V, r), after: copyRect(map.hf.h, V, r) });
+  }
+  view.rebuildWater();
   markDirty();
 }
 
@@ -205,9 +266,10 @@ rts.onTap = (cx, cy) => {
   const p = groundAt(cx, cy);
   if (!p) return;
   if (BRUSH_TOOLS.has(state.tool)) {
-    const before = Float32Array.from(map.hf.h);
-    const rect = applyBrush(map.hf, state.tool, p.x, p.z, { radius: state.size, strength: state.strength, dt: 0.15, target: map.hf.heightAt(p.x, p.z) });
-    if (rect) history.push({ kind: 'heights', rect, before: copyRect(before, map.hf.verts, rect), after: copyRect(map.hf.h, map.hf.verts, rect) });
+    const s = beginStroke(state.tool, p.x, p.z);
+    s.rect = stamp(s, p.x, p.z, 0.15);
+    if (s.rect) commitStroke(s);
+    return;
   } else {
     const before = map.markers;
     map.markers = placeMarker(map.markers, state.tool, p.x, p.z);
@@ -318,9 +380,9 @@ $('btnDoImport').addEventListener('pointerup', () => {
 // Test: hand the map to the game through localStorage and open it.
 $('btnTest').addEventListener('pointerup', async () => {
   status('Starting test…');
-  const ok = await saveMapStorage(TEST_KEY, map);
+  clearTimeout(saveTimer);
+  const ok = await saveMapStorage([TEST_KEY, AUTOSAVE_KEY], map);
   if (!ok) { alert('Could not hand the map to the game (browser storage full or blocked).'); return; }
-  await saveMapStorage(AUTOSAVE_KEY, map);
   location.href = 'index.html?map=@test';
 });
 
