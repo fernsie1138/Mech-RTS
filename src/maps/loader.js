@@ -63,13 +63,13 @@ export function proceduralMap() {
   const hf = new Heightfield({ size: MAP_SIZE, cells: TERRAIN.cells, bedrock: TERRAIN.bedrock, maxSlope: TERRAIN.maxSlope });
   const surface = new Surface(hf);
   buildTestMap(hf, surface);
-  return { name: 'Procedural test', hf, surface, markers: emptyMarkers(), trees: [], meta: {} };
+  return { name: 'Procedural test', hf, surface, markers: emptyMarkers(), trees: [], buildings: [], meta: {} };
 }
 
 // A flat empty map (new map in the editor).
 export function blankMap(name = 'New map') {
   const hf = new Heightfield({ size: MAP_SIZE, cells: TERRAIN.cells, bedrock: TERRAIN.bedrock, maxSlope: TERRAIN.maxSlope });
-  return { name, hf, surface: new Surface(hf), markers: emptyMarkers(), trees: [], meta: {} };
+  return { name, hf, surface: new Surface(hf), markers: emptyMarkers(), trees: [], buildings: [], meta: {} };
 }
 
 // Decode an image File/Blob to { width, height, data } RGBA (for the importer).
@@ -100,7 +100,8 @@ export function downloadJSON(obj, filename) {
 // Snapshot of the editable content of a map (for reset in the game).
 export function snapshot(map) {
   return { h: Float32Array.from(map.hf.h), base: Uint8Array.from(map.surface.base), features: Uint8Array.from(map.surface.features),
-           trees: (map.trees || []).map(t => ({ x: t.x, z: t.z, s: t.s, t: t.t })) };
+           trees: (map.trees || []).map(t => ({ x: t.x, z: t.z, s: t.s, t: t.t })),
+           buildings: (map.buildings || []).map(b => ({ ...b })) };
 }
 export function restore(map, snap) {
   map.hf.h.set(snap.h);
@@ -108,4 +109,5 @@ export function restore(map, snap) {
   map.surface.base.set(snap.base);
   map.surface.features.set(snap.features);
   map.trees = snap.trees.map(t => ({ ...t }));
+  map.buildings = (snap.buildings || []).map(b => ({ ...b }));
 }

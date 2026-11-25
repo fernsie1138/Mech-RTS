@@ -16,7 +16,8 @@ const out = await page.evaluate(async () => {
   const canvas = () => { const c = document.createElement('canvas'); c.width = c.height = S; return [c, c.getContext('2d')]; };
 
   // Shared shapes (image pixels; top = north / enemy side, bottom = south / player side).
-  const river = [[150, -10], [170, 60], [205, 120], [190, 190], [230, 250], [300, 300], [330, 370], [310, 440], [340, 522]];
+  // The river crosses the highway west of the crossroads (one bridge) and runs down the west side of the player road.
+  const river = [[150, -10], [170, 60], [205, 120], [190, 190], [178, 250], [200, 320], [190, 400], [215, 470], [205, 522]];
   const roads = [
     [[-10, 262], [80, 258], [160, 250], [229, 252], [300, 262], [400, 250], [522, 240]],   // west-east highway (crosses river)
     [[256, 455], [262, 380], [250, 300], [255, 262]],                                       // player HQ north to the highway
@@ -85,8 +86,19 @@ const out = await page.evaluate(async () => {
   // Import with the game's importer and save.
   const hd = h.getImageData(0, 0, S, S);
   const r = importImages({ heightImg: hd, featureImg: fd });
+  // Buildings: houses / factory on the lots, a bunker by each HQ, a wall line in front of the player HQ.
+  const { fillLots, flattenFootprint, Buildings } = await import('/src/world/buildings.js');
+  const extra = [...fillLots(r.hf, r.surface, r.buildings)];
+  const P = r.markers.playerHQ, E = r.markers.enemyHQ;
+  extra.push({ type: 'bunker', x: P.x + 16, z: P.z - 8, rot: 0 }, { type: 'bunker', x: E.x - 16, z: E.z + 8, rot: 0 });
+  extra.push({ type: 'wall', x: P.x - 6, z: P.z - 20, rot: 0 }, { type: 'wall', x: P.x + 6, z: P.z - 20, rot: 0 });
+  for (const d of extra) flattenFootprint(r.hf, d);
+  r.buildings.push(...extra);
+  const B = new Buildings(r.buildings, r.hf);
+  r.trees = r.trees.filter(t => !B.list.some(b => b.def.type !== 'bridge' && Math.hypot(t.x - b.def.x, t.z - b.def.z) < Math.hypot(b.footprint.hw, b.footprint.hd) + 1.8));
+  r.report.buildings = r.buildings.map(b => b.type).join(',');
   const { serializeMap } = await import('/src/maps/format.js');
-  const json = await serializeMap({ name: 'Sample: River Crossing', hf: r.hf, surface: r.surface, markers: r.markers, trees: r.trees, meta: { ...r.meta, source: 'tools/make-sample-map.mjs' } });
+  const json = await serializeMap({ name: 'Sample: River Crossing', hf: r.hf, surface: r.surface, markers: r.markers, trees: r.trees, buildings: r.buildings, meta: { ...r.meta, source: 'tools/make-sample-map.mjs' } });
   return { height: hc.toDataURL('image/png'), features: fc.toDataURL('image/png'), json: JSON.stringify(json), report: r.report };
 });
 

@@ -28,7 +28,7 @@ Each map is one `.json` file in this folder, listed in `index.json`.
 
      Roads drawn across a river become crossings: the river keeps flowing under them.
 2. In the editor, tap **Import images**, choose both images and tap **Import**.
-3. Refine it: Raise / Lower / Flatten / Smooth the ground; draw rivers and roads with **River** and **Road**; add trees with **Forest** (spray) or **Tree** (one at a time); rub out trees, water and roads with **Erase**; place or move HQs and capture points. Tap **Test ▶** to try it in the game.
+3. Refine it: Raise / Lower / Flatten / Smooth the ground; draw rivers and roads with **River** and **Road**; add trees with **Forest** (spray) or **Tree** (one at a time); rub out trees, water and roads with **Erase**; place or move HQs and capture points. Add buildings with **House / Factory / Bunker / Wall** (tap to place, tap a building to select, then rotate or delete), **Bridge** (tap a river), or **Fill lots** to build on all the red building areas. Bridges are added automatically where roads cross rivers. Tap **Test ▶** to try it in the game.
 4. Tap **Save** to download the `.json` file.
 
 ## Adding a saved map to the game

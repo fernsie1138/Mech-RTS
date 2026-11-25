@@ -131,7 +131,7 @@ function riverMap() {
   for (let q = 0; q < sf.features.length; q += 1) if (hf.wx(q % hf.verts) < -60) sf.features[q] |= FEATURE.FOREST;
   const trees = [{ x: 1.23, z: -4.56, s: 1.1, t: 1 }, { x: -100.5, z: 99.99, s: 0.85, t: 0 }];
   const json = await serializeMap({ name: 't', hf, surface: sf, markers: {}, trees });
-  check(json.formatVersion === FORMAT_VERSION && FORMAT_VERSION === 2, 'maps are saved as formatVersion 2');
+  check(json.formatVersion === FORMAT_VERSION && FORMAT_VERSION >= 2, `maps are saved as the current formatVersion (${FORMAT_VERSION}) with a tree list`);
   const m = await deserializeMap(JSON.parse(JSON.stringify(json)));
   check(JSON.stringify(m.trees) === JSON.stringify(trees), `tree list survives save/load (${JSON.stringify(m.trees)})`);
   const v1 = { ...json, formatVersion: 1 }; delete v1.trees;
