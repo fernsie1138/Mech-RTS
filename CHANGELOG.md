@@ -1,5 +1,12 @@
 # Changelog
 
+## v13 — Mobile Mode for phones
+- New **Mobile** button (top right) switches to a compact UI for playing on a phone: smaller buttons, resources bar, build buttons and minimap, so most of the screen is battlefield. The Builder panel moves to the right-hand side, and the start screen fits a phone.
+- It turns itself on for phone-sized screens and off on an iPad; your choice is remembered on that device. Works best with the phone held sideways; held upright, the buttons stack down the right edge.
+- Easier selecting on small screens: a tap just beside a mech selects it (a finger's width in Mobile Mode, a little less otherwise), and the camera starts a little closer.
+- The editor is unchanged (still designed for the iPad).
+- Tests: `tests/mobile.mjs` (landscape and portrait phones: everything on screen, nothing overlapping, the toggle remembered).
+
 ## v12 — Builders: walls, auto turrets and trenches
 - New unit: **Builder** (⚡150, built at the HQ). Unarmed, a little slower than a Scout, with a work arm and a yellow roof. It still spots enemies for your Titans.
 - Select a Builder and a **Builder** panel appears above the orders bar:

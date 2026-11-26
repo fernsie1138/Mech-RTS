@@ -9,9 +9,11 @@
 // Tapping an unfinished site with Builders selected puts them back to work on it.
 import { CAMERA } from '../config.js';
 
+
 export class Commander {
   constructor({ units, mechView, view, rts, effects, damage, selected, state, boxEl, construction = null }) {
     Object.assign(this, { units, mechView, view, rts, effects, damage, selected, state, boxEl, construction });
+    this.tapSlop = 14;           // screen pixels: a tap this close to a mech counts as tapping it (more in Mobile Mode)
     this.placing = null;
     this.line = null;
     this.onPlaced = null;        // fn(result, kind) after a Builder order (result from construction.order)
@@ -35,6 +37,18 @@ export class Commander {
     const v = new this.view.camera.position.constructor(u.x, u.y + u.height * 0.5, u.z).project(this.view.camera);
     if (v.z > 1) return null;
     return { x: (v.x + 1) / 2 * innerWidth, y: (1 - v.y) / 2 * innerHeight };
+  }
+
+  nearestOnScreen(cx, cy, team, px = this.tapSlop) {
+    let best = null, bd = px;
+    for (const u of this.units.list) {
+      if (!u.alive || u.team !== team) continue;
+      const p = this.screen(u);
+      if (!p) continue;
+      const d = Math.hypot(p.x - cx, p.y - cy);
+      if (d < bd) { bd = d; best = u; }
+    }
+    return best;
   }
 
   builders() { return [...this.selected].filter(u => u.alive && u.t.unarmed); }
@@ -64,8 +78,10 @@ export class Commander {
       return;
     }
     const ray = this.rts.screenRay(cx, cy);
-    const own = this.mechView.pick(ray, this.units, this.team);
-    const enemy = own ? null : this.mechView.pick(ray, this.units, 1 - this.team, true);
+    // A ray through the body, or failing that the nearest mech within a finger's width on screen (small mechs
+    // are tiny when zoomed out, especially on a phone).
+    const own = this.mechView.pick(ray, this.units, this.team) || this.nearestOnScreen(cx, cy, this.team);
+    const enemy = own ? null : this.mechView.pick(ray, this.units, 1 - this.team, true) || this.nearestOnScreen(cx, cy, 1 - this.team);
     const now = performance.now();
     if (own) {
       if (this.lastTap.unit && this.lastTap.unit.type === own.type && now - this.lastTap.t < CAMERA.doubleTapMs) {

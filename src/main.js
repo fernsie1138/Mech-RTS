@@ -22,6 +22,7 @@ import { Hud } from './ui/hud.js';
 import { Minimap } from './ui/minimap.js';
 import { MAP_SIZE, BUILD, BUILD_KEYS } from './config.js';
 import { Construction } from './world/construction.js';
+import { initMobileMode } from './ui/mobile.js';
 
 // ---------- version label (warns if index.html and the JS are from different builds) ----------
 const htmlBuild = document.querySelector('meta[name="build"]')?.content;
@@ -319,6 +320,13 @@ const hud = new Hud({
   onStart: () => { game.started = true; hud.banner('Build mechs and take the capture points'); },
   onAgain: () => { resetTerrain(); game.started = true; },
 });
+// Mobile Mode: compact UI for phones; the camera starts a little closer so mechs are big enough to tap.
+let mobileFirst = true;
+const mobile = initMobileMode(document.getElementById('btnMobile'), on => {
+  commander.tapSlop = on ? 26 : 14;
+  if (mobileFirst && on) { rts.distance = Math.min(rts.distance, 85); rts.update(0); }
+  mobileFirst = false;
+});
 const minimap = new Minimap(document.getElementById('minimap'), { world, rts, units, size: MAP_SIZE, getMatch: () => match, selected });
 if (!sandbox) hud.showStart();
 function updateMatchView(dt) {
@@ -377,7 +385,7 @@ window.__game = {
   get water() { return view.water; }, get forest() { return view.forest; }, get buildings() { return view.buildings; },
   heightAt, pickGround, fireAt, barrage, resetTerrain, selectWeapon,
   nav, movers, units, mechView, commander, selected, spawnSquad, setNavOverlay, setMoveKind, NAV_CLASSES,
-  get match() { return match; }, get ai() { return ai; }, sandbox, game, hud, minimap, construction, setPlacing,
+  get match() { return match; }, get ai() { return ai; }, sandbox, game, hud, minimap, construction, setPlacing, mobile,
   pause(on = true) { paused = on; },
   // Advance the simulation by `seconds` in fixed steps, independent of real time.
   step(seconds) {
