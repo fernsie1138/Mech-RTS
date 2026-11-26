@@ -33,7 +33,7 @@ check(s0.mine === 3 && s0.foes === 3 && s0.hqs === 2, `each side starts with an 
 await page.tap('#btnStart');
 await page.waitForTimeout(600);
 check(!(await visible('#startScreen')) && (await g(() => window.__game.state.time)) > t0, 'Start closes the screen and the match runs');
-await g(() => window.__game.pause());
+await g(() => { window.__game.pause(); window.__game.setFog(false); });   // fog of war has its own test (fog.mjs)
 
 // ---------- HUD and building ----------
 await g(() => window.__game.render());
