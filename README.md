@@ -108,4 +108,8 @@ node tests/stats.mjs
 node tests/defend-unit.mjs
 ```
 
+```bash
+node tests/repair-unit.mjs
+```
+
 Screenshots are written to `tests/out/` (not committed).

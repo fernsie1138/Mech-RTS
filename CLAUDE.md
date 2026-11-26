@@ -62,6 +62,7 @@ src/
     buildingview.js   instanced building rendering
     construction.js   Builders' jobs: walls, auto turrets, trenches (no three.js)
     fogview.js        fog of war drawing: a fog texture every material samples
+    decals.js         crater pictures (assets/craters.png, made by tools/make-craters.mjs) baked into a ground texture
     props.js          rocks, debris, wrecks
   nav/
     navgrid.js        walkability/cost grid, updated as terrain changes
@@ -109,7 +110,8 @@ Keep files focused. **All damage**, to units or to the world, goes through `comb
 - Every system (units, projectiles, trees, buildings, water) samples height through one function: `heightAt(x, z)`.
 
 ### 5.2 Destruction
-- Explosions dig **craters** by lowering height in a radius, with a raised rim. The size scales with the weapon.
+- Explosions dig **craters** by lowering height in a radius, with a raised rim. The size scales with the weapon. Craters are shallow (a shell digs about 0.8), and in a match the ground never goes more than `TERRAIN.maxDig` (2.2) below where it began.
+- Each cannon or shell crater also stamps one of six crater pictures (random, at a random angle) into a ground texture over the whole map, so the art stays where it hit.
 - Repeated hits **erode** mountains and ridges, so sustained artillery can wear a ridge down.
 - Clamp deformation so the terrain stays sane: a minimum height (bedrock) and a maximum slope created per hit.
 
@@ -209,7 +211,7 @@ The single-file prototype v1 (`prototype/index.html`) contains a working version
   - **Assault:** twin cannons.
   - **Titan:** slow, arcing splash shells (indirect fire) that can miss fast targets.
 - Mechs have animated walking legs and a **torso that turns independently** of the legs, so they can fire while moving.
-- **Builder:** unarmed; builds walls and auto turrets and digs trenches (cover). Walls and trenches are planned first (tap or drag), can be turned in 15° steps, then built. Later: buildings that produce other units (new kinds go in `BUILD` in config.js and `world/construction.js`).
+- **Builder:** unarmed; builds walls and auto turrets, digs trenches (cover) and repairs friendly mechs, turrets and the HQ (on order, or by itself when idle and one is close). Walls and trenches are planned first (tap or drag), can be turned in 15° steps, then built. Later: buildings that produce other units (new kinds go in `BUILD` in config.js and `world/construction.js`).
 - **Defend** stance: selected mechs crouch and hold; harder to hit (×0.55) and less hurt by splash, stacking with trench cover.
 - **Economy:** base income plus capture points that add income. The HQ produces units from a queue.
 - **Orders:** move (default: a tap on the ground; mechs always obey it, shoot on the way, then hold their ground without chasing), attack-move (the A-Move toggle: stop to fight anything met), and attack a specific target (a tap on the enemy's body). Touch: tap to select, double-tap to select all of a type, one-finger drag to box-select, two-finger pan, pinch zoom, minimap tap to jump.

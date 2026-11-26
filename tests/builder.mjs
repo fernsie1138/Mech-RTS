@@ -117,6 +117,24 @@ await g(() => { const G = window.__game; G.rts.distance = 48; G.rts.yaw = 0.5; G
 await page.waitForTimeout(300);
 await page.screenshot({ path: join(out, 'builder-done.png') });
 
+// Repair: hurt the Titan, then Repair -> tap the Titan with the Builder selected.
+const rep = await g(() => {
+  const G = window.__game, t = G.units.list.find(u => u.team === 0 && u.type === 'titan'), b = G.units.list.find(u => u.type === 'builder');
+  t.hp = t.maxHp * 0.4;
+  G.units.order([t], 'move', b.x + 25, b.z + 10); G.step(10);
+  G.commander.setSelection([b]);
+  G.rts.target.set((t.x + b.x) / 2, 0, (t.z + b.z) / 2); G.rts.distance = 55; G.rts.update(0); G.render();
+  return { id: t.id, hp0: t.hp };
+});
+await page.waitForTimeout(300);
+check(await page.isVisible('#btnRepair'), 'the Builder panel has a Repair button');
+await page.tap('#btnRepair');
+const tp2 = await page.evaluate(id => { const G = window.__game; G.render(); return G.commander.screen(G.units.list.find(u => u.id === id)); }, rep.id);
+await tap(tp2.x, tp2.y);
+const rr = await page.evaluate(id => { const G = window.__game, t = G.units.list.find(u => u.id === id), b = G.units.list.find(u => u.type === 'builder'); const ord = b.order; G.step(40); return { ord, hp: t.hp, max: t.maxHp }; }, rep.id);
+check(rr.ord === 'repair' && rr.hp === rr.max, `Repair, then a tap on a damaged Titan: the Builder goes and mends it (${rep.hp0.toFixed(0)} -> ${rr.hp.toFixed(0)} hp)`);
+await g(() => window.__game.render());
+await page.screenshot({ path: join(out, 'builder-repair.png') });
 check(w.errors.length === 0, `no console/page errors${w.errors.length ? ':\n   ' + w.errors.join('\n   ') : ''}`);
 await browser.close();
 await server.close();

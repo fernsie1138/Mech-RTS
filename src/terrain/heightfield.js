@@ -105,6 +105,13 @@ export class Heightfield {
   //   erode:  0..1, how strongly the blast area is pulled toward its local average first. Repeated hits on a
   //           ridge or peak flatten it, so sustained fire wears mountains down.
   // Returns { removed, minH, maxDelta } for tests and effects.
+  // Limit how deep craters can ever go: no sample below its present height minus maxDig (null: only bedrock).
+  setFloor(maxDig) {
+    if (maxDig === null) { this.floor = null; return; }
+    this.floor = new Float32Array(this.h.length);
+    for (let k = 0; k < this.h.length; k++) this.floor[k] = Math.max(this.bedrock, this.h[k] - maxDig);
+  }
+
   crater(x, z, { radius, depth, rim = 0.25, erode = 0.3 }) {
     const outer = radius * 1.5;
     const pad = this.spacing * 2;
@@ -136,7 +143,7 @@ export class Heightfield {
         const t = erode * (1 - d * d);
         // Only lower: erosion never builds terrain up.
         const nb = before[k] + (blur[k] - before[k]) * t;
-        if (nb < before[k]) this.h[this.index(i, j)] = nb;
+        if (nb < before[k]) { const q = this.index(i, j); this.h[q] = this.floor ? Math.max(this.floor[q], nb) : nb; }
       }
     }
 
@@ -154,7 +161,7 @@ export class Heightfield {
         dh = rimH * (1 - u) * (1 - u) * (1 + 2 * u);           // smoothstep fall-off
       }
       const k = this.index(i, j);
-      this.h[k] = Math.max(this.bedrock, this.h[k] + dh);
+      this.h[k] = Math.max(this.floor ? this.floor[k] : this.bedrock, this.h[k] + dh);
     }
 
     // 3. Slope relaxation: material slides until no neighbour pair is steeper than maxSlope.
@@ -162,6 +169,10 @@ export class Heightfield {
     const R = 6;
     const ri0 = Math.max(1, i0 - R), rj0 = Math.max(1, j0 - R), ri1 = Math.min(v - 1, i1 + R), rj1 = Math.min(v - 1, j1 + R);
     this.relax(ri0, rj0, ri1, rj1, 40);
+    if (this.floor) for (let j = rj0; j <= rj1; j++) for (let i = ri0; i <= ri1; i++) {
+      const k = this.index(i, j);
+      if (this.h[k] < this.floor[k]) this.h[k] = this.floor[k];
+    }
 
     let removed = 0, minH = Infinity, maxDelta = 0;
     for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {

@@ -1,7 +1,7 @@
 // Single entry point for all damage, to units and to the world (CLAUDE.md §4).
 // Terrain (craters, wear, flooding), trees, buildings and units take damage here. Every change is
 // reported to the nav grid (world.nav) so paths re-plan around new craters, rubble and fallen trees.
-import { TERRAIN_DAMAGE, COMBAT } from '../config.js';
+import { TERRAIN_DAMAGE, COMBAT, DECALS } from '../config.js';
 import { BUILDING_DAMAGE, addRubble } from '../world/buildings.js';
 import { FEATURE } from '../terrain/surface.js';
 
@@ -30,6 +30,7 @@ export class Damage {
     const onGround = by - y0 < p.radius * 0.5;        // only bursts near the ground dig craters
     let result = { removed: 0, maxDelta: 0 };
     if (onGround && p.depth > 0) result = hf.crater(x, z, { radius: p.radius, depth: p.depth, rim: p.rim, erode: p.erode });
+    if (onGround && p.depth >= DECALS.minDepth) this.world.decals?.crater(x, z, p.radius);
     if (onGround) surface.wear(x, z, p.radius * p.wearRadius, p.wear, p.scorch);
     const { water, forest, buildings } = this.world;
     let flooded = 0, trees = 0, rubble = [];
