@@ -123,8 +123,9 @@ export class Units {
     for (let li = 0; li < 2; li++) for (const e of li ? this.structures : this.list) {
       if (!e.alive || e.team === u.team) continue;
       const d = Math.hypot(e.x - u.x, e.z - u.z) - e.radius;
-      if (d > Math.max(reach, COMBAT.sightRange)) continue;
-      const sees = this.canSeeDirect(u, e);
+      const sight = u.t.sight || COMBAT.sightRange;
+      if (d > Math.max(reach, sight)) continue;
+      const sees = d <= sight && this.canSeeDirect(u, e);
       if (sees) e.seenBy[u.team] = this.time + 1.0;       // spotted: friendly Titans may shell it for a while
       if (d <= u.t.range && d < bd && (sees || (u.t.indirect && e.seenBy[u.team] > this.time))) { bd = d; best = e; }
       if (d <= reach && d < nd && (sees || e.seenBy[u.team] > this.time)) { nd = d; near = e; }

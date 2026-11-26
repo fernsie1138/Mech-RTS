@@ -8,8 +8,15 @@ const TEAM = ['#5aa2ff', '#ff5a48'];
 
 export class Minimap {
   // canvas: <canvas>   world: { hf, surface, water, forest }   rts: camera controller   size: map size in world units
-  constructor(canvas, { world, rts, units, size, getMatch, selected }) {
-    Object.assign(this, { canvas, world, rts, units, size, getMatch, selected });
+  // fog: { vision, on() } for fog of war (optional): unexplored ground is dark, explored ground dimmed, and only
+  // the enemies your side can see (and enemy structures it has seen) are shown.
+  constructor(canvas, { world, rts, units, size, getMatch, selected, fog = null }) {
+    Object.assign(this, { canvas, world, rts, units, size, getMatch, selected, fog });
+    this.fogCanvas = document.createElement('canvas');
+    this.fogCanvas.width = this.fogCanvas.height = RES;
+    this.fctx = this.fogCanvas.getContext('2d');
+    this.fogImg = this.fctx.createImageData(RES, RES);
+    this.fogT = Infinity;
     this.ctx = canvas.getContext('2d');
     this.ground = document.createElement('canvas');
     this.ground.width = this.ground.height = RES;
@@ -47,6 +54,17 @@ export class Minimap {
     this.gctx.putImageData(this.img, 0, 0);
   }
 
+  // Fog layer: black, see-through where your side sees now, half see-through where it has been.
+  _drawFog() {
+    const v = this.fog.vision, vis = v.visible[0], exp = v.explored[0], d = this.fogImg.data, n = v.n;
+    for (let j = 0; j < RES; j++) for (let i = 0; i < RES; i++) {
+      const k = Math.floor(j * n / RES) * n + Math.floor(i * n / RES), o = (j * RES + i) * 4;
+      d[o] = d[o + 1] = d[o + 2] = 0;
+      d[o + 3] = vis[k] ? 0 : exp[k] ? 120 : 235;
+    }
+    this.fctx.putImageData(this.fogImg, 0, 0);
+  }
+
   // Redraw. dt: seconds since the last call. The ground image is redrawn every 2 s (it changes slowly).
   update(dt) {
     this.t += dt;
@@ -54,6 +72,12 @@ export class Minimap {
     const c = this.ctx, W = this.canvas.width, s = W / 180;
     c.imageSmoothingEnabled = true;
     c.drawImage(this.ground, 0, 0, W, W);
+    const fogOn = this.fog && this.fog.on();
+    if (fogOn) {
+      if ((this.fogT += dt) > 0.25) { this.fogT = 0; this._drawFog(); }
+      c.drawImage(this.fogCanvas, 0, 0, W, W);
+    }
+    const shown = u => !fogOn || u.team === 0 || u.known || this.fog.vision.sees(0, u);
     const m = this.getMatch?.();
     if (m) {
       for (const p of m.points) {
@@ -68,13 +92,14 @@ export class Minimap {
       }
     }
     for (const h of this.units.structures || []) {
+      if (!shown(h)) continue;
       const [x, y] = this.toMap(h.x, h.z), r = (h.isHQ ? 6 : 2.6) * s;
       c.fillStyle = h.alive ? TEAM[h.team] : '#222';
       c.fillRect(x - r, y - r, 2 * r, 2 * r);
       c.strokeStyle = '#000'; c.lineWidth = 1.5 * s; c.strokeRect(x - r, y - r, 2 * r, 2 * r);
     }
     for (const u of this.units.list) {
-      if (!u.alive) continue;
+      if (!u.alive || (fogOn && u.team !== 0 && !this.fog.vision.sees(0, u))) continue;
       const [x, y] = this.toMap(u.x, u.z), r = (1.6 + u.t.scale * 1.2) * s;
       c.fillStyle = this.selected?.has(u) ? '#b8ffc8' : TEAM[u.team];
       c.fillRect(x - r, y - r, 2 * r, 2 * r);

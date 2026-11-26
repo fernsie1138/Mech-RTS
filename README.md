@@ -92,4 +92,12 @@ node tests/builder.mjs
 node tests/mobile.mjs
 ```
 
+```bash
+node tests/vision-unit.mjs
+```
+
+```bash
+node tests/fog.mjs
+```
+
 Screenshots are written to `tests/out/` (not committed).

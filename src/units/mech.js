@@ -57,6 +57,9 @@ export class MechView {
     this.heightAt = heightAt;
     this.construction = null;
     this.preview = null;
+    // Fog of war: which enemy mechs/structures to draw, and whether a spot is in view (wrecks, tracers).
+    this.shown = () => true;
+    this.inView = () => true;
     this.group = new THREE.Group();
     this.group.name = 'mechs';
     scene.add(this.group);
@@ -110,15 +113,17 @@ export class MechView {
   update(units, selected, camera) {
     let n = 0;
     for (const u of units.list) {
+      if (!this.shown(u)) continue;
       n = this._pose(n, u.type, u.team, { x: u.x, y: u.y, z: u.z, yaw: u.yaw, torsoYaw: u.torsoYaw, phase: u.phase, amp: u.amp, flash: u.hitT });
     }
     for (const h of units.structures || []) {
       // Turrets rise out of the ground while they are being built.
-      if (h.type !== 'turret' || !h.alive) continue;
+      if (h.type !== 'turret' || !h.alive || !this.shown(h)) continue;
       n = this._pose(n, 'turret', h.team, { x: h.x, y: h.y, z: h.z, yaw: h.yaw, torsoYaw: h.torsoYaw, phase: 0, amp: 0, flash: h.hitT, sink: (1 - h.built) * h.height });
     }
     n = this._sites(n, this.construction, this.preview);
     for (const w of units.wrecks) {
+      if (!this.inView(w.x, w.z, true)) continue;
       // Wrecks topple over in the first second, then sink into the ground at the end of their time.
       const fall = Math.min(1, w.t / 0.8);
       n = this._pose(n, w.type, w.team, { x: w.x, y: w.y, z: w.z, yaw: w.yaw, torsoYaw: w.torsoYaw, phase: w.phase, amp: 0.3,
@@ -132,7 +137,7 @@ export class MechView {
     let r = 0, b = 0;
     const camQ = camera.quaternion;
     for (const u of units.structures ? [...units.list, ...units.structures] : units.list) {
-      if (!u.alive) continue;
+      if (!u.alive || !this.shown(u)) continue;
       const sel = selected.has(u);
       if (sel && r < MAX_UNITS) {
         this._m.compose(this._p.set(u.x, u.y + 0.15, u.z), this._q.identity(), this._s.set(u.radius, 1, u.radius));
@@ -157,7 +162,7 @@ export class MechView {
     // Tracers: a streak from where the projectile was to where it is.
     let t = 0;
     for (const p of units.projectiles.list) {
-      if (t >= MAX_TRACERS || p.px === undefined) continue;
+      if (t >= MAX_TRACERS || p.px === undefined || !this.inView(p.x, p.z)) continue;
       const dx = p.x - p.px, dy = p.y - p.py, dz = p.z - p.pz, len = Math.hypot(dx, dy, dz) || 0.01;
       const w = p.kind === 'mg' ? 0.1 : p.kind === 'cannon' ? 0.25 : 0.55;
       const l = p.kind === 'shell' ? 0.8 : Math.max(len, p.kind === 'mg' ? 1.6 : 1.1);

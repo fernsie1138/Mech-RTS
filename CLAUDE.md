@@ -61,6 +61,7 @@ src/
     buildings.js      modular destructible buildings, bridges and rubble (no three.js)
     buildingview.js   instanced building rendering
     construction.js   Builders' jobs: walls, auto turrets, trenches (no three.js)
+    fogview.js        fog of war drawing: a fog texture every material samples
     props.js          rocks, debris, wrecks
   nav/
     navgrid.js        walkability/cost grid, updated as terrain changes
@@ -75,6 +76,7 @@ src/
     damage.js         single entry point for all damage to units and terrain
     effects.js        explosions, smoke, fire, sparks (pooled)
   game/match.js       credits, income, HQ build queues, capture points, win/lose (no three.js)
+  game/vision.js      fog of war: who sees whom (line of sight), seen/explored ground grid (no three.js)
   ai/enemy.js         enemy AI: build mix, waves at capture points and the HQ, base defence (no three.js)
   ui/camera.js        RTS camera and touch/mouse gestures
   ui/command.js       selection (tap, double tap, box drag) and orders
@@ -212,6 +214,7 @@ The single-file prototype v1 (`prototype/index.html`) contains a working version
 - **Enemy AI:** builds a unit mix, sends growing waves at capture points and the HQ, and defends its base.
 - Weapons damage terrain as well as units, so every weapon type needs a terrain-damage profile.
 - Terrain should affect combat: line of sight is blocked by mountains and buildings, and high ground helps. Titans fire indirectly over obstacles.
+- **Fog of war** (on in a match): a side sees an enemy only while one of its units has a clear line of sight to it within its sight range. Ground never seen is black, ground seen before is dimmed, and hidden enemies aren't drawn, tappable or on the minimap. The enemy AI does not use the fog yet (it knows where everything is).
 
 ---
 
@@ -261,5 +264,4 @@ Each milestone should end with something David can test on the iPad.
 - Map size in world units and the height-grid resolution. Currently 256 × 256 units with 512 × 512 cells (0.5 units each), drawn as 64 chunks; to be confirmed on the iPad.
 - Art direction: realistic, stylised, or the low-poly look of the prototype.
 - Whether terrain damage should cost the attacker anything, or be purely a side effect.
-- Fog of war.
 - Multiplayer (assumed out of scope for now).
