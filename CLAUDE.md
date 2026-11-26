@@ -211,7 +211,7 @@ The single-file prototype v1 (`prototype/index.html`) contains a working version
 - Mechs have animated walking legs and a **torso that turns independently** of the legs, so they can fire while moving.
 - **Builder:** unarmed; builds walls and auto turrets and digs trenches (cover). Later: buildings that produce other units (new kinds go in `BUILD` in config.js and `world/construction.js`).
 - **Economy:** base income plus capture points that add income. The HQ produces units from a queue.
-- **Orders:** move, attack-move (default), and attack a specific target. Touch: tap to select, double-tap to select all of a type, one-finger drag to box-select, two-finger pan, pinch zoom, minimap tap to jump.
+- **Orders:** move (default: a tap on the ground; mechs always obey it, shoot on the way, then hold their ground without chasing), attack-move (the A-Move toggle: stop to fight anything met), and attack a specific target (a tap on the enemy's body). Touch: tap to select, double-tap to select all of a type, one-finger drag to box-select, two-finger pan, pinch zoom, minimap tap to jump.
 - **Enemy AI:** builds a unit mix, sends growing waves at capture points and the HQ, and defends its base.
 - Weapons damage terrain as well as units, so every weapon type needs a terrain-damage profile.
 - Terrain should affect combat: line of sight is blocked by mountains and buildings, and high ground helps. Titans fire indirectly over obstacles.

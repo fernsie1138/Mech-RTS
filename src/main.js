@@ -325,9 +325,10 @@ function selectWeapon(w) {
 weaponBtns.forEach(b => b.addEventListener('pointerup', () => selectWeapon(b.dataset.weapon)));
 selectWeapon(state.weapon);
 const btnKind = document.getElementById('btnKind');
-function setMoveKind(k) { commander.moveKind = k; btnKind.textContent = k === 'amove' ? 'A-Move' : 'Move'; btnKind.classList.toggle('on', k === 'move'); }
+// Tap-on-ground order: Move (default; go there, shooting on the way) or A-Move (stop to fight anything met).
+function setMoveKind(k) { commander.moveKind = k; btnKind.textContent = k === 'amove' ? 'A-Move' : 'Move'; btnKind.classList.toggle('on', k === 'amove'); }
 btnKind.addEventListener('pointerup', () => setMoveKind(commander.moveKind === 'amove' ? 'move' : 'amove'));
-setMoveKind('amove');
+setMoveKind('move');
 document.getElementById('btnAll').addEventListener('pointerup', () => { selectWeapon('move'); commander.setSelection(commander.mine()); });
 document.getElementById('btnSpawn').addEventListener('pointerup', () => { selectWeapon('move'); commander.setSelection(spawnSquad(0, rts.target.x, rts.target.z + 12)); });
 document.getElementById('btnEnemy').addEventListener('pointerup', () => spawnSquad(1, rts.target.x, rts.target.z - 30, [...SQUAD, 'scout', 'assault']));

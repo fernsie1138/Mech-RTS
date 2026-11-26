@@ -19,7 +19,7 @@ export class Commander {
     this.line = null;
     this.onPlaced = null;        // fn(result, kind) after a Builder order (result from construction.order)
     this.team = 0;
-    this.moveKind = 'amove';
+    this.moveKind = 'move';      // a tap on the ground: plain move (the A-Move button switches to attack-move)
     this.lastTap = { t: 0, unit: null };
     this.box = null;
     this.onSelect = null;        // fn() after the selection changes
@@ -82,7 +82,8 @@ export class Commander {
     // A ray through the body, or failing that the nearest mech within a finger's width on screen (small mechs
     // are tiny when zoomed out, especially on a phone).
     const own = this.mechView.pick(ray, this.units, this.team) || this.nearestOnScreen(cx, cy, this.team);
-    let enemy = own ? null : this.mechView.pick(ray, this.units, 1 - this.team, true) || this.nearestOnScreen(cx, cy, 1 - this.team);
+    // Enemies only by a tap on their body: a tap near one in a crowded fight is a move order, not an attack.
+    let enemy = own ? null : this.mechView.pick(ray, this.units, 1 - this.team, true, 0.2);
     if (enemy && !this.canSee(enemy)) enemy = null;
     const now = performance.now();
     if (own) {

@@ -5,7 +5,8 @@
 //   amove  (default) walk to a point, stopping to fight anything met on the way
 //   move   walk to a point regardless, shooting at targets in range while walking (torso turns independently)
 //   attack go after one target and shoot it
-//   idle   hold position; shoot what comes in range, chase it a little, then return (guard)
+//   idle   hold position; shoot what comes in range, chase it a little, then return (guard). After a move order
+//          or Stop it holds its ground instead (u.hold): it shoots what is in range but never chases.
 // Direct-fire weapons need a clear line of sight. Titans lob shells over obstacles at anything their side can
 // see. Hit chance falls with the target's cover (forest, rubble, ruins) and rises with height advantage.
 import { UNIT_TYPES, COMBAT, HQ_TYPE, TURRET_TYPE } from '../config.js';
@@ -91,7 +92,7 @@ export class Units {
   // ---------- orders ----------
   order(units, kind, x, z) {
     const live = units.filter(u => u.alive);
-    for (const u of live) { u.order = kind; u.goal = { x, z }; u.attackTarget = null; }
+    for (const u of live) { u.order = kind; u.goal = { x, z }; u.attackTarget = null; u.hold = false; }
     if (live.length) this.movers.order(live.map(u => u.mover), x, z);
     // Remember each unit's formation slot as its goal.
     for (const u of live) if (u.mover.goal) u.goal = { ...u.mover.goal };
@@ -99,10 +100,10 @@ export class Units {
   attack(units, target) {
     for (const u of units) {
       if (!u.alive || u.team === target.team) continue;
-      u.order = 'attack'; u.attackTarget = target; u.goal = null; u.chaseT = 0;
+      u.order = 'attack'; u.attackTarget = target; u.goal = null; u.chaseT = 0; u.hold = false;
     }
   }
-  stop(units) { for (const u of units) { u.order = 'idle'; u.goal = null; u.attackTarget = null; u.guard = { x: u.x, z: u.z }; this.movers.stop(u.mover); } }
+  stop(units) { for (const u of units) { u.order = 'idle'; u.goal = null; u.attackTarget = null; u.guard = { x: u.x, z: u.z }; u.hold = true; this.movers.stop(u.mover); } }
 
   // ---------- helpers ----------
   eye(u) { return u.y + u.height * COMBAT.eyeHeight; }
@@ -162,13 +163,14 @@ export class Units {
       } else if (u.order === 'amove' || u.order === 'idle') {
         const home = u.order === 'amove' ? u.goal : u.guard;
         if (target) { if (m.state !== 'idle') this.movers.stop(m); }
-        else if (u.near && (u.order === 'amove' || Math.hypot(u.near.x - u.guard.x, u.near.z - u.guard.z) < COMBAT.guardRadius)) {
+        else if (u.near && !u.hold && (u.order === 'amove' || Math.hypot(u.near.x - u.guard.x, u.near.z - u.guard.z) < COMBAT.guardRadius)) {
           if ((u.chaseT -= dt) <= 0) { u.chaseT = 1; this._goTo(u, u.near.x, u.near.z); }
         } else if (home && Math.hypot(home.x - u.x, home.z - u.z) > (u.order === 'amove' ? 2.5 : 3) && !doneWith(m, home)) {
           if (m.state === 'idle' && (u.chaseT -= dt) <= 0) { u.chaseT = 1; this.movers.order([m], home.x, home.z); }
         } else if (u.order === 'amove' && m.state === 'idle') { u.order = 'idle'; u.guard = { x: u.x, z: u.z }; u.goal = null; }
       } else if (u.order === 'move' && m.state === 'idle') {
-        u.order = 'idle'; u.guard = { x: u.x, z: u.z }; u.goal = null;
+        // Arrived: hold this ground (shoot what comes in range, but don't go chasing).
+        u.order = 'idle'; u.guard = { x: u.x, z: u.z }; u.goal = null; u.hold = true;
       }
       // Facing: legs follow the walk; the torso turns toward the target independently.
       const moving = m.state === 'moving' && m.speedNow > 0.1;

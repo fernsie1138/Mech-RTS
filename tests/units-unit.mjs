@@ -92,7 +92,7 @@ const finite = w => w.units.list.every(u => Number.isFinite(u.x + u.y + u.z + u.
   const dmg = moving => {
     const w = world(), U = w.units, titan = U.spawn('titan', 0, 0, 22), scout = U.spawn('scout', 1, -14, 0);
     scout.hp = scout.maxHp = 1e6; scout.t = { ...scout.t, range: 0.1 };
-    U.stop([titan]);
+    // (The Titan has no orders, so it guards: it may step forward to keep sight of the Scout in its craters.)
     if (moving) U.order([scout], 'move', 14, 0);
     let back = false;
     w.run(30, () => {
@@ -132,6 +132,49 @@ const finite = w => w.units.list.every(u => Number.isFinite(u.x + u.y + u.z + u.
   U.attack([a], far);
   w.run(40, () => !far.alive);
   check(!far.alive && near.alive, 'an attack order goes after its target and ignores a closer enemy');
+}
+
+// ---------- move orders are obeyed, even in a fight ----------
+{
+  const w = world(), U = w.units;
+  const mine = [U.spawn('assault', 0, -4, 10), U.spawn('assault', 0, 4, 10)];
+  const foes = [U.spawn('assault', 1, -4, -8), U.spawn('assault', 1, 4, -8)];
+  for (const f of foes) { f.hp = f.maxHp = 1e6; }
+  for (const u of mine) { u.hp = u.maxHp = 1e6; }
+  U.stop(foes);
+  w.run(4);
+  check(U.stats.shots > 4 && mine.every(u => u.target), 'two squads are trading fire');
+  // Pull back, out of the fight.
+  U.order(mine, 'move', 0, 60);
+  let stalled = 0;
+  w.run(20, () => { if (mine.some(u => u.mover.state === 'idle' && u.z < 50)) stalled++; return mine.every(u => u.mover.state === 'idle' && u.z > 50); });
+  check(mine.every(u => u.z > 50) && stalled < 10, `a move order pulls engaged mechs out of the fight (now at z ${mine.map(u => u.z.toFixed(0)).join(', ')})`);
+  check(mine.every(u => u.order === 'idle' && u.hold), 'once there, they hold their ground');
+  // The enemy follows to 30 away (out of range, inside the old chase distance): they stay put.
+  for (const f of foes) f.mover.speedMult = 1;
+  U.order(foes, 'move', 0, 60 - 32);
+  w.run(10);
+  const moved = Math.max(...mine.map(u => Math.hypot(u.x - u.guard.x, u.z - u.guard.z)));
+  check(moved < 1.5, `holding: they don't go chasing enemies out of range (moved ${moved.toFixed(1)})`);
+  // ... but they shoot whatever comes into range.
+  const shots0 = U.stats.shots;
+  U.order(foes, 'move', 0, 60 - 15);
+  w.run(6);
+  check(mine.every(u => u.target) && U.stats.shots > shots0 + 4, 'and they shoot enemies that come into range');
+  // Fresh mechs (no orders yet) still guard: they go after a nearby enemy.
+  const g = world(), gu = g.units.spawn('assault', 0, 0, 30), gf = g.units.spawn('scout', 1, 0, 0);
+  gf.t = { ...gf.t, range: 0.1 }; g.units.order([gf], 'move', 0, 4);
+  g.run(6);
+  check(gu.z < 28, `a mech that hasn't been given orders still guards (goes after an enemy 26 away; now at z ${gu.z.toFixed(0)})`);
+  // Re-ordering mid-fight takes effect at once.
+  const r = world(), ra = r.units.spawn('assault', 0, 0, 10), rf = r.units.spawn('titan', 1, 0, -6);
+  rf.hp = rf.maxHp = 1e6; r.units.stop([rf]);
+  r.units.order([ra], 'amove', 0, -40);
+  r.run(3);
+  const zA = ra.z;
+  r.units.order([ra], 'move', 40, 30);
+  r.run(2);
+  check(Math.abs(zA) < 30 && ra.x > 5, `an A-Move that stopped to fight can be overridden by a move order (x ${ra.x.toFixed(0)})`);
 }
 
 // ---------- performance: 40 v 40 ----------

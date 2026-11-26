@@ -1,5 +1,11 @@
 # Changelog
 
+## v16 — Mechs obey move orders
+- **Tapping the ground is now a plain Move** by default. Mechs go where you send them even in the middle of a fight. They still shoot at enemies in range on the way (the torso turns), but they don't stop. The **A-Move** button switches taps to attack-move (stop and fight anything met), as before; it lights up when it is on.
+- **After a move (or Stop) mechs hold their ground:** they shoot whatever comes into range but no longer wander off to chase enemies, so they don't drift back into the fight. Mechs fresh out of the HQ, and mechs that finish an A-Move, still guard their area as before.
+- **Only a tap on an enemy's body is an attack order.** A tap on the ground right beside an enemy in a crowded fight is a move order.
+- Tests: new checks in `tests/units-unit.mjs` (engaged mechs pull back when ordered, hold without chasing, still shoot what comes in range; an A-Move fight can be overridden) and `tests/combat.mjs` (default Move, a tap beside an enemy mid-fight, retreating home).
+
 ## v15 — Mobile Mode in the editor, brighter health bars, unit stats in Dev
 - The **Mobile** button is now in the **top-left corner**, next to the credits, in both the game and the editor (it was off the edge of the screen on some phones). It also works on the start screen.
 - **Mobile Mode in the editor:** smaller toolbars; the tool list scrolls if it doesn't fit; the brush and building panels sit clear of it; works held sideways or upright. The setting is shared with the game.
