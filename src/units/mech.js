@@ -72,8 +72,10 @@ export class MechView {
       new THREE.MeshBasicMaterial({ color: 0x7cff9a, transparent: true, opacity: 0.9, depthTest: false }), MAX_UNITS);
     this.rings.renderOrder = 15;
     const bar = new THREE.PlaneGeometry(1, 1);
-    this.barBg = new THREE.InstancedMesh(bar, new THREE.MeshBasicMaterial({ color: 0x111111, transparent: true, opacity: 0.7, depthTest: false }), MAX_UNITS);
-    this.barFg = new THREE.InstancedMesh(bar.clone(), new THREE.MeshBasicMaterial({ depthTest: false }), MAX_UNITS);
+    // Health bars: bright, unlit colours on an opaque black backing; never darkened by the fog.
+    this.barBg = new THREE.InstancedMesh(bar, new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.88, depthTest: false, toneMapped: false }), MAX_UNITS);
+    this.barFg = new THREE.InstancedMesh(bar.clone(), new THREE.MeshBasicMaterial({ depthTest: false, toneMapped: false }), MAX_UNITS);
+    this.barBg.material.userData.fogPatched = this.barFg.material.userData.fogPatched = true;
     this.barBg.renderOrder = 16; this.barFg.renderOrder = 17;
     this.tracers = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }), MAX_TRACERS);
     for (const m of [this.rings, this.barBg, this.barFg, this.tracers]) { m.frustumCulled = false; m.count = 0; this.group.add(m); }
@@ -144,14 +146,16 @@ export class MechView {
         this.rings.setMatrixAt(r++, this._m);
       }
       if ((sel || u.hp < u.maxHp) && b < MAX_UNITS) {
-        const wdt = u.radius * 1.8, frac = Math.max(0, u.hp / u.maxHp), y = u.y + u.height + 0.8;
-        this._m.compose(this._p.set(u.x, y, u.z), camQ, this._s.set(wdt + 0.15, 0.42, 1));
+        // Bigger when the camera is further away, so they stay readable zoomed out.
+        const y = u.y + u.height + 0.8, k = Math.min(2.6, Math.max(1, camera.position.distanceTo(this._p.set(u.x, y, u.z)) / 55));
+        const wdt = Math.max(1.8, u.radius * 1.8) * k, frac = Math.max(0, u.hp / u.maxHp);
+        this._m.compose(this._p.set(u.x, y, u.z), camQ, this._s.set(wdt + 0.24 * k, 0.6 * k, 1));
         this.barBg.setMatrixAt(b, this._m);
         // Foreground bar shrinks from the right: shift its centre left along the camera's right vector.
         this._p.set(-(1 - frac) * wdt / 2, 0, 0).applyQuaternion(camQ).add(this._s.set(u.x, y, u.z));
-        this._m.compose(this._p, camQ, this._s.set(Math.max(0.001, wdt * frac), 0.26, 1));
+        this._m.compose(this._p, camQ, this._s.set(Math.max(0.001, wdt * frac), 0.4 * k, 1));
         this.barFg.setMatrixAt(b, this._m);
-        this.barFg.setColorAt(b, this._c.setHex(frac > 0.5 ? (u.team ? 0xff6a50 : 0x7cff9a) : frac > 0.25 ? 0xffd23a : 0xff4030));
+        this.barFg.setColorAt(b, this._c.setHex(frac > 0.6 ? 0x3dff5a : frac > 0.3 ? 0xffe62e : 0xff2e2e));
         b++;
       }
     }

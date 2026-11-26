@@ -14,6 +14,7 @@ import {
   snapshot, restore, reloadFresh, clearFreshReload, TEST_KEY, AUTOSAVE_KEY,
 } from '../src/maps/loader.js';
 import { DebugOverlay } from '../src/ui/debug.js';
+import { initMobileMode } from '../src/ui/mobile.js';
 import { applyBrush } from './tools/terrain.js';
 import { placeMarker } from './tools/markers.js';
 import { riverStamp, roadStamp, forestStamp, treeStamp, eraseStamp } from './tools/features.js';
@@ -45,6 +46,7 @@ const view = createView($('view'), map, { maxRebuildsPerFrame: 16 });
 const { rts, renderer } = view;
 rts.oneFingerPan = false;
 const debug = new DebugOverlay($('debug'), $('btnDebug'), renderer);
+const mobile = initMobileMode($('btnMobile'));          // compact layout for phones (shared setting with the game)
 
 // Brush cursor: a ring that follows the ground.
 const CURSOR_PTS = 64;
@@ -99,6 +101,7 @@ function selectTool(t) {
   $('hint').textContent = HINTS[t];
   document.getElementById('brush').style.visibility = BRUSH_TOOLS.has(t) && !NO_SIZE.has(t) ? 'visible' : 'hidden';
   document.getElementById('bpanel').style.display = BUILD_TOOLS.has(t) ? 'flex' : 'none';
+  document.body.classList.toggle('bpanel-on', BUILD_TOOLS.has(t));
   if (!BUILD_TOOLS.has(t)) select(-1);
   if (!BRUSH_TOOLS.has(t)) cursor.visible = false;
 }
@@ -576,6 +579,7 @@ history.onChange();
 
 // ---------- test hook ----------
 window.__editor = {
+  mobile,
   version: VERSION, config, THREE, view, history, state,
   get map() { return map; },
   selectTool, undo, redo, replaceMap, autosave, buildingTap, rotateSelected, get selected() { return selected; }, select,

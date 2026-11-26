@@ -1,5 +1,15 @@
 # Changelog
 
+## v15 — Mobile Mode in the editor, brighter health bars, unit stats in Dev
+- The **Mobile** button is now in the **top-left corner**, next to the credits, in both the game and the editor (it was off the edge of the screen on some phones). It also works on the start screen.
+- **Mobile Mode in the editor:** smaller toolbars; the tool list scrolls if it doesn't fit; the brush and building panels sit clear of it; works held sideways or upright. The setting is shared with the game.
+- **Health bars** are bigger, brighter and easier to read: solid green, yellow, then red on a black backing. They are never dimmed by the fog, and they grow when you zoom out.
+- **Dev → Stats:** a table of every unit's stats that you can change while playing. For Scout, Assault, Titan, Builder, Turret and HQ: cost, build time, speed, strength (hp), damage, fire rate, range, sight, accuracy, splash radius, shot speed and turn speed. Also the Builder's wall and trench costs and times, and the economy (starting credits, income, income per capture point, mechs per side, queue length).
+  - Changes apply at once, also to units already on the map (they keep the same share of their health).
+  - They are remembered on the device until **Reset to defaults**. Changed values show in yellow.
+  - **Copy** puts your changes on the clipboard, so you can paste them into a message.
+- Tests: `tests/stats.mjs`; `tests/mobile.mjs` now also covers the editor and the Mobile button.
+
 ## v14 — Fog of war and line of sight
 - **Fog of war** in a match. Ground nobody on your side has seen is black; ground you have seen before but can't see now is dimmed and grey; what your units can see right now is in full colour. It fades smoothly as your mechs move.
 - **Line of sight:** you only see an enemy mech, turret or HQ while one of your units has a clear view of it within its sight range. Hills, ridges and standing walls block the view (and leave "shadows" behind them you can't see into); trees don't. Sight ranges: Scout 46, Assault 36, Titan 34, Builder 30, turret 30, HQ 40. Scouts are your eyes.

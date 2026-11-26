@@ -38,6 +38,9 @@ export class Hud {
     this.t = 1;
   }
 
+  // Prices on the build buttons (after the stats are changed in Dev).
+  refreshCosts() { for (const k of UNIT_KEYS) this.cards[k].querySelector('.cost').textContent = `⚡${UNIT_TYPES[k].cost}`; }
+
   show(on) {
     for (const e of [this.el.res, this.el.build]) e.style.display = on ? '' : 'none';
   }

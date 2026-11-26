@@ -12,7 +12,7 @@ const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=sw
 
 // Boxes of the visible HUD elements, and any pairs that overlap or stick out of the screen.
 const layout = page => page.evaluate(() => {
-  const ids = ['res', 'build', 'fire', 'minimap', 'topright', 'buildpanel', 'selinfo'];
+  const ids = ['btnMobile', 'res', 'build', 'fire', 'minimap', 'topright', 'buildpanel', 'selinfo'];
   const box = {};
   for (const id of ids) {
     const e = document.getElementById(id);
@@ -45,6 +45,8 @@ for (const [name, dev] of [['landscape', devices['iPhone 13 landscape']], ['port
   const st = await page.evaluate(() => { const r = document.getElementById('btnStart').getBoundingClientRect(); return r.bottom <= innerHeight && r.top >= 0; });
   await page.screenshot({ path: join(out, `mobile-${name}-start.png`) });
   check(st, `${name}: the Start button fits on screen`);
+  const mb = await page.evaluate(() => { const r = document.getElementById('btnMobile').getBoundingClientRect(), hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return { r: [r.left, r.top, r.right, r.bottom], ok: r.left >= 0 && r.top >= 0 && r.right < innerWidth / 2 && r.bottom < 60, top: hit?.id === 'btnMobile' }; });
+  check(mb.ok && mb.top, `${name}: the Mobile button is in the top-left corner and can be tapped, even on the start screen (${mb.r.map(Math.round).join(', ')})`);
   await page.tap('#btnStart');
   await page.evaluate(() => { const G = window.__game; G.pause(); G.ai.step = () => {}; G.match.teams[0].credits = 1000; });
   // Select a Builder so its panel shows too.
@@ -83,6 +85,43 @@ for (const [name, dev] of [['landscape', devices['iPhone 13 landscape']], ['port
     check(await page.evaluate(() => document.body.classList.contains('mobile')), 'tapping it again turns it back on');
   }
   check(w.errors.length === 0, `${name}: no console/page errors${w.errors.length ? ':\n   ' + w.errors.join('\n   ') : ''}`);
+  await ctx.close();
+}
+
+// The editor on a phone: compact, everything on screen, nothing overlapping.
+const edLayout = page => page.evaluate(() => {
+  const els = { left: document.querySelector('#top .grp:first-child'), right: document.querySelector('#top .grp:last-child'), tools: document.getElementById('tools'),
+    brush: document.getElementById('brush'), bpanel: document.getElementById('bpanel') };
+  const box = {};
+  for (const [k, e] of Object.entries(els)) { if (e && getComputedStyle(e).display !== 'none' && getComputedStyle(e).visibility !== 'hidden') { const r = e.getBoundingClientRect(); if (r.width) box[k] = r; } }
+  const bad = [], off = [], k = Object.keys(box);
+  for (let a = 0; a < k.length; a++) {
+    const A = box[k[a]];
+    if (A.left < 0 || A.top < 0 || A.right > innerWidth + 0.5 || A.bottom > innerHeight + 0.5) off.push(k[a]);
+    for (let b = a + 1; b < k.length; b++) { const B = box[k[b]]; if (A.left < B.right && B.left < A.right && A.top < B.bottom && B.top < A.bottom) bad.push(`${k[a]}/${k[b]}`); }
+  }
+  return { shown: k, bad, off };
+});
+for (const [name, dev] of [['landscape', devices['iPhone 13 landscape']], ['portrait', devices['iPhone 13']]]) {
+  const ctx = await browser.newContext({ ...dev });
+  const page = await ctx.newPage();
+  const w = watchPage(page, server.url);
+  await page.goto(server.url + 'editor.html');
+  await page.waitForFunction(() => window.__editor?.ready, null, { timeout: 30000 });
+  check(await page.evaluate(() => document.body.classList.contains('mobile')), `editor, ${name} phone: Mobile Mode turns itself on`);
+  const mb = await page.evaluate(() => { const r = document.getElementById('btnMobile').getBoundingClientRect(); return r.left < 60 && r.top < 60; });
+  check(mb, `editor, ${name}: the Mobile button is top left`);
+  let L = await edLayout(page);
+  await page.screenshot({ path: join(out, `mobile-editor-${name}.png`) });
+  check(L.bad.length === 0 && L.off.length === 0 && L.shown.includes('tools') && L.shown.includes('brush'), `editor, ${name}: toolbars fit with no overlaps${L.bad.length ? ' (overlap: ' + L.bad.join(', ') + ')' : ''}${L.off.length ? ' (off: ' + L.off.join(', ') + ')' : ''}`);
+  await page.evaluate(() => window.__editor.selectTool('house'));
+  await page.waitForTimeout(200);
+  L = await edLayout(page);
+  check(L.bad.length === 0 && L.off.length === 0 && L.shown.includes('bpanel'), `editor, ${name}: with a building tool, its panel fits too${L.bad.length ? ' (overlap: ' + L.bad.join(', ') + ')' : ''}${L.off.length ? ' (off: ' + L.off.join(', ') + ')' : ''}`);
+  await page.screenshot({ path: join(out, `mobile-editor-${name}-house.png`) });
+  const scroll = await page.evaluate(() => { const t = document.getElementById('tools'); return t.scrollHeight <= t.clientHeight + 1 || getComputedStyle(t).overflowY === 'auto'; });
+  check(scroll, `editor, ${name}: every tool can be reached (the tool list scrolls if it doesn't fit)`);
+  check(w.errors.length === 0, `editor, ${name}: no console/page errors${w.errors.length ? ':\n   ' + w.errors.join('\n   ') : ''}`);
   await ctx.close();
 }
 

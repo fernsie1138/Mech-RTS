@@ -82,7 +82,8 @@ src/
   ui/command.js       selection (tap, double tap, box drag) and orders
   ui/hud.js           match HUD: resources, build buttons, banners, start and end screens
   ui/minimap.js       minimap from the live terrain, tap to jump
-  ui/mobile.js        Mobile Mode toggle (compact UI for phones; CSS under body.mobile in index.html)
+  ui/mobile.js        Mobile Mode toggle, game and editor (compact UI for phones; CSS under body.mobile in each page)
+  ui/stats.js         Dev: edit every unit's stats live (saved on the device)
   maps/
     loader.js         loads map files (maps/, uploaded file, editor hand-off), decodes images
     imageimport.js    image import format (§7.1)

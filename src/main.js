@@ -24,6 +24,7 @@ import { MAP_SIZE, BUILD, BUILD_KEYS } from './config.js';
 import { Construction } from './world/construction.js';
 import { initMobileMode } from './ui/mobile.js';
 import { Vision } from './game/vision.js';
+import { StatsEditor } from './ui/stats.js';
 import { FogView } from './world/fogview.js';
 
 // ---------- version label (warns if index.html and the JS are from different builds) ----------
@@ -104,6 +105,9 @@ hookWater();
 const movers = new Movers(nav);
 world.nav = nav;
 const units = new Units(world, movers, damage, 7);
+// Dev: unit stats editor. Saved changes are applied now, before anything is built or spawned.
+let costsReady = false;           // the HUD and Builder panel exist (set further down)
+const stats = new StatsEditor({ units, onChange: () => refreshCosts() });
 const mechView = new MechView(scene, heightAt);
 // Builders' construction: walls, turrets, trenches. Paid from the match's credits (free in the sandbox).
 const construction = new Construction(world, {
@@ -290,7 +294,11 @@ commander.onSelect = () => { if (navOverlay.on) view.terrain.rebuildAll(); updat
 // Builder panel: shown while Builders are selected.
 const buildPanel = document.getElementById('buildpanel'), buildHint = document.getElementById('buildhint');
 const buildBtns = buildPanel.querySelectorAll('[data-build]');
-buildBtns.forEach(b => { b.querySelector('.c').textContent = `⚡${BUILD[b.dataset.build].cost}`; });
+function refreshCosts() {
+  if (!costsReady) return;
+  buildBtns.forEach(b => { b.querySelector('.c').textContent = `⚡${BUILD[b.dataset.build].cost}`; });
+  hud.refreshCosts();
+}
 function setPlacing(kind) {
   commander.setPlacing(kind);
   buildBtns.forEach(b => b.classList.toggle('on', b.dataset.build === kind));
@@ -324,6 +332,7 @@ document.getElementById('btnAll').addEventListener('pointerup', () => { selectWe
 document.getElementById('btnSpawn').addEventListener('pointerup', () => { selectWeapon('move'); commander.setSelection(spawnSquad(0, rts.target.x, rts.target.z + 12)); });
 document.getElementById('btnEnemy').addEventListener('pointerup', () => spawnSquad(1, rts.target.x, rts.target.z - 30, [...SQUAD, 'scout', 'assault']));
 document.getElementById('btnFog').addEventListener('pointerup', () => setFog(!fog.on));
+document.getElementById('btnStats').addEventListener('pointerup', () => stats.open());
 document.getElementById('btnStop').addEventListener('pointerup', () => units.stop([...selected].filter(u => u.alive)));
 document.getElementById('btnDev').addEventListener('pointerup', () => {
   const on = document.body.classList.toggle('devopen');
@@ -347,6 +356,8 @@ const hud = new Hud({
   onStart: () => { game.started = true; hud.banner('Build mechs and take the capture points'); },
   onAgain: () => { resetTerrain(); game.started = true; },
 });
+costsReady = true;
+refreshCosts();
 // Mobile Mode: compact UI for phones; the camera starts a little closer so mechs are big enough to tap.
 let mobileFirst = true;
 const mobile = initMobileMode(document.getElementById('btnMobile'), on => {
@@ -421,7 +432,7 @@ window.__game = {
   heightAt, pickGround, fireAt, barrage, resetTerrain, selectWeapon,
   nav, movers, units, mechView, commander, selected, spawnSquad, setNavOverlay, setMoveKind, NAV_CLASSES,
   get match() { return match; }, get ai() { return ai; }, sandbox, game, hud, minimap, construction, setPlacing, mobile,
-  vision, fogView, fog, setFog,
+  vision, fogView, fog, setFog, statsEditor: stats,
   pause(on = true) { paused = on; },
   // Advance the simulation by `seconds` in fixed steps, independent of real time.
   step(seconds) {
