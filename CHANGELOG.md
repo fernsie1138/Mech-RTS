@@ -1,5 +1,11 @@
 # Changelog
 
+## v19 — Less smoke, fiery mech deaths
+- **Explosion smoke clears much sooner** (3-5 s instead of 6-10 s), is thinner and see-through (it starts at 45% opacity instead of 80%), and is blown sideways by a stronger wind.
+- **Smoke from fires, burning trees and wrecks** is lighter (24% opacity), thinner, comes off less often, and drifts sideways faster, so it no longer hides the battlefield.
+- **Mechs blow up properly:** a big fireball and flash, two or three secondary blasts over the next second, a shower of sparks, and lots of wreckage (dark steel and the mech's own colour) flung out. Most pieces burn, leaving trails of flame and smoke, and keep burning for a while where they land. Bigger mechs make bigger blasts. Turrets go up the same way.
+- Tests: `tests/effects.mjs` checks the smoke clears by 6 s and drifts, and that a destroyed Titan throws out burning wreckage with secondary blasts.
+
 ## v18 — Shallow craters with crater pictures, Builders repair
 - **Shallower craters:** a Titan shell now digs about 0.8 deep (was 1.7), a cannon round 0.3 (was 0.7). Shelling the same spot again and again can never take the ground more than 1.5 below where it started (about trench depth). Shells erode ridges a little harder, so sustained artillery still wears hills down, and craters on a river bank still flood (with shallower water).
 - **Crater pictures:** every cannon and shell crater paints one of the six crater pictures you sent into the ground, picked at random and turned at random, sized to the crater. They are baked into the ground texture and stay for the whole match, lit like the terrain. Machine-gun hits and blasts high on a building leave none. (The pictures were cut out of their white background by `tools/make-craters.mjs`; the original is kept in `assets/craters-source.png`.)

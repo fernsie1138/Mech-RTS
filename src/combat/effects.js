@@ -9,13 +9,16 @@
 //                              ground dust and a smoke cloud that lingers and drifts
 //   fire(x, y, z, size, secs)  a burning spot: flames and smoke for a while (buildings and rubble that were hit)
 //   smokePuff(x, y, z, size)   one drifting smoke puff (burning trees)
+//   mechDeath(x, y, z, scale, team)  a mech blowing up: fireballs, secondary blasts, burning metal debris
 //   dust(x, y, z, size)        a small dust cloud (collapsing walls, move orders)
 import * as THREE from 'three';
 
 export const EFFECTS = {
-  wind: { x: 1.6, z: 0.8 },          // world units / s that smoke drifts toward, once it has risen a little
+  wind: { x: 3.0, z: 1.4 },          // world units / s that smoke drifts toward, once it has risen a little
   scale: 1.5,                        // overall size of explosion visuals relative to the crater size
-  smokeLife: [6, 10],                // seconds a big explosion's smoke lasts
+  smokeLife: [3, 5],                 // seconds a big explosion's smoke lasts
+  smokeAlpha: 0.45,                  // starting opacity of explosion smoke (it fades to nothing)
+  residualAlpha: 0.24,               // ... of the smoke from fires, burning trees and wrecks
 };
 
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -52,7 +55,7 @@ class Pool {
     Object.assign(this, {
       px: F(), py: F(), pz: F(), vx: F(), vy: F(), vz: F(), age: F(), life: F(), s0: F(), s1: F(),
       r0: F(), g0: F(), b0: F(), r1: F(), g1: F(), b1: F(), a0: F(), a1: F(), rot: F(), spin: F(),
-      drag: F(), grav: F(), buoy: F(), wind: F(), trail: F(), trailT: F(),
+      drag: F(), grav: F(), buoy: F(), wind: F(), trail: F(), trailT: F(), trailFor: F(),
     });
     this.used = 0;          // high-water mark: slots [0, used) may be alive
     this.next = 0;
@@ -60,7 +63,7 @@ class Pool {
     this._m = new THREE.Matrix4(); this._q = new THREE.Quaternion(); this._e = new THREE.Euler(); this._p = new THREE.Vector3(); this._s = new THREE.Vector3(); this._c = new THREE.Color();
   }
 
-  // Add a particle. o: { x,y,z, vx,vy,vz, life, s0,s1, c0:[r,g,b], c1, a0,a1, spin, drag, grav, buoy, wind, trail }
+  // Add a particle. o: { x,y,z, vx,vy,vz, life, s0,s1, c0:[r,g,b], c1, a0,a1, spin, drag, grav, buoy, wind, trail, trailFor }
   emit(o) {
     let i;
     if (this.used < this.max) i = this.used++;
@@ -74,7 +77,7 @@ class Pool {
     this.a0[i] = o.a0 ?? 1; this.a1[i] = o.a1 ?? 0;
     this.rot[i] = Math.random() * 6.28; this.spin[i] = o.spin ?? 0;
     this.drag[i] = o.drag ?? 0; this.grav[i] = o.grav ?? 0; this.buoy[i] = o.buoy ?? 0; this.wind[i] = o.wind ?? 0;
-    this.trail[i] = o.trail ?? 0; this.trailT[i] = 0;
+    this.trail[i] = o.trail ?? 0; this.trailT[i] = 0; this.trailFor[i] = o.trailFor ?? 0.6;
     this.alive++;
     return i;
   }
@@ -99,9 +102,10 @@ class Pool {
         const g = heightAt(this.px[i], this.pz[i]);
         if (this.py[i] < g) { this.py[i] = g; this.vy[i] *= -0.35; this.vx[i] *= 0.55; this.vz[i] *= 0.55; this.spin[i] *= 0.6; }
       }
-      if (this.trail[i] && onTrail && t < 0.6) {
+      // Trails: smoke (trail > 0) or flames (trail < 0, burning debris), for the first trailFor of the life.
+      if (this.trail[i] && onTrail && t < this.trailFor[i]) {
         this.trailT[i] += dt;
-        if (this.trailT[i] > 0.07) { this.trailT[i] = 0; onTrail(this.px[i], this.py[i], this.pz[i], this.trail[i]); }
+        if (this.trailT[i] > (this.trail[i] < 0 ? 0.05 : 0.07)) { this.trailT[i] = 0; onTrail(this.px[i], this.py[i], this.pz[i], this.trail[i]); }
       }
       this.rot[i] += this.spin[i] * dt;
       // Size grows fast at first then slows (ease out); colour and opacity ramp over the life.
@@ -148,6 +152,7 @@ export class Effects {
     this.lightT = 0;
     this.burners = [];             // active fire spots: { x, y, z, size, t, dur, fAcc, sAcc, alive }
     this.maxBurners = 60;
+    this.delayed = [];             // { t, fn }: effects that go off a moment later (secondary blasts)
   }
 
   // ---------- emitters ----------
@@ -188,20 +193,54 @@ export class Effects {
     for (let k = 0, N = n(2, 3); k < N; k++) {
       const a = rand(0, 6.28), sp = rand(3, 7) * Math.sqrt(size);
       this.smoke.emit({ x, y: y + 0.3, z, vx: Math.cos(a) * sp, vy: rand(0.2, 1), vz: Math.sin(a) * sp, life: rand(1.6, 2.8),
-        s0: 0.4 * S, s1: rand(1.2, 1.8) * S, c0: [0.5, 0.42, 0.32], c1: [0.62, 0.56, 0.48], a0: 0.7, a1: 0, drag: 1.4, wind: 0.5 });
+        s0: 0.4 * S, s1: rand(1.2, 1.8) * S, c0: [0.5, 0.42, 0.32], c1: [0.62, 0.56, 0.48], a0: 0.5, a1: 0, drag: 1.4, wind: 1 });
     }
     // Smoke: many puffs rising at different speeds into a billowing column, dark at first, greying, spreading
     // and drifting away with the wind.
     if (size >= 0.6) {
       const [l0, l1] = EFFECTS.smokeLife;
-      for (let k = 0, N = n(4, 10); k < N; k++) {
+      for (let k = 0, N = n(3, 6); k < N; k++) {
         const a = rand(0, 6.28), r = rand(0, 0.7) * S, rise = rand(0.6, 2.4);
         const g = rand(0.08, 0.22);
         this.smoke.emit({ x: x + Math.cos(a) * r, y: y + rand(0.2, 1) * S, z: z + Math.sin(a) * r,
           vx: Math.cos(a) * rand(0.5, 2.5), vy: rise * 1.8 * Math.sqrt(size), vz: Math.sin(a) * rand(0.5, 2.5),
-          life: rand(l0, l1) * (0.55 + 0.25 * size), s0: 0.3 * S, s1: rand(0.9, 1.7) * S,
-          c0: [g, g * 0.96, g * 0.92], c1: [0.55, 0.54, 0.52], a0: 0.8, a1: 0, drag: 0.75, buoy: 0.7 * rise, wind: 1.8, spin: rand(-0.6, 0.6) });
+          life: rand(l0, l1) * (0.55 + 0.25 * size), s0: 0.3 * S, s1: rand(0.6, 1.1) * S,
+          c0: [g, g * 0.96, g * 0.92], c1: [0.55, 0.54, 0.52], a0: EFFECTS.smokeAlpha, a1: 0, drag: 0.75, buoy: 0.7 * rise, wind: 2.6, spin: rand(-0.6, 0.6) });
       }
+    }
+  }
+
+  // A mech blowing up: a big fireball and flash, two or three secondary blasts over the next second, and lots of
+  // burning metal pieces (dark steel and the mech's colour) thrown out, trailing flames and smoke, still burning
+  // where they land. scale: the mech's size (Scout 0.8 .. Titan 1.6). team: 0 / 1 (piece colour).
+  mechDeath(x, y, z, scale = 1, team = 0) {
+    const teamRgb = team ? [0.8, 0.25, 0.16] : [0.22, 0.5, 0.85];
+    this.explosion(x, y, z, 1.3 * scale);
+    // A tall burst of flame.
+    for (let k = 0, N = Math.round(8 + 6 * scale); k < N; k++) {
+      const a = rand(0, 6.28), sp = rand(1, 5) * scale;
+      this.fire.emit({ x: x + rand(-0.6, 0.6) * scale, y: y + rand(0, 1) * scale, z: z + rand(-0.6, 0.6) * scale, vx: Math.cos(a) * sp, vy: rand(3, 9) * scale, vz: Math.sin(a) * sp,
+        life: rand(0.5, 1.1), s0: rand(0.6, 1.1) * scale, s1: rand(1.6, 2.6) * scale, c0: [1, 0.62, 0.22], c1: [0.75, 0.13, 0.02], a0: 0.75, a1: 0, drag: 1.6, buoy: 5, spin: rand(-2, 2) });
+    }
+    // Burning wreckage flying out.
+    for (let k = 0, N = Math.round(12 + 10 * scale); k < N; k++) {
+      const a = rand(0, 6.28), out = rand(3, 11) * Math.sqrt(scale), up = rand(7, 17) * Math.sqrt(scale);
+      const c = k % 3 === 0 ? teamRgb : k % 3 === 1 ? [0.2, 0.22, 0.24] : [0.42, 0.45, 0.48], s = rand(0.15, 0.42) * scale;
+      const burning = k % 3 !== 2;
+      this.debris.emit({ x: x + rand(-0.4, 0.4), y: y + rand(0, 0.8) * scale, z: z + rand(-0.4, 0.4), vx: Math.cos(a) * out, vy: up, vz: Math.sin(a) * out,
+        life: rand(3, 6), s0: s, s1: s * 0.8, c0: c, c1: [c[0] * 0.3, c[1] * 0.3, c[2] * 0.3], grav: 22, drag: 0.12, spin: rand(-10, 10),
+        trail: burning ? -rand(0.25, 0.45) * Math.sqrt(scale) : 0, trailFor: burning ? rand(0.55, 0.9) : 0 });
+    }
+    // Hot sparks.
+    for (let k = 0, N = Math.round(14 + 8 * scale); k < N; k++) {
+      const a = rand(0, 6.28), up = rand(0.3, 1), sp = rand(9, 20) * Math.sqrt(scale);
+      this.sparks.emit({ x, y: y + 0.5, z, vx: Math.cos(a) * sp * (1 - up * 0.5), vy: sp * up, vz: Math.sin(a) * sp * (1 - up * 0.5),
+        life: rand(0.5, 1.2), s0: rand(1, 2), s1: 0.3, c0: [1, 0.92, 0.55], c1: [1, 0.35, 0.05], a0: 1, a1: 0, grav: 20, drag: 0.5, spin: rand(-12, 12) });
+    }
+    // Secondary blasts (ammunition, fuel) over the next second.
+    for (let k = 0, N = 2 + Math.round(scale); k < N; k++) {
+      const ox = rand(-1, 1) * scale, oz = rand(-1, 1) * scale, oy = rand(0.3, 1.6) * scale;
+      this.delayed.push({ t: rand(0.2, 1.1), fn: () => this.explosion(x + ox, y + oy, z + oz, rand(0.5, 0.85) * scale) });
     }
   }
 
@@ -234,7 +273,7 @@ export class Effects {
 
   smokePuff(x, y, z, size = 1, dark = 0.18) {
     this.smoke.emit({ x: x + rand(-0.3, 0.3) * size, y, z: z + rand(-0.3, 0.3) * size, vx: rand(-0.3, 0.3), vy: rand(1.2, 2.2), vz: rand(-0.3, 0.3),
-      life: rand(2.5, 4), s0: 0.35 * size, s1: rand(1.4, 2) * size, c0: [dark, dark, dark], c1: [0.48, 0.47, 0.45], a0: 0.7, a1: 0, drag: 0.4, buoy: 0.6, wind: 1.2, spin: rand(-0.5, 0.5) });
+      life: rand(2, 3.2), s0: 0.35 * size, s1: rand(1.3, 1.8) * size, c0: [dark, dark, dark], c1: [0.5, 0.49, 0.47], a0: EFFECTS.residualAlpha, a1: 0, drag: 0.4, buoy: 0.5, wind: 3, spin: rand(-0.5, 0.5) });
   }
 
   dust(x, y, z, size) {
@@ -253,6 +292,12 @@ export class Effects {
 
   // ---------- per frame ----------
   update(dt) {
+    // Secondary blasts scheduled by mechDeath.
+    if (this.delayed.length) {
+      for (const d of this.delayed) d.t -= dt;
+      for (const d of this.delayed.filter(d => d.t <= 0)) d.fn();
+      this.delayed = this.delayed.filter(d => d.t > 0);
+    }
     // Fires: flames continuously, smoke a few times a second; they die down at the end.
     this.burners = this.burners.filter(b => {
       b.t += dt;
@@ -264,11 +309,21 @@ export class Effects {
         this.fire.emit({ x: b.x + rand(-0.5, 0.5) * b.size, y: b.y, z: b.z + rand(-0.5, 0.5) * b.size, vx: rand(-0.4, 0.4), vy: rand(2, 3.5) * b.size, vz: rand(-0.4, 0.4),
           life: rand(0.4, 0.75), s0: 0.75 * b.size * fade, s1: 0.15, c0: [1, 0.72, 0.3], c1: [0.8, 0.18, 0.03], a0: 0.9, a1: 0, buoy: 1, spin: rand(-3, 3) });
       }
-      b.sAcc += dt * 3.5 * b.size;
+      b.sAcc += dt * 2 * b.size;
       while (b.sAcc >= 1) { b.sAcc -= 1; this.smokePuff(b.x, b.y + 1.2 * b.size, b.z, b.size, 0.12); }
       return true;
     });
-    const trail = (x, y, z, s) => this.trails.emit({ x, y, z, vy: 0.4, life: rand(0.5, 0.9), s0: s, s1: s * 1.8, c0: [0.25, 0.23, 0.21], c1: [0.45, 0.44, 0.42], a0: 0.45, a1: 0, wind: 0.8, drag: 0.5 });
+    const trail = (x, y, z, s) => {
+      if (s < 0) {
+        // Burning debris: flames licking off it, and a thin wisp of smoke now and then.
+        const f = -s;
+        this.fire.emit({ x: x + rand(-0.1, 0.1), y: y + 0.1, z: z + rand(-0.1, 0.1), vx: rand(-0.3, 0.3), vy: rand(1, 2.2), vz: rand(-0.3, 0.3), life: rand(0.25, 0.5),
+          s0: f, s1: f * 0.3, c0: [1, 0.5, 0.12], c1: [0.6, 0.1, 0.02], a0: 0.7, a1: 0, buoy: 1.5, spin: rand(-4, 4) });
+        if (Math.random() < 0.3) this.trails.emit({ x, y: y + 0.3, z, vy: 0.8, life: rand(0.6, 1), s0: f * 0.8, s1: f * 2.2, c0: [0.18, 0.17, 0.16], c1: [0.45, 0.44, 0.42], a0: 0.3, a1: 0, wind: 2, drag: 0.5 });
+        return;
+      }
+      this.trails.emit({ x, y, z, vy: 0.4, life: rand(0.5, 0.9), s0: s, s1: s * 1.8, c0: [0.25, 0.23, 0.21], c1: [0.45, 0.44, 0.42], a0: 0.35, a1: 0, wind: 1.6, drag: 0.5 });
+    };
     for (const p of this.pools) p.update(dt, this.heightAt, p === this.debris ? trail : null);
     if (this.lightT > 0) { this.lightT -= dt; this.light.intensity *= Math.pow(0.0005, dt); if (this.lightT <= 0) this.light.intensity = 0; }
   }

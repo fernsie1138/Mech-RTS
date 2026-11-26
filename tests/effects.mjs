@@ -25,16 +25,43 @@ const e1 = await page.evaluate(() => {
   const d0 = cx();
   g.step(3);
   const c3 = E.counts(), d3 = cx(), light3 = E.light.intensity;
-  g.step(6);
-  const c9 = E.counts();
+  let alpha = 0, an = 0; for (let i = 0; i < E.smoke.used; i++) if (E.smoke.age[i] < E.smoke.life[i]) { alpha += E.smoke.alpha.array[i]; an++; }
+  g.step(3);
+  const c6 = E.counts();
   g.step(8);
-  return { c0, c3, c9, c17: E.counts(), light0, light3, drift: d3 - d0 };
+  return { c0, c3, c6, c17: E.counts(), light0, light3, drift: d3 - d0, alpha: an ? alpha / an : 0 };
 });
 check(e1.c0.fire > 10 && e1.c0.smoke > 20 && e1.c0.debris > 10 && e1.c0.sparks > 10 && e1.c0.rings === 1, `a shell makes a fireball (${e1.c0.fire}), smoke (${e1.c0.smoke}), debris (${e1.c0.debris}), sparks (${e1.c0.sparks}) and a shockwave ring`);
 check(e1.light0 > 50 && e1.light3 === 0, `the flash lights up the ground, then fades (${e1.light0.toFixed(0)} -> ${e1.light3})`);
-check(e1.c3.smoke > 20 && e1.c9.smoke > 5, `the smoke lingers (${e1.c3.smoke} puffs at 3 s, ${e1.c9.smoke} at 9 s)`);
-check(e1.drift > 2, `the smoke drifts downwind (${e1.drift.toFixed(1)} units in 3 s)`);
+check(e1.c3.smoke > 3 && e1.c6.smoke === 0, `the smoke clears quickly (${e1.c3.smoke} puffs at 3 s, ${e1.c6.smoke} at 6 s)`);
+check(e1.alpha < 0.3, `and is see-through by then (average opacity ${e1.alpha.toFixed(2)})`);
+check(e1.drift > 4, `the smoke drifts downwind (${e1.drift.toFixed(1)} units in 3 s)`);
 check(Object.values(e1.c17).every(v => v === 0), 'after ~17 s every particle is gone and back in its pool');
+
+// ---- a mech blowing up ----
+const md = await page.evaluate(() => {
+  const g = window.__game, E = g.effects, h = g.map.markers.playerHQ;
+  g.step(10);                                                  // let earlier particles finish
+  const u = g.spawnSquad(1, h.x + 25, h.z - 60, ['titan'])[0];
+  g.step(0.5);
+  const c0 = E.counts();
+  g.damage.hitUnit(u, 1e6);
+  const c1 = E.counts();
+  let burning = 0; for (let i = 0; i < E.debris.used; i++) if (E.debris.age[i] < E.debris.life[i] && E.debris.trail[i] < 0) burning++;
+  const pending = E.delayed.length;
+  g.step(0.05);
+  g.rts.target.set(u.x, 0, u.z); g.rts.distance = 40; g.rts.update(0); g.render();
+  g.step(1.2);
+  const c2 = E.counts();
+  g.step(2);
+  // Burning debris lying on the ground still flames.
+  let onGround = 0; for (let i = 0; i < E.debris.used; i++) if (E.debris.age[i] < E.debris.life[i] && E.debris.trail[i] < 0 && E.debris.py[i] - g.heightAt(E.debris.px[i], E.debris.pz[i]) < 0.6) onGround++;
+  return { debris: c1.debris - c0.debris, fire: c1.fire - c0.fire, burning, pending, firesLater: c2.fire, onGround, firesOnGround: E.counts().fire };
+});
+check(md.debris > 25 && md.burning > 15, `a destroyed Titan throws out ${md.debris} pieces of wreckage, ${md.burning} of them burning`);
+check(md.fire > 30 && md.pending >= 3, `with a big fireball (${md.fire} flames) and ${md.pending} secondary blasts to come`);
+check(md.firesLater > 20 && md.onGround > 3 && md.firesOnGround > 5, `the wreckage keeps burning as it lands (${md.onGround} burning pieces on the ground, ${md.firesOnGround} flames)`);
+await page.screenshot({ path: join(out, 'effects-mech-death.png') });
 
 // ---- a barrage stays within the pools ----
 const bar = await page.evaluate(() => {
