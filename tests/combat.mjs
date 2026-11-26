@@ -99,12 +99,17 @@ await page.screenshot({ path: join(out, 'combat-fight.png') });
 check(mid.shots > 10, `both sides open fire (${mid.shots} shots in 6 s)`);
 const end = await page.evaluate(() => {
   const g = window.__game;
-  for (let i = 0; i < 90 && g.units.counts().every(c => c > 0); i++) g.step(1);
+  for (let i = 0; i < 90 && g.units.counts().every(c => c > 0); i++) {
+    // Every 15 s, as a player would, send what's left after any enemy left (they may be out of sight of each other).
+    if (i % 15 === 14) { const foe = g.units.list.find(u => u.alive && u.team === 1); if (foe) g.units.order(g.commander.mine(), 'amove', foe.x, foe.z); }
+    g.step(1);
+  }
   g.render();
-  return { counts: g.units.counts(), kills: g.units.stats.kills, wrecks: g.units.wrecks.length, nan: g.units.list.some(u => !Number.isFinite(u.x + u.z + u.y + u.hp)), sel: [...g.selected].every(u => u.alive) };
+  const dbg = g.units.list.filter(u => u.alive).map(u => `${u.type}/${u.team} ${u.order}${u.hold ? ' hold' : ''} at ${u.x.toFixed(0)},${u.z.toFixed(0)} target ${!!u.target} near ${!!u.near} sees ${g.units.list.filter(o => o.alive && o.team !== u.team).map(o => g.units.canSeeDirect(u, o) + '@' + Math.hypot(o.x - u.x, o.z - u.z).toFixed(0)).join(',')}`).join(' | ');
+  return { dbg, counts: g.units.counts(), kills: g.units.stats.kills, wrecks: g.units.wrecks.length, nan: g.units.list.some(u => !Number.isFinite(u.x + u.z + u.y + u.hp)), sel: [...g.selected].every(u => u.alive) };
 });
 await page.screenshot({ path: join(out, 'combat-after.png') });
-check(end.counts.some(c => c === 0) && end.kills > 0 && end.wrecks > 0, `the fight is decided (${end.counts.join(' vs ')} left, ${end.kills} destroyed, ${end.wrecks} wrecks)`);
+check(end.counts.some(c => c === 0) && end.kills > 0 && end.wrecks > 0, `the fight is decided (${end.counts.join(' vs ')} left, ${end.kills} destroyed, ${end.wrecks} wrecks)${end.counts.every(c => c) ? ' ' + end.dbg : ''}`);
 check(!end.nan && end.sel, 'no NaN positions; destroyed mechs drop out of the selection');
 
 // Reset clears the field and brings back the starting squad.
