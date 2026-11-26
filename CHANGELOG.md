@@ -1,5 +1,13 @@
 # Changelog
 
+## v21 — Lingering battle haze, black smoke, detection factor
+- **Explosion smoke lasts longer again (6-10 s) but is much more see-through** (it starts at 26% opacity).
+- **Battle haze:** every big blast leaves a little low, very faint smoke that hangs over the battlefield for 35-60 seconds and drifts slowly downwind. Many blasts build up a light haze you can still see mechs through, which then clears within a minute.
+- **Burning mechs and wrecks give off black smoke** (not grey), and a mech blowing up sends up a burst of it. Burning wreckage trails black smoke too.
+- **New stat: Detection factor** (Dev -> Stats, "Detection (%)"), 100% for every unit for now. An enemy only spots a unit within its sight range x that factor: a 50% unit is spotted by a Light Mech (sight 46) only within 23. The enemy still clears the fog of war around it as normal, but can't see, tap or shoot at the unit until it is close enough. Ready for stealthy units.
+- Units now only fire at enemies their side has actually spotted.
+- Tests: stealth checks in `tests/vision-unit.mjs`; smoke and haze checks in `tests/effects.mjs`.
+
 ## v20 — New names, and the Medium Mech
 - **Renamed:** Scout -> **Light Mech**, Assault -> **Heavy Mech**, Titan -> **Assault Mech**. The build buttons say Light, Medium, Heavy, Assault and Builder. (Stats you changed in Dev -> Stats are kept.)
 - **New: the Medium Mech** (⚡160, 5.5 s to build), between the Light and the Heavy: 250 hp, 7.5 speed, sight 40, and an autocannon (15 damage twice a second, range 21, a little splash, small scorch marks). One on one it usually beats a Light Mech and loses to a Heavy. The enemy builds them too.

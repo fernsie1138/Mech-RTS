@@ -29,19 +29,23 @@ const e1 = await page.evaluate(() => {
   g.step(3);
   const c6 = E.counts();
   g.step(8);
-  return { c0, c3, c6, c17: E.counts(), light0, light3, drift: d3 - d0, alpha: an ? alpha / an : 0 };
+  const c17 = E.counts();
+  let ha = 0, hn = 0; for (let i = 0; i < E.haze.used; i++) if (E.haze.age[i] < E.haze.life[i]) { ha += E.haze.alpha.array[i]; hn++; }
+  g.step(45);
+  return { c0, c3, c6, c17, c62: E.counts(), light0, light3, drift: d3 - d0, alpha: an ? alpha / an : 0, hazeAlpha: hn ? ha / hn : 0 };
 });
 check(e1.c0.fire > 10 && e1.c0.smoke > 20 && e1.c0.debris > 10 && e1.c0.sparks > 10 && e1.c0.rings === 1, `a shell makes a fireball (${e1.c0.fire}), smoke (${e1.c0.smoke}), debris (${e1.c0.debris}), sparks (${e1.c0.sparks}) and a shockwave ring`);
 check(e1.light0 > 50 && e1.light3 === 0, `the flash lights up the ground, then fades (${e1.light0.toFixed(0)} -> ${e1.light3})`);
-check(e1.c3.smoke > 3 && e1.c6.smoke === 0, `the smoke clears quickly (${e1.c3.smoke} puffs at 3 s, ${e1.c6.smoke} at 6 s)`);
-check(e1.alpha < 0.3, `and is see-through by then (average opacity ${e1.alpha.toFixed(2)})`);
+check(e1.c3.smoke > 10 && e1.c6.smoke > 3, `the smoke lasts a while (${e1.c3.smoke} puffs at 3 s, ${e1.c6.smoke} at 6 s)`);
+check(e1.alpha < 0.2, `but is see-through (average opacity ${e1.alpha.toFixed(2)})`);
 check(e1.drift > 4, `the smoke drifts downwind (${e1.drift.toFixed(1)} units in 3 s)`);
-check(Object.values(e1.c17).every(v => v === 0), 'after ~17 s every particle is gone and back in its pool');
+check(e1.c17.haze > 0 && Object.entries(e1.c17).every(([k, v]) => k === 'haze' || v === 0), `after ~17 s only a faint battle haze is left (${e1.c17.haze} haze puffs)`);
+check(e1.hazeAlpha < 0.1 && e1.c62.haze === 0, `the haze is very faint (opacity ${e1.hazeAlpha.toFixed(3)}) and gone within a minute`);
 
 // ---- a mech blowing up ----
 const md = await page.evaluate(() => {
   const g = window.__game, E = g.effects, h = g.map.markers.playerHQ;
-  g.step(10);                                                  // let earlier particles finish
+  g.step(10); for (const p of g.effects.pools) p.update(100, null, null);   // let earlier particles finish
   const u = g.spawnSquad(1, h.x + 25, h.z - 60, ['titan'])[0];
   g.step(0.5);
   const c0 = E.counts();
