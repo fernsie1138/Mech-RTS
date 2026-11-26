@@ -1,10 +1,11 @@
 # Changelog
 
 ## v18 — Shallow craters with crater pictures, Builders repair
-- **Shallower craters:** a Titan shell now digs about 0.8 deep (was 1.7), a cannon round 0.3 (was 0.7). Shelling the same spot again and again can never take the ground more than 2.2 below where it started. Shells erode ridges a little harder, so sustained artillery still wears hills down, and craters on a river bank still flood (with shallower water).
+- **Shallower craters:** a Titan shell now digs about 0.8 deep (was 1.7), a cannon round 0.3 (was 0.7). Shelling the same spot again and again can never take the ground more than 1.5 below where it started (about trench depth). Shells erode ridges a little harder, so sustained artillery still wears hills down, and craters on a river bank still flood (with shallower water).
 - **Crater pictures:** every cannon and shell crater paints one of the six crater pictures you sent into the ground, picked at random and turned at random, sized to the crater. They are baked into the ground texture and stay for the whole match, lit like the terrain. Machine-gun hits and blasts high on a building leave none. (The pictures were cut out of their white background by `tools/make-craters.mjs`; the original is kept in `assets/craters-source.png`.)
 - **Builders repair:** select Builders, tap **Repair** in the Builder panel, then tap one of your mechs, turrets or the HQ. The Builders walk over and mend it (25 hp per second each, free). Idle Builders also repair damaged friendly units within 10 units by themselves. A new order takes them off the repair. The repair rate is in Dev -> Stats.
 - On phones the Builder panel is now two buttons wide.
+- After an ordered attack kills its target, mechs go back to guarding (taking on enemies close by) instead of holding still.
 - Tests: `tests/repair-unit.mjs`; crater depth and picture checks in `tests/terrain.mjs`; Repair by touch in `tests/builder.mjs`.
 
 ## v17 — Health bars on every unit, Defend, turning walls and trenches

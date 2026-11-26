@@ -110,7 +110,7 @@ Keep files focused. **All damage**, to units or to the world, goes through `comb
 - Every system (units, projectiles, trees, buildings, water) samples height through one function: `heightAt(x, z)`.
 
 ### 5.2 Destruction
-- Explosions dig **craters** by lowering height in a radius, with a raised rim. The size scales with the weapon. Craters are shallow (a shell digs about 0.8), and in a match the ground never goes more than `TERRAIN.maxDig` (2.2) below where it began.
+- Explosions dig **craters** by lowering height in a radius, with a raised rim. The size scales with the weapon. Craters are shallow (a shell digs about 0.8), and in a match the ground never goes more than `TERRAIN.maxDig` (1.5) below where it began.
 - Each cannon or shell crater also stamps one of six crater pictures (random, at a random angle) into a ground texture over the whole map, so the art stays where it hit.
 - Repeated hits **erode** mountains and ridges, so sustained artillery can wear a ridge down.
 - Clamp deformation so the terrain stays sane: a minimum height (bedrock) and a maximum slope created per hit.

@@ -159,7 +159,7 @@ export class Units {
       const m = u.mover;
       u.x = m.x; u.z = m.z; u.y = m.y;
       // Targeting.
-      if (u.attackTarget && !u.attackTarget.alive) { u.attackTarget = null; if (u.order === 'attack') this.stop([u]); }
+      if (u.attackTarget && !u.attackTarget.alive) { u.attackTarget = null; if (u.order === 'attack') { this.stop([u]); u.hold = false; } }   // target down: guard here (take on whatever else is close)
       if ((u.retargetT -= dt) <= 0) { u.retargetT = COMBAT.retarget; this._findTargets(u); if (u.t.unarmed) u.target = u.near = null; }
       if (u.target && !this.canShootQuick(u, u.target)) u.target = null;
       // An attack order fires only at its target; other orders shoot whatever is in reach.

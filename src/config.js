@@ -8,7 +8,7 @@ export const TERRAIN = {
   maxRebuildsPerFrame: 4,
   bedrock: -8,                        // nothing digs below this height
   maxSlope: 1.6,                      // rise/run; steeper slopes slide after a hit
-  maxDig: 2.2,                        // in a match, craters never take the ground more than this below where it began
+  maxDig: 1.5,                        // in a match, craters never take the ground more than this below where it began
 };
 
 // Crater pictures baked into the ground (world/decals.js, assets/craters.png).
