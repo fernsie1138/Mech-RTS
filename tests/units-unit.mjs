@@ -1,0 +1,150 @@
+// Tests for mechs and combat: line of sight, cover, high ground, indirect fire, dodging shells, terrain damage,
+// orders, and a performance check. Pure modules, run in Node.
+// Run: node tests/units-unit.mjs
+import { Heightfield } from '../src/terrain/heightfield.js';
+import { Surface, FEATURE } from '../src/terrain/surface.js';
+import { Water } from '../src/terrain/water.js';
+import { Forest, newTree, TREE } from '../src/world/forest.js';
+import { Buildings } from '../src/world/buildings.js';
+import { NavGrid } from '../src/nav/navgrid.js';
+import { Movers } from '../src/units/movers.js';
+import { Units } from '../src/units/units.js';
+import { Damage } from '../src/combat/damage.js';
+import { lineOfSight, coverAt } from '../src/combat/los.js';
+import { TERRAIN, MAP_SIZE } from '../src/config.js';
+import { checker } from './harness.mjs';
+
+const { check, done } = checker();
+function world(fn = () => 0, { trees = [], buildings = [], seed = 3 } = {}) {
+  const hf = new Heightfield({ size: MAP_SIZE, cells: TERRAIN.cells, bedrock: TERRAIN.bedrock, maxSlope: TERRAIN.maxSlope });
+  hf.generate(fn);
+  const surface = new Surface(hf);
+  const w = { hf, surface, water: new Water(hf, surface), forest: new Forest(trees, MAP_SIZE, 1) };
+  w.buildings = new Buildings(buildings, hf);
+  w.nav = new NavGrid(w);
+  hf.onChange((a, b, c, d) => w.nav.markSamples(a, b, c, d));
+  w.movers = new Movers(w.nav);
+  w.damage = new Damage(w);
+  w.units = new Units(w, w.movers, w.damage, seed);
+  w.run = (secs, until = () => false) => { let t = 0; for (; t < secs && !until(); t += 1 / 60) { w.nav.update(); w.movers.step(1 / 60); w.units.step(1 / 60); } return t; };
+  return w;
+}
+const finite = w => w.units.list.every(u => Number.isFinite(u.x + u.y + u.z + u.hp + u.yaw + u.torsoYaw));
+
+// ---------- a fair fight in the open resolves ----------
+{
+  const w = world(), U = w.units, A = [], B = [];
+  for (let k = 0; k < 6; k++) { A.push(U.spawn(['scout', 'assault', 'titan'][k % 3], 0, -10 + (k % 3) * 8, 40 + Math.floor(k / 3) * 8)); B.push(U.spawn(['scout', 'assault', 'titan'][k % 3], 1, -10 + (k % 3) * 8, -40 - Math.floor(k / 3) * 8)); }
+  U.order(A, 'amove', 0, -40); U.order(B, 'amove', 0, 40);
+  const t = w.run(120, () => U.counts().some(c => c === 0));
+  const c = U.counts();
+  check(c.some(n => n === 0) && t < 120, `6 v 6 in the open is decided in ${t.toFixed(0)} s (${c[0]} vs ${c[1]} left, ${U.stats.kills} destroyed, ${U.stats.shots} shots, ${U.stats.hits} direct hits)`);
+  check(finite(w), 'no NaN positions, angles or hit points');
+  check(U.wrecks.length === U.stats.kills, `every destroyed mech leaves a wreck (${U.wrecks.length})`);
+  let dug = 0; for (const v of w.hf.h) if (v < -0.3) dug++;
+  check(dug > 200, `the fight cratered the ground (${dug} samples dug)`);
+}
+
+// ---------- line of sight ----------
+{
+  const w = world((x, z) => Math.max(0, 10 - Math.abs(z) * 0.8));       // ridge along x at z = 0, 10 high
+  const U = w.units, a = U.spawn('assault', 0, 0, 20), b = U.spawn('assault', 1, 0, -20);
+  check(!U.canSeeDirect(a, b), 'a ridge between two mechs blocks line of sight');
+  const c = U.spawn('scout', 0, 30, 0);
+  check(lineOfSight(w, 0, 3, -30, 0, 3, -20).clear, 'clear ground: line of sight is clear');
+  const v = world(() => 0, { buildings: [{ type: 'wall', x: 0, z: 0, rot: 0 }] });
+  check(!lineOfSight(v, 0, 2, 10, 0, 2, -10).clear && lineOfSight(v, 0, 8, 10, 0, 8, -10).clear, 'a standing wall blocks a low line of sight; a high one passes over');
+  const trees = []; for (let x = -4; x <= 4; x += 2) for (let z = -4; z <= 4; z += 2) trees.push(newTree(x, z));
+  const f = world(() => 0, { trees });
+  check(lineOfSight(f, 0, 3, 15, 0, 3, -15).clear, 'trees do not block line of sight (they give cover instead)');
+  check(coverAt(f, 0, 0) > 0.3 && coverAt(f, 40, 0) === 0, `forest gives cover (${coverAt(f, 0, 0).toFixed(2)} in the trees, 0 in the open)`);
+}
+
+// ---------- cover and high ground change the hit chance ----------
+{
+  const trees = []; for (let x = 20; x <= 32; x += 2.2) for (let z = -6; z <= 6; z += 2.2) trees.push(newTree(x, z));
+  const w = world((x, z) => (x < -20 ? 8 : 0), { trees }), U = w.units;
+  const shooter = U.spawn('assault', 0, 0, 25), inOpen = U.spawn('assault', 1, 0, 0), inWood = U.spawn('scout', 1, 26, 0.5), high = U.spawn('assault', 0, -26, 0);
+  const pOpen = U.hitChance(shooter, inOpen), pWood = U.hitChance(shooter, inWood), pHigh = U.hitChance(high, inOpen);
+  check(pWood < pOpen * 0.8, `harder to hit a mech in forest (${(pWood * 100).toFixed(0)}% vs ${(pOpen * 100).toFixed(0)}% in the open)`);
+  check(pHigh > pOpen, `easier to hit from high ground (${(pHigh * 100).toFixed(0)}% vs ${(pOpen * 100).toFixed(0)}%)`);
+}
+
+// ---------- Titans fire over hills, but only at what their side can see ----------
+{
+  const w = world((x, z) => Math.max(0, 10 - Math.abs(z - 10) * 0.9));   // ridge at z = 10
+  const U = w.units, titan = U.spawn('titan', 0, 0, 30), target = U.spawn('assault', 1, 0, 0);
+  target.hp = target.maxHp = 1e6;            // keep it alive for counting
+  U.stop([titan]);
+  w.run(8);
+  const blind = U.stats.shots;
+  check(!U.canSeeDirect(titan, target) && blind === 0, `a Titan behind a ridge holds fire at an enemy nobody can see (${blind} shots)`);
+  const spotter = U.spawn('scout', 0, 30, 0);                              // off to the side, in the open: sees the target
+  U.stop([spotter]);
+  spotter.t = { ...spotter.t, range: 0.1 };                                 // the spotter itself doesn't shoot
+  w.run(10);
+  const titanShots = U.stats.shots;
+  check(titanShots >= 2 && target.hp < target.maxHp, `once a Scout spots it, the Titan shells it over the ridge (${titanShots} shells, ${Math.round(target.maxHp - target.hp)} damage)`);
+}
+
+// ---------- fast movers dodge shells ----------
+{
+  const dmg = moving => {
+    const w = world(), U = w.units, titan = U.spawn('titan', 0, 0, 22), scout = U.spawn('scout', 1, -14, 0);
+    scout.hp = scout.maxHp = 1e6; scout.t = { ...scout.t, range: 0.1 };
+    U.stop([titan]);
+    if (moving) U.order([scout], 'move', 14, 0);
+    let back = false;
+    w.run(30, () => {
+      if (moving && scout.mover.state === 'idle') { U.order([scout], 'move', back ? 14 : -14, 0); back = !back; }
+      return false;
+    });
+    return scout.maxHp - scout.hp;
+  };
+  const still = dmg(false), dodging = dmg(true);
+  check(dodging < still * 0.6, `a Scout running across a Titan's front takes far less shell damage than one standing still (${dodging.toFixed(0)} vs ${still.toFixed(0)})`);
+}
+
+// ---------- Titans flatten trees; shells knock them down ----------
+{
+  const trees = []; for (let z = -20; z <= 20; z += 2.5) trees.push(newTree(0.5, z));
+  const w = world(() => 0, { trees }), U = w.units, t = U.spawn('titan', 0, 0, -30);
+  U.order([t], 'move', 0, 30);
+  w.run(25);
+  const flat = w.forest.trees.filter(tr => tr.state === TREE.FALLEN).length;
+  check(flat >= trees.length * 0.7, `a Titan walking down a line of trees flattens them (${flat} of ${trees.length})`);
+}
+
+// ---------- orders ----------
+{
+  const w = world(), U = w.units;
+  const a = U.spawn('assault', 0, -15, 40), m = U.spawn('assault', 0, 15, 40);
+  const foe = U.spawn('titan', 1, 0, 0); foe.hp = foe.maxHp = 1e6; foe.t = { ...foe.t, range: 0.1 };
+  U.order([a], 'amove', -15, -60); U.order([m], 'move', 15, -60);
+  w.run(12);
+  check(a.z > -5 && m.z < -20, `attack-move stops to fight (z ${a.z.toFixed(0)}); move walks on past (z ${m.z.toFixed(0)})`);
+  check(a.cool < a.t.rof && U.stats.shots > 10, 'both fire on the way (the torso turns independently of the legs)');
+}
+{
+  const w = world(), U = w.units, a = U.spawn('assault', 0, 0, 50);
+  const near = U.spawn('scout', 1, 0, 20), far = U.spawn('scout', 1, 40, -30);
+  near.t = far.t = { ...near.t, range: 0.1 };
+  U.attack([a], far);
+  w.run(40, () => !far.alive);
+  check(!far.alive && near.alive, 'an attack order goes after its target and ignores a closer enemy');
+}
+
+// ---------- performance: 40 v 40 ----------
+{
+  const w = world((x, z) => Math.sin(x / 13) * 2 + Math.cos(z / 11) * 2), U = w.units, A = [], B = [];
+  for (let k = 0; k < 40; k++) { A.push(U.spawn(['scout', 'assault', 'titan'][k % 3], 0, -60 + (k % 10) * 12, 60 + Math.floor(k / 10) * 8)); B.push(U.spawn(['scout', 'assault', 'titan'][k % 3], 1, -60 + (k % 10) * 12, -60 - Math.floor(k / 10) * 8)); }
+  U.order(A, 'amove', 0, -60); U.order(B, 'amove', 0, 60);
+  w.run(10);
+  const t0 = performance.now();
+  w.run(5);
+  const ms = (performance.now() - t0) / (5 * 60);
+  check(ms < 6, `80 mechs: one simulation step (movement, targeting, line of sight, projectiles) takes ${ms.toFixed(2)} ms here`);
+  check(finite(w), 'no NaN in the big battle');
+}
+
+done();

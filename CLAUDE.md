@@ -66,14 +66,15 @@ src/
     pathfinding.js    A* and/or flow fields
   units/
     movers.js         path following, re-planning, unsticking, separation (no three.js)
-    moverview.js      placeholder unit bodies, selection rings, path lines
-    mech.js           mech model, animation, movement, weapons
-    types.js          unit definitions
+    units.js          mechs: orders, targeting, facing, firing, wrecks (no three.js; stats in config.js)
+    mech.js           instanced mech models, walk animation, selection rings, health bars, tracers
   combat/
-    projectiles.js
+    projectiles.js    bullets, cannon rounds and arcing shells (no three.js)
+    los.js            line of sight (terrain and walls), cover (forest, rubble, walls)
     damage.js         single entry point for all damage to units and terrain
     effects.js        explosions, smoke, fire, sparks (pooled)
   ai/enemy.js
+  ui/command.js     selection (tap, double tap, box drag) and orders
   ui/hud.js, ui/input.js, ui/minimap.js
   maps/
     loader.js         loads map files (maps/, uploaded file, editor hand-off), decodes images

@@ -9,12 +9,12 @@
 <meta name="apple-mobile-web-app-title" content="Mech RTS">
 <meta name="theme-color" content="#0b1015">
 <!-- Must match VERSION in src/version.js. If they differ, the HUD warns that Safari served stale code. -->
-<meta name="build" content="v9">
+<meta name="build" content="v10">
 <title>Mech RTS</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" type="image/png" href="icons/icon-180.png">
-<link rel="stylesheet" href="style.css?v=9">
+<link rel="stylesheet" href="style.css?v=10">
 <style>
   #topright { position:fixed; top:calc(env(safe-area-inset-top) + 10px); right:calc(env(safe-area-inset-right) + 12px);
               display:flex; gap:8px; }
@@ -22,44 +22,51 @@
           display:flex; gap:8px; padding:8px; align-items:center; }
   #fire .lbl { font-size:13px; color:#b9c7d2; padding:0 4px 0 6px; }
   #fire .sep { width:1px; align-self:stretch; background:rgba(160,200,230,.25); margin:0 2px; }
+  #selinfo { position:fixed; left:calc(env(safe-area-inset-left) + 12px); bottom:calc(env(safe-area-inset-bottom) + 84px);
+             padding:6px 10px; font-size:14px; display:none; pointer-events:none; }
+  #boxsel { position:fixed; border:1.5px solid #7cff9a; background:rgba(124,255,154,.12); pointer-events:none; display:none; z-index:6; }
   #mapname { position:fixed; top:calc(env(safe-area-inset-top) + 10px); left:50%; transform:translateX(-50%);
              padding:6px 14px; font-size:14px; font-weight:600; pointer-events:none; }
 </style>
 <script type="importmap">
 {
   "imports": {
-    "three": "./lib/three.module.js?v=9",
-    "./editor/editor.js": "./editor/editor.js?v=9",
-    "./editor/history.js": "./editor/history.js?v=9",
-    "./editor/tools/features.js": "./editor/tools/features.js?v=9",
-    "./editor/tools/markers.js": "./editor/tools/markers.js?v=9",
-    "./editor/tools/terrain.js": "./editor/tools/terrain.js?v=9",
-    "./src/combat/damage.js": "./src/combat/damage.js?v=9",
-    "./src/combat/effects.js": "./src/combat/effects.js?v=9",
-    "./src/config.js": "./src/config.js?v=9",
-    "./src/main.js": "./src/main.js?v=9",
-    "./src/maps/format.js": "./src/maps/format.js?v=9",
-    "./src/maps/imageimport.js": "./src/maps/imageimport.js?v=9",
-    "./src/maps/loader.js": "./src/maps/loader.js?v=9",
-    "./src/nav/navgrid.js": "./src/nav/navgrid.js?v=9",
-    "./src/nav/pathfinding.js": "./src/nav/pathfinding.js?v=9",
-    "./src/terrain/chunks.js": "./src/terrain/chunks.js?v=9",
-    "./src/terrain/heightfield.js": "./src/terrain/heightfield.js?v=9",
-    "./src/terrain/surface.js": "./src/terrain/surface.js?v=9",
-    "./src/terrain/testmap.js": "./src/terrain/testmap.js?v=9",
-    "./src/terrain/water.js": "./src/terrain/water.js?v=9",
-    "./src/terrain/watermesh.js": "./src/terrain/watermesh.js?v=9",
-    "./src/ui/camera.js": "./src/ui/camera.js?v=9",
-    "./src/ui/debug.js": "./src/ui/debug.js?v=9",
-    "./src/units/movers.js": "./src/units/movers.js?v=9",
-    "./src/units/moverview.js": "./src/units/moverview.js?v=9",
-    "./src/version.js": "./src/version.js?v=9",
-    "./src/view.js": "./src/view.js?v=9",
-    "./src/world/buildings.js": "./src/world/buildings.js?v=9",
-    "./src/world/buildingview.js": "./src/world/buildingview.js?v=9",
-    "./src/world/forest.js": "./src/world/forest.js?v=9",
-    "./src/world/markers.js": "./src/world/markers.js?v=9",
-    "./src/world/trees.js": "./src/world/trees.js?v=9"
+    "three": "./lib/three.module.js?v=10",
+    "./editor/editor.js": "./editor/editor.js?v=10",
+    "./editor/history.js": "./editor/history.js?v=10",
+    "./editor/tools/features.js": "./editor/tools/features.js?v=10",
+    "./editor/tools/markers.js": "./editor/tools/markers.js?v=10",
+    "./editor/tools/terrain.js": "./editor/tools/terrain.js?v=10",
+    "./src/combat/damage.js": "./src/combat/damage.js?v=10",
+    "./src/combat/effects.js": "./src/combat/effects.js?v=10",
+    "./src/combat/los.js": "./src/combat/los.js?v=10",
+    "./src/combat/projectiles.js": "./src/combat/projectiles.js?v=10",
+    "./src/config.js": "./src/config.js?v=10",
+    "./src/main.js": "./src/main.js?v=10",
+    "./src/maps/format.js": "./src/maps/format.js?v=10",
+    "./src/maps/imageimport.js": "./src/maps/imageimport.js?v=10",
+    "./src/maps/loader.js": "./src/maps/loader.js?v=10",
+    "./src/nav/navgrid.js": "./src/nav/navgrid.js?v=10",
+    "./src/nav/pathfinding.js": "./src/nav/pathfinding.js?v=10",
+    "./src/terrain/chunks.js": "./src/terrain/chunks.js?v=10",
+    "./src/terrain/heightfield.js": "./src/terrain/heightfield.js?v=10",
+    "./src/terrain/surface.js": "./src/terrain/surface.js?v=10",
+    "./src/terrain/testmap.js": "./src/terrain/testmap.js?v=10",
+    "./src/terrain/water.js": "./src/terrain/water.js?v=10",
+    "./src/terrain/watermesh.js": "./src/terrain/watermesh.js?v=10",
+    "./src/ui/camera.js": "./src/ui/camera.js?v=10",
+    "./src/ui/command.js": "./src/ui/command.js?v=10",
+    "./src/ui/debug.js": "./src/ui/debug.js?v=10",
+    "./src/units/mech.js": "./src/units/mech.js?v=10",
+    "./src/units/movers.js": "./src/units/movers.js?v=10",
+    "./src/units/units.js": "./src/units/units.js?v=10",
+    "./src/version.js": "./src/version.js?v=10",
+    "./src/view.js": "./src/view.js?v=10",
+    "./src/world/buildings.js": "./src/world/buildings.js?v=10",
+    "./src/world/buildingview.js": "./src/world/buildingview.js?v=10",
+    "./src/world/forest.js": "./src/world/forest.js?v=10",
+    "./src/world/markers.js": "./src/world/markers.js?v=10",
+    "./src/world/trees.js": "./src/world/trees.js?v=10"
   }
 }
 </script>
@@ -74,22 +81,26 @@
   <div class="btn" id="btnDebug" title="Debug overlay (`)">FPS</div>
 </div>
 <div id="fire" class="panel">
-  <div class="btn" data-weapon="move">Move</div>
+  <div class="btn" data-weapon="move">Command</div>
+  <div class="btn" id="btnKind">A-Move</div>
   <div class="btn" id="btnAll">All</div>
   <div class="btn" id="btnSpawn">+Squad</div>
+  <div class="btn" id="btnEnemy">+Enemy</div>
   <div class="sep"></div>
   <span class="lbl">Fire</span>
   <div class="btn" data-weapon="mg">MG</div>
   <div class="btn" data-weapon="cannon">Cannon</div>
   <div class="btn" data-weapon="shell">Shell</div>
-  <div class="sep"></div>
   <div class="btn" id="btnBarrage">Barrage</div>
   <div class="btn" id="btnReset">Reset</div>
 </div>
-<div id="ver">v9</div>
+<div id="selinfo" class="panel"></div>
+<div id="boxsel"></div>
+</div>
+<div id="ver">v10</div>
 <div id="loading">Loading map…</div>
 <div id="fatal"></div>
-<script src="src/ui/page.js?v=9"></script>
-<script type="module" src="src/main.js?v=9"></script>
+<script src="src/ui/page.js?v=10"></script>
+<script type="module" src="src/main.js?v=10"></script>
 </body>
 </html>

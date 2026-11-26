@@ -303,6 +303,21 @@ export class Buildings {
     return false;
   }
 
+  // Height of the top of the standing pieces over (x, z) (walls, roofs, blocks; not bridge decks), or -Infinity.
+  // Line of sight uses this: shots can't pass through standing walls.
+  topAt(x, z) {
+    let top = -Infinity;
+    for (const b of this.list) {
+      if (b.def.type === 'bridge') continue;
+      if (Math.hypot(b.def.x - x, b.def.z - z) > Math.hypot(b.footprint.hw, b.footprint.hd) + 1) continue;
+      for (let i = b.first; i < b.first + b.count; i++) {
+        const p = this.pieces[i];
+        if (p.alive && p.role !== 'floor' && inBox(p, x, z, 0)) top = Math.max(top, p.py + p.sy / 2);
+      }
+    }
+    return top;
+  }
+
   // Building containing (x, z) in its footprint, or null.
   at(x, z) {
     for (let k = this.list.length - 1; k >= 0; k--) {
