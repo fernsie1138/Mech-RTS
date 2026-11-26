@@ -137,6 +137,7 @@ const finite = w => w.units.list.every(u => Number.isFinite(u.x + u.y + u.z + u.
   w.ai = new EnemyAI(m, 1); w.ai0 = new EnemyAI(m, 0);
   w.ai0.waveSize = 5;                      // a little different from its opponent, so it isn't a perfect mirror
   const last = new Map();
+  const stuckInfo = [];
   let stuck = 0, nan = false, maxUnits = 0, ms = 0, steps = 0;
   const t0 = performance.now();
   const t = w.run(25 * 60, t => {
@@ -147,14 +148,14 @@ const finite = w => w.units.list.every(u => Number.isFinite(u.x + u.y + u.z + u.
     for (const u of w.units.list) {
       const prev = last.get(u);
       // Stuck: told to go somewhere, nothing to shoot, and hasn't moved 1 unit in 30 s.
-      if (prev && u.order !== 'idle' && !u.target && u.mover.state !== 'idle' && Math.hypot(u.x - prev.x, u.z - prev.z) < 1) { if (++prev.n >= 3) stuck++; }
+      if (prev && u.order !== 'idle' && !u.target && u.mover.state !== 'idle' && Math.hypot(u.x - prev.x, u.z - prev.z) < 1) { if (++prev.n === 3) { stuck++; stuckInfo.push(`${u.type} team ${u.team} at (${u.x.toFixed(1)}, ${u.z.toFixed(1)}) order ${u.order} goal (${u.goal?.x.toFixed(1)}, ${u.goal?.z.toFixed(1)}) mover ${u.mover.state} path ${u.mover.path?.length} t ${(t / 60).toFixed(1)}`); } }
       else last.set(u, { x: u.x, z: u.z, n: 0 });
     }
   }, () => !!m.over);
   ms = (performance.now() - t0) / steps;
   check(!!m.over, `an AI-vs-AI match on the sample map ends: ${m.over ? (m.over.winner ? 'enemy' : 'player') + ' side wins' : 'no winner'} after ${(t / 60).toFixed(1)} min`);
   check(!nan && finite(w), 'no NaN positions in the whole match');
-  check(stuck === 0, `no mech got stuck (${stuck})`);
+  check(stuck === 0, `no mech got stuck (${stuck})${stuckInfo.length ? ':\n   ' + stuckInfo.join('\n   ') : ''}`);
   check(m.teams.every(T => T.built > 10) && m.teams.every(T => T.lost > 3), `both sides build and lose mechs (built ${m.teams.map(T => T.built).join(' / ')}, lost ${m.teams.map(T => T.lost).join(' / ')})`);
   check(maxUnits <= 2 * ECONOMY.unitCap, `never more than ${2 * ECONOMY.unitCap} mechs on the map (peak ${maxUnits})`);
   let dug = 0; for (const v of w.hf.h) if (v < -0.5) dug++;

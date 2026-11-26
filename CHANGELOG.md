@@ -8,6 +8,8 @@
 - **Enemy AI:** builds a mix of mechs (heavier later on), sends growing waves at the capture points and every third wave at your HQ, and defends its base.
 - **Minimap** (bottom right): the live map, which darkens as it gets cratered and burnt, plus capture points, HQs, mechs and your view. Tap or drag on it to move the camera.
 - **HUD:** credits, income, points held, army size and match clock (top left). **Stop** button. Test tools (+Squad, +Enemy, fire buttons, Barrage, Reset) are now behind **Dev**. `index.html?sandbox` opens the old combat sandbox.
+- Fixed: a mech passing another could steer into a wall and jitter there; and a mech whose spot in a formation was taken kept trying to reach it. Both showed up as stuck mechs in long AI-vs-AI test matches.
+- Fixed: the Editor button is no longer hidden behind the start screen.
 - Tests: `tests/match-unit.mjs` (including a whole AI-vs-AI match on the sample map), `tests/match.mjs`.
 
 ## v10 — Milestone 7: mechs and combat

@@ -13,6 +13,8 @@ import { NAV_CLASSES } from '../nav/navgrid.js';
 import { lineOfSight, coverAt } from '../combat/los.js';
 import { Projectiles } from '../combat/projectiles.js';
 
+// The mover already finished a path to this goal (arrived, or stopped as close as it could get).
+const doneWith = (m, g) => m.state === 'idle' && m.doneGoal && Math.hypot(m.doneGoal.x - g.x, m.doneGoal.z - g.z) < 0.5;
 const wrap = a => { while (a > Math.PI) a -= Math.PI * 2; while (a < -Math.PI) a += Math.PI * 2; return a; };
 const turnToward = (cur, target, step) => { const d = wrap(target - cur); return Math.abs(d) <= step ? target : cur + Math.sign(d) * step; };
 
@@ -150,7 +152,7 @@ export class Units {
         if (target) { if (m.state !== 'idle') this.movers.stop(m); }
         else if (u.near && (u.order === 'amove' || Math.hypot(u.near.x - u.guard.x, u.near.z - u.guard.z) < COMBAT.guardRadius)) {
           if ((u.chaseT -= dt) <= 0) { u.chaseT = 1; this._goTo(u, u.near.x, u.near.z); }
-        } else if (home && Math.hypot(home.x - u.x, home.z - u.z) > (u.order === 'amove' ? 2.5 : 3)) {
+        } else if (home && Math.hypot(home.x - u.x, home.z - u.z) > (u.order === 'amove' ? 2.5 : 3) && !doneWith(m, home)) {
           if (m.state === 'idle' && (u.chaseT -= dt) <= 0) { u.chaseT = 1; this.movers.order([m], home.x, home.z); }
         } else if (u.order === 'amove' && m.state === 'idle') { u.order = 'idle'; u.guard = { x: u.x, z: u.z }; u.goal = null; }
       } else if (u.order === 'move' && m.state === 'idle') {
