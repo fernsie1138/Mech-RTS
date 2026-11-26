@@ -1,5 +1,12 @@
 # Changelog
 
+## v17 — Health bars on every unit, Defend, turning walls and trenches
+- **Health bars on every unit you can see** (not only selected or damaged ones), and they are now drawn on top of smoke, fire and explosions, so they never disappear in a battle.
+- **Defend** button (next to Stop): the selected mechs crouch where they stand and keep firing. Defending mechs are much harder to hit (hit chance x0.55) and take less damage from blasts (x0.65). Any move or attack order stands them up again. Tap Defend again to stand them up where they are.
+- **Trenches** now also protect against blasts (x0.6 splash damage), on top of making mechs harder to hit. It all stacks: an Assault that hits 80% in the open hits 44% in a trench, and 24% in a trench while defending.
+- **Turning walls and trenches:** picking Wall or Trench and tapping (or dragging a line) now *plans* it, shown in green. Turn it with **⟲ 15°** / **15° ⟳**, tap somewhere else to move it, then **Build** (or **Cancel**). Turrets are still placed with a single tap.
+- Tests: `tests/defend-unit.mjs`; `tests/builder.mjs` plans, turns and builds; `tests/mobile.mjs` checks the new buttons fit on phones.
+
 ## v16 — Mechs obey move orders
 - **Tapping the ground is now a plain Move** by default. Mechs go where you send them even in the middle of a fight. They still shoot at enemies in range on the way (the torso turns), but they don't stop. The **A-Move** button switches taps to attack-move (stop and fight anything met), as before; it lights up when it is on.
 - **After a move (or Stop) mechs hold their ground:** they shoot whatever comes into range but no longer wander off to chase enemies, so they don't drift back into the fight. Mechs fresh out of the HQ, and mechs that finish an A-Move, still guard their area as before.

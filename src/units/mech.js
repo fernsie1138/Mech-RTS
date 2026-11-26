@@ -74,9 +74,10 @@ export class MechView {
     const bar = new THREE.PlaneGeometry(1, 1);
     // Health bars: bright, unlit colours on an opaque black backing; never darkened by the fog.
     this.barBg = new THREE.InstancedMesh(bar, new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.88, depthTest: false, toneMapped: false }), MAX_UNITS);
-    this.barFg = new THREE.InstancedMesh(bar.clone(), new THREE.MeshBasicMaterial({ depthTest: false, toneMapped: false }), MAX_UNITS);
+    // (Transparent, so they are drawn in the same pass as smoke and explosions, and after them: on top.)
+    this.barFg = new THREE.InstancedMesh(bar.clone(), new THREE.MeshBasicMaterial({ depthTest: false, depthWrite: false, toneMapped: false, transparent: true, opacity: 1 }), MAX_UNITS);
     this.barBg.material.userData.fogPatched = this.barFg.material.userData.fogPatched = true;
-    this.barBg.renderOrder = 16; this.barFg.renderOrder = 17;
+    this.barBg.renderOrder = 100; this.barFg.renderOrder = 101;
     this.tracers = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }), MAX_TRACERS);
     for (const m of [this.rings, this.barBg, this.barFg, this.tracers]) { m.frustumCulled = false; m.count = 0; this.group.add(m); }
     this._m = new THREE.Matrix4(); this._g = {}; this._t = new THREE.Matrix4(); this._q = new THREE.Quaternion(); this._p = new THREE.Vector3(); this._s = new THREE.Vector3();
@@ -90,11 +91,13 @@ export class MechView {
     // Root: position, legs yaw (+ wreck tilt), scale.
     this._e.set(s.tiltX || 0, s.yaw, s.tiltZ || 0, 'YXZ');
     g.root.compose(this._p.set(s.x, s.y - (s.sink || 0), s.z), this._q.setFromEuler(this._e), this._s.setScalar(sc));
-    g.body.multiplyMatrices(g.root, this._t.makeTranslation(0, -Math.abs(Math.cos(s.phase)) * 0.12 * s.amp, 0));
+    // Defend: crouched low, knees bent (s.crouch 0..1).
+    const cr = s.crouch || 0;
+    g.body.multiplyMatrices(g.root, this._t.makeTranslation(0, -Math.abs(Math.cos(s.phase)) * 0.12 * s.amp - 0.75 * cr, 0));
     for (const i of [0, 1]) {
       const ph = s.phase + i * Math.PI, side = i ? 1 : -1;
-      g[`hip${i}`].multiplyMatrices(g.body, this._t.makeTranslation(side * 0.62, 2.2, 0)).multiply(this._t.makeRotationX(-Math.sin(ph) * 0.55 * s.amp));
-      g[`knee${i}`].multiplyMatrices(g[`hip${i}`], this._t.makeTranslation(0, -1.1, 0.05)).multiply(this._t.makeRotationX((0.15 + 0.75 * Math.max(0, Math.cos(ph))) * s.amp));
+      g[`hip${i}`].multiplyMatrices(g.body, this._t.makeTranslation(side * (0.62 + 0.12 * cr), 2.2, 0)).multiply(this._t.makeRotationX(-Math.sin(ph) * 0.55 * s.amp - 0.85 * cr));
+      g[`knee${i}`].multiplyMatrices(g[`hip${i}`], this._t.makeTranslation(0, -1.1, 0.05)).multiply(this._t.makeRotationX((0.15 + 0.75 * Math.max(0, Math.cos(ph))) * s.amp + 1.6 * cr));
     }
     g.torso.multiplyMatrices(g.body, this._t.makeTranslation(0, TORSO_Y, 0)).multiply(this._t.makeRotationY(s.torsoYaw));
     const flash = s.flash || 0;
@@ -116,7 +119,7 @@ export class MechView {
     let n = 0;
     for (const u of units.list) {
       if (!this.shown(u)) continue;
-      n = this._pose(n, u.type, u.team, { x: u.x, y: u.y, z: u.z, yaw: u.yaw, torsoYaw: u.torsoYaw, phase: u.phase, amp: u.amp, flash: u.hitT });
+      n = this._pose(n, u.type, u.team, { x: u.x, y: u.y, z: u.z, yaw: u.yaw, torsoYaw: u.torsoYaw, phase: u.phase, amp: u.amp, flash: u.hitT, crouch: u.crouch });
     }
     for (const h of units.structures || []) {
       // Turrets rise out of the ground while they are being built.
@@ -135,7 +138,7 @@ export class MechView {
     this.parts.instanceMatrix.needsUpdate = true;
     if (this.parts.instanceColor) this.parts.instanceColor.needsUpdate = true;
 
-    // Selection rings and health bars (shown when selected or damaged), facing the camera.
+    // Selection rings and health bars (on every unit shown), facing the camera.
     let r = 0, b = 0;
     const camQ = camera.quaternion;
     for (const u of units.structures ? [...units.list, ...units.structures] : units.list) {
@@ -145,7 +148,7 @@ export class MechView {
         this._m.compose(this._p.set(u.x, u.y + 0.15, u.z), this._q.identity(), this._s.set(u.radius, 1, u.radius));
         this.rings.setMatrixAt(r++, this._m);
       }
-      if ((sel || u.hp < u.maxHp) && b < MAX_UNITS) {
+      if (b < MAX_UNITS) {                                   // every unit you can see has its bar
         // Bigger when the camera is further away, so they stay readable zoomed out.
         const y = u.y + u.height + 0.8, k = Math.min(2.6, Math.max(1, camera.position.distanceTo(this._p.set(u.x, y, u.z)) / 55));
         const wdt = Math.max(1.8, u.radius * 1.8) * k, frac = Math.max(0, u.hp / u.maxHp);

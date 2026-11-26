@@ -12,7 +12,7 @@ const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=sw
 
 // Boxes of the visible HUD elements, and any pairs that overlap or stick out of the screen.
 const layout = page => page.evaluate(() => {
-  const ids = ['btnMobile', 'res', 'build', 'fire', 'minimap', 'topright', 'buildpanel', 'selinfo'];
+  const ids = ['btnMobile', 'res', 'build', 'fire', 'minimap', 'topright', 'buildpanel', 'selinfo', 'placebar', 'buildhint'];
   const box = {};
   for (const id of ids) {
     const e = document.getElementById(id);
@@ -58,6 +58,13 @@ for (const [name, dev] of [['landscape', devices['iPhone 13 landscape']], ['port
   check(L.shown.includes('buildpanel') && L.shown.includes('minimap') && L.shown.includes('build'), `${name}: HUD, build buttons, Builder panel and minimap all showing (${L.w}x${L.h})`);
   check(L.bad.length === 0 && L.off.length === 0, `${name}: no controls overlap or run off the screen${L.bad.length ? ' (overlap: ' + L.bad.join(', ') + ')' : ''}${L.off.length ? ' (off screen: ' + L.off.join(', ') + ')' : ''}`);
   check(L.area < 0.35, `${name}: controls cover ${(L.area * 100).toFixed(0)}% of the screen`);
+  // Planning a wall: the Turn / Build / Cancel bar and the hint fit too.
+  await page.evaluate(() => { const G = window.__game, h = G.map.markers.playerHQ; G.setPlacing('wall'); G.commander._setPending({ kind: 'wall', cx: h.x, cz: h.z - 40, len: 10, rot: 0 }); });
+  await page.waitForTimeout(300);
+  const P = await layout(page);
+  check(P.shown.includes('placebar') && P.bad.length === 0 && P.off.length === 0, `${name}: while planning a wall, Turn / Build / Cancel fit with no overlaps${P.bad.length ? ' (overlap: ' + P.bad.join(', ') + ')' : ''}${P.off.length ? ' (off: ' + P.off.join(', ') + ')' : ''}`);
+  await page.screenshot({ path: join(out, `mobile-${name}-planning.png`) });
+  await page.evaluate(() => window.__game.setPlacing(null));
   // Dev tools open: the bar wraps but still fits.
   await page.tap('#btnDev');
   await page.waitForTimeout(200);

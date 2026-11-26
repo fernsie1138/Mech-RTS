@@ -104,4 +104,8 @@ node tests/fog.mjs
 node tests/stats.mjs
 ```
 
+```bash
+node tests/defend-unit.mjs
+```
+
 Screenshots are written to `tests/out/` (not committed).
