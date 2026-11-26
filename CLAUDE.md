@@ -27,7 +27,7 @@ Built with **three.js**, played in **Safari on iPad** (touch first), with mouse 
 
 ## 3. Platform and technical constraints
 
-- **Target:** Safari on iPad, hosted on **GitHub Pages**. It must run from the Pages URL with no server-side code.
+- **Target:** Safari on iPad, hosted on **GitHub Pages**. Phones are supported through **Mobile Mode** (a compact UI, on by default on phone-sized screens; `tests/mobile.mjs` checks nothing overlaps in landscape or portrait). It must run from the Pages URL with no server-side code.
 - **No build step.** Plain ES modules loaded by the browser. three.js is loaded through an `importmap`. Prefer a **vendored copy** of three.js in `lib/` so the game doesn't depend on a CDN.
 - ES modules don't load from `file://` in Safari, so testing always happens through Pages (or a local server in headless tests).
 - Safari on iPad blocks the Fullscreen API in normal tabs. Support **Add to Home Screen** (web app manifest plus `apple-mobile-web-app-capable`) for full-screen play.
@@ -80,6 +80,7 @@ src/
   ui/command.js       selection (tap, double tap, box drag) and orders
   ui/hud.js           match HUD: resources, build buttons, banners, start and end screens
   ui/minimap.js       minimap from the live terrain, tap to jump
+  ui/mobile.js        Mobile Mode toggle (compact UI for phones; CSS under body.mobile in index.html)
   maps/
     loader.js         loads map files (maps/, uploaded file, editor hand-off), decodes images
     imageimport.js    image import format (§7.1)

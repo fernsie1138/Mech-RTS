@@ -88,4 +88,8 @@ node tests/builder-unit.mjs
 node tests/builder.mjs
 ```
 
+```bash
+node tests/mobile.mjs
+```
+
 Screenshots are written to `tests/out/` (not committed).
