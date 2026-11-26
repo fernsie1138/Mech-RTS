@@ -214,7 +214,8 @@ export class MechView {
 
   // Unit under a screen ray (closest to the ray within its body), or null.
   // withStructures: HQs can be picked too (to attack them).
-  pick(ray, units, team = null, withStructures = false) {
+  // slack: how far outside its body a ray may pass (generous for selecting your own, tight for attacking).
+  pick(ray, units, team = null, withStructures = false, slack = 0.8) {
     let best = null, bd = Infinity;
     const c = new THREE.Vector3(), p = new THREE.Vector3();
     for (const u of withStructures && units.structures ? [...units.list, ...units.structures] : units.list) {
@@ -222,7 +223,7 @@ export class MechView {
       c.set(u.x, u.y + u.height * 0.55, u.z);
       ray.closestPointToPoint(c, p);
       const d = p.distanceTo(c);
-      if (d < Math.max(u.radius, u.height * 0.5) + 0.8 && d < bd) { bd = d; best = u; }
+      if (d < Math.max(u.radius, u.height * (slack < 0.5 ? 0.4 : 0.5)) + slack && d < bd) { bd = d; best = u; }
     }
     return best;
   }

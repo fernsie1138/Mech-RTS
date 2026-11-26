@@ -58,14 +58,15 @@ check(box === 'none', 'the selection box disappears when the finger lifts');
 check((await page.evaluate(() => window.__game.rts.target.z)) === (await page.evaluate(() => window.__game.map.markers.playerHQ.z - 25)), 'a one-finger drag does not pan the camera');
 await page.evaluate(() => { window.__game.config.CAMERA.strokeHoldMs = 1e5; });
 
-// Tap the ground: attack-move by default; toggle to Move.
+// Tap the ground: a plain move by default; the A-Move button switches to attack-move.
 const ground = await page.evaluate(() => { const g = window.__game, h = g.map.markers.playerHQ, c = window.__game.camera; const v = new g.THREE.Vector3(h.x - 10, g.heightAt(h.x - 10, h.z - 40), h.z - 40).project(c); return { x: (v.x + 1) / 2 * innerWidth, y: (1 - v.y) / 2 * innerHeight }; });
+check((await page.textContent('#btnKind')) === 'Move', 'the order button starts on Move');
 await tap(ground.x, ground.y);
-check((await mine()).every(x => x.order === 'amove'), 'tapping the ground gives an attack-move order by default');
+check((await mine()).every(x => x.order === 'move'), 'tapping the ground gives a move order by default');
 await page.tap('#btnKind');
-check((await page.textContent('#btnKind')) === 'Move', 'the A-Move button toggles to Move');
+check((await page.textContent('#btnKind')) === 'A-Move', 'the button toggles to A-Move');
 await tap(ground.x, ground.y);
-check((await mine()).every(x => x.order === 'move'), 'with Move on, tapping the ground gives a plain move order');
+check((await mine()).every(x => x.order === 'amove'), 'with A-Move on, tapping the ground gives an attack-move order');
 await page.tap('#btnKind');
 const info = await page.textContent('#selinfo');
 check(/2 Scouts/.test(info) && /2 Titans/.test(info), `the selection panel lists the selected mechs ("${info.trim()}")`);
@@ -79,6 +80,18 @@ const foe = foes.find(f => f.type === 'titan');
 p = await scr(foe.id); await tap(p.x, p.y);
 const att = await page.evaluate(id => window.__game.units.list.filter(u => u.alive && u.team === 0).map(u => u.order === 'attack' && u.attackTarget?.id === id), foe.id);
 check(att.every(Boolean), 'tapping an enemy with mechs selected orders them to attack it');
+// In the middle of a fight, a tap on the ground just beside an enemy is still a move order, and they go.
+const retreat = await page.evaluate(id => {
+  const g = window.__game, f = g.units.list.find(u => u.id === id), p = g.commander.screen(f);
+  g.step(3);                                                   // engaged
+  return { x: p.x + 45, y: p.y + 4, engaged: g.commander.mine().some(u => u.target) };
+}, foe.id);
+await tap(retreat.x, retreat.y);
+const ord = await page.evaluate(() => window.__game.commander.mine().map(u => u.order));
+check(retreat.engaged && ord.every(o => o === 'move'), `engaged mechs given a tap beside an enemy get a move order (${ord.join(', ')})`);
+const back = await page.evaluate(() => { const g = window.__game, h = g.map.markers.playerHQ; const mine = g.commander.mine(); g.units.order(mine, 'move', h.x, h.z - 20); g.step(24); return mine.filter(u => u.alive).map(u => Math.hypot(u.x - h.x, u.z - (h.z - 20))); });
+check(back.length && back.every(d => d < 12), `ordered back home mid-fight, they all get there (${back.map(d => d.toFixed(0)).join(', ')} from the spot)`);
+await page.evaluate(id => { const g = window.__game, f = g.units.list.find(u => u.id === id); g.units.attack(g.commander.mine(), f); }, foe.id);
 
 // The battle: step it on and take screenshots mid-fight and after.
 const mid = await page.evaluate(() => { const g = window.__game; g.step(6); g.render(); return { shots: g.units.stats.shots, proj: g.units.projectiles.list.length }; });
