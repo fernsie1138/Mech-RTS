@@ -1,5 +1,15 @@
 # Changelog
 
+## v14 — Fog of war and line of sight
+- **Fog of war** in a match. Ground nobody on your side has seen is black; ground you have seen before but can't see now is dimmed and grey; what your units can see right now is in full colour. It fades smoothly as your mechs move.
+- **Line of sight:** you only see an enemy mech, turret or HQ while one of your units has a clear view of it within its sight range. Hills, ridges and standing walls block the view (and leave "shadows" behind them you can't see into); trees don't. Sight ranges: Scout 46, Assault 36, Titan 34, Builder 30, turret 30, HQ 40. Scouts are your eyes.
+- Enemies you can't see aren't drawn, can't be tapped (a tap there is a move order) and aren't on the minimap. Enemy turrets and HQs stay marked where you last saw them. Titans can still only shell what your side sees.
+- The minimap shows the fog too.
+- **Fog** button under **Dev** to switch it off (or `index.html?fog=0`). The sandbox has no fog.
+- The enemy AI doesn't use the fog yet (it still knows where your units are).
+- The Dev toolbar now wraps onto two rows on the iPad instead of running under the minimap.
+- Tests: `tests/vision-unit.mjs`, `tests/fog.mjs`.
+
 ## v13 — Mobile Mode for phones
 - New **Mobile** button (top right) switches to a compact UI for playing on a phone: smaller buttons, resources bar, build buttons and minimap, so most of the screen is battlefield. The Builder panel moves to the right-hand side, and the start screen fits a phone.
 - It turns itself on for phone-sized screens and off on an iPad; your choice is remembered on that device. Works best with the phone held sideways; held upright, the buttons stack down the right edge.

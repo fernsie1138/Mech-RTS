@@ -13,6 +13,7 @@ import { CAMERA } from '../config.js';
 export class Commander {
   constructor({ units, mechView, view, rts, effects, damage, selected, state, boxEl, construction = null }) {
     Object.assign(this, { units, mechView, view, rts, effects, damage, selected, state, boxEl, construction });
+    this.canSee = () => true;    // fog of war: can enemies be seen (and so tapped)?
     this.tapSlop = 14;           // screen pixels: a tap this close to a mech counts as tapping it (more in Mobile Mode)
     this.placing = null;
     this.line = null;
@@ -42,7 +43,7 @@ export class Commander {
   nearestOnScreen(cx, cy, team, px = this.tapSlop) {
     let best = null, bd = px;
     for (const u of this.units.list) {
-      if (!u.alive || u.team !== team) continue;
+      if (!u.alive || u.team !== team || !this.canSee(u)) continue;
       const p = this.screen(u);
       if (!p) continue;
       const d = Math.hypot(p.x - cx, p.y - cy);
@@ -81,7 +82,8 @@ export class Commander {
     // A ray through the body, or failing that the nearest mech within a finger's width on screen (small mechs
     // are tiny when zoomed out, especially on a phone).
     const own = this.mechView.pick(ray, this.units, this.team) || this.nearestOnScreen(cx, cy, this.team);
-    const enemy = own ? null : this.mechView.pick(ray, this.units, 1 - this.team, true) || this.nearestOnScreen(cx, cy, 1 - this.team);
+    let enemy = own ? null : this.mechView.pick(ray, this.units, 1 - this.team, true) || this.nearestOnScreen(cx, cy, 1 - this.team);
+    if (enemy && !this.canSee(enemy)) enemy = null;
     const now = performance.now();
     if (own) {
       if (this.lastTap.unit && this.lastTap.unit.type === own.type && now - this.lastTap.t < CAMERA.doubleTapMs) {

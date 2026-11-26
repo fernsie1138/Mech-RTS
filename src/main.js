@@ -23,6 +23,8 @@ import { Minimap } from './ui/minimap.js';
 import { MAP_SIZE, BUILD, BUILD_KEYS } from './config.js';
 import { Construction } from './world/construction.js';
 import { initMobileMode } from './ui/mobile.js';
+import { Vision } from './game/vision.js';
+import { FogView } from './world/fogview.js';
 
 // ---------- version label (warns if index.html and the JS are from different builds) ----------
 const htmlBuild = document.querySelector('meta[name="build"]')?.content;
@@ -120,7 +122,27 @@ function spawnSquad(team, x, z, types = SQUAD) {
 const sandbox = wantSandbox || !map.markers.playerHQ || !map.markers.enemyHQ;
 document.body.classList.toggle('match', !sandbox);
 let match = null, ai = null;
+// Fog of war: on in a match (?fog=0 or the Dev "Fog" button turns it off), off in the sandbox.
+const vision = new Vision(world, units, { teams: [0] });
+const fogView = new FogView(vision.n);
+const fog = { on: !sandbox && params.get('fog') !== '0' };
+fogView.enabled = fog.on;
+const seesEnemy = u => !fog.on || u.team === 0 || vision.sees(0, u);
+mechView.shown = u => seesEnemy(u) || (u.isStructure && u.known);
+mechView.inView = (x, z, explored) => !fog.on || vision.isVisible(0, x, z) || (explored && vision.isExplored(0, x, z));
 const game = { started: sandbox, endAt: null, hqWarnT: -99 };
+function resetFog() {
+  vision.clear();
+  vision.update(Infinity, true);
+  fogView.clear();
+  fogView.snap(vision);
+}
+function setFog(on) {
+  fog.on = on;
+  fogView.enabled = on;
+  document.getElementById('btnFog')?.classList.toggle('on', on);
+  if (on) resetFog();
+}
 function clearUnits() {
   for (const u of units.list) movers.remove(u.mover);
   units.list.length = 0; units.structures.length = 0; units.wrecks.length = 0; units.projectiles.list.length = 0; units.events.length = 0;
@@ -140,6 +162,7 @@ function startUnits() {
       if (T.team === 0) sq.forEach(u => selected.add(u));
     }
     game.endAt = null;
+    resetFog();
     return;
   }
   const P = map.markers.playerHQ || { x: 0, z: 40 };
@@ -198,6 +221,7 @@ function simStep(dt) {
   movers.step(dt);
   units.step(dt);
   construction.step(dt);
+  if (fog.on) vision.update(dt);
   for (const e of construction.events) {
     if (e.type === 'work') { if (e.kind === 'trench') effects.dust(e.x, e.y, e.z, 0.5); else effects.sparksAt(e.x, e.y + 0.8, e.z, 2); }
     else if (e.type === 'built' && e.job.team === 0) hud.banner(`${BUILD[e.job.kind].name} finished`, '#e8b02a', 1.5);
@@ -260,6 +284,8 @@ function resetTerrain() {
 
 // ---------- HUD: orders and test toolbar ----------
 const commander = new Commander({ units, mechView, view, rts, effects, damage, selected, state, boxEl: document.getElementById('boxsel'), construction });
+commander.canSee = u => seesEnemy(u) || (u.isStructure && u.known);
+document.getElementById('btnFog').classList.toggle('on', fog.on);
 commander.onSelect = () => { if (navOverlay.on) view.terrain.rebuildAll(); updateSelInfo(); };
 // Builder panel: shown while Builders are selected.
 const buildPanel = document.getElementById('buildpanel'), buildHint = document.getElementById('buildhint');
@@ -297,6 +323,7 @@ setMoveKind('amove');
 document.getElementById('btnAll').addEventListener('pointerup', () => { selectWeapon('move'); commander.setSelection(commander.mine()); });
 document.getElementById('btnSpawn').addEventListener('pointerup', () => { selectWeapon('move'); commander.setSelection(spawnSquad(0, rts.target.x, rts.target.z + 12)); });
 document.getElementById('btnEnemy').addEventListener('pointerup', () => spawnSquad(1, rts.target.x, rts.target.z - 30, [...SQUAD, 'scout', 'assault']));
+document.getElementById('btnFog').addEventListener('pointerup', () => setFog(!fog.on));
 document.getElementById('btnStop').addEventListener('pointerup', () => units.stop([...selected].filter(u => u.alive)));
 document.getElementById('btnDev').addEventListener('pointerup', () => {
   const on = document.body.classList.toggle('devopen');
@@ -327,8 +354,15 @@ const mobile = initMobileMode(document.getElementById('btnMobile'), on => {
   if (mobileFirst && on) { rts.distance = Math.min(rts.distance, 85); rts.update(0); }
   mobileFirst = false;
 });
-const minimap = new Minimap(document.getElementById('minimap'), { world, rts, units, size: MAP_SIZE, getMatch: () => match, selected });
+const minimap = new Minimap(document.getElementById('minimap'), { world, rts, units, size: MAP_SIZE, getMatch: () => match, selected, fog: { vision, on: () => fog.on } });
 if (!sandbox) hud.showStart();
+let patchT = Infinity;
+function updateFogView(dt) {
+  if ((patchT += dt) > 1) { patchT = 0; fogView.patchScene(scene); }       // new materials (e.g. rebuilt buildings)
+  if (!fog.on) return;
+  fogView.update(dt, vision);
+  for (const h of units.structures) if (h.team !== 0 && vision.sees(0, h)) h.known = true;
+}
 function updateMatchView(dt) {
   if (!match) return;
   for (const h of units.structures) view.markers.setHQ(h.team, h.yaw + h.torsoYaw, h.alive);
@@ -366,6 +400,7 @@ function frame(now) {
     if (n === SIM.maxStepsPerFrame) accum = 0;   // fell behind: drop time rather than spiral
   }
   view.update(dt);
+  updateFogView(dt);
   mechView.update(units, selected, camera);
   updateMatchView(dt);
   if (selected.size !== lastSel) { lastSel = selected.size; updateSelInfo(); }
@@ -386,6 +421,7 @@ window.__game = {
   heightAt, pickGround, fireAt, barrage, resetTerrain, selectWeapon,
   nav, movers, units, mechView, commander, selected, spawnSquad, setNavOverlay, setMoveKind, NAV_CLASSES,
   get match() { return match; }, get ai() { return ai; }, sandbox, game, hud, minimap, construction, setPlacing, mobile,
+  vision, fogView, fog, setFog,
   pause(on = true) { paused = on; },
   // Advance the simulation by `seconds` in fixed steps, independent of real time.
   step(seconds) {
@@ -394,7 +430,7 @@ window.__game = {
     return state.time;
   },
   // Rebuild dirty chunks (all, or up to `limit`) and render one frame immediately.
-  render(limit = Infinity) { view.update(0, limit); mechView.update(units, selected, camera); updateMatchView(0.3); view.render(); return debug.stats(); },
+  render(limit = Infinity) { view.update(0, limit); updateFogView(1); mechView.update(units, selected, camera); updateMatchView(0.3); view.render(); return debug.stats(); },
   stats: () => debug.stats(),
   ready: true,
 };

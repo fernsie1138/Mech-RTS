@@ -54,11 +54,11 @@ export const SIM = {
 //   (also its TERRAIN_DAMAGE profile), projSpeed, splash (radius of damage to units), scale (model size),
 //   turn (rad/s legs), spread (miss distance), indirect (lobs shells over obstacles).
 export const UNIT_TYPES = {
-  scout:   { name: 'Scout',   cls: 0, cost: 100, build: 4,  hp: 140, range: 18, dmg: 9,   rof: 0.22, proj: 'mg',     projSpeed: 90, splash: 0,   scale: 0.8,  turn: 6, accuracy: 0.75 },
-  assault: { name: 'Assault', cls: 1, cost: 220, build: 7,  hp: 360, range: 23, dmg: 28,  rof: 0.9,  proj: 'cannon', projSpeed: 60, splash: 1.5, scale: 1.15, turn: 4, accuracy: 0.8 },
-  titan:   { name: 'Titan',   cls: 2, cost: 420, build: 12, hp: 950, range: 32, dmg: 110, rof: 2.6,  proj: 'shell',  projSpeed: 20, splash: 5,   scale: 1.6,  turn: 2, accuracy: 1, indirect: true },
+  scout:   { name: 'Scout',   cls: 0, cost: 100, build: 4,  hp: 140, range: 18, sight: 46,  dmg: 9,   rof: 0.22, proj: 'mg',     projSpeed: 90, splash: 0,   scale: 0.8,  turn: 6, accuracy: 0.75 },
+  assault: { name: 'Assault', cls: 1, cost: 220, build: 7,  hp: 360, range: 23, sight: 36,  dmg: 28,  rof: 0.9,  proj: 'cannon', projSpeed: 60, splash: 1.5, scale: 1.15, turn: 4, accuracy: 0.8 },
+  titan:   { name: 'Titan',   cls: 2, cost: 420, build: 12, hp: 950, range: 32, sight: 34,  dmg: 110, rof: 2.6,  proj: 'shell',  projSpeed: 20, splash: 5,   scale: 1.6,  turn: 2, accuracy: 1, indirect: true },
   // Unarmed: builds walls and turrets and digs trenches (see BUILD). Spots for Titans like any mech.
-  builder: { name: 'Builder', cls: 0, cost: 150, build: 6,  hp: 220, range: 0,  dmg: 0,   rof: 1,    proj: null,     projSpeed: 0,  splash: 0,   scale: 0.85, turn: 5, accuracy: 0, unarmed: true, speed: 0.7 },
+  builder: { name: 'Builder', cls: 0, cost: 150, build: 6,  hp: 220, range: 0, sight: 30,  dmg: 0,   rof: 1,    proj: null,     projSpeed: 0,  splash: 0,   scale: 0.85, turn: 5, accuracy: 0, unarmed: true, speed: 0.7 },
 };
 export const UNIT_KEYS = ['scout', 'assault', 'titan', 'builder'];
 export const COMBAT_KEYS = ['scout', 'assault', 'titan'];
@@ -86,10 +86,10 @@ export const ECONOMY = {
   unitCap: 40,               // mechs per side (alive + queued); 80 in all is the §10 budget
 };
 // The HQ: produces mechs, defends itself with a twin-cannon turret, and losing it loses the match.
-export const HQ_TYPE = { name: 'HQ', cls: 2, hp: 8000, range: 26, dmg: 26, rof: 0.7, proj: 'cannon', projSpeed: 60, splash: 1.5,
+export const HQ_TYPE = { name: 'HQ', cls: 2, hp: 8000, range: 26, sight: 40, dmg: 26, rof: 0.7, proj: 'cannon', projSpeed: 60, splash: 1.5,
   scale: 1, turn: 2.5, accuracy: 0.8, radius: 6.5, height: 12 };
 // Auto turret, built by Builders: twin machine guns on a pivot. Shoots enemies in range by itself.
-export const TURRET_TYPE = { name: 'Turret', cls: 1, hp: 700, range: 22, dmg: 9, rof: 0.16, proj: 'mg', projSpeed: 90, splash: 0,
+export const TURRET_TYPE = { name: 'Turret', cls: 1, hp: 700, range: 22, sight: 30, dmg: 9, rof: 0.16, proj: 'mg', projSpeed: 90, splash: 0,
   scale: 1, turn: 3, accuracy: 0.75, radius: 1.7, height: 3.4 };
 
 // What Builders make. cost: credits, paid when ordered. work: builder-seconds to finish one (two Builders take half).
@@ -117,4 +117,14 @@ export const AI = {
   maxWave: 14,
   defendRadius: 42,          // enemies this close to its HQ make it defend
   lateGame: 180,             // seconds: after this it builds more Assaults and Titans
+};
+
+// Fog of war (game/vision.js). sight (per unit type above): how far a unit sees, given a clear line of sight.
+export const VISION = {
+  cell: 2,                   // ground grid cell size (world units): 128 x 128 over the map
+  update: 0.25,              // seconds between ground-grid updates
+  targetHeight: 1.6,         // a cell counts as seen if something this tall standing there would be in view
+  defaultSight: 36,
+  explored: 0.45,            // brightness of ground seen before but not now
+  hidden: 0.07,              // ... of ground never seen
 };
