@@ -5,6 +5,8 @@
 //   amove  (default) walk to a point, stopping to fight anything met on the way
 //   move   walk to a point regardless, shooting at targets in range while walking (torso turns independently)
 //   attack go after one target and shoot it
+// Stance: Defend (u.defend) crouches the mech where it stands: harder to hit and less hurt by splash, still firing.
+// Any move or attack order stands it up again.
 //   idle   hold position; shoot what comes in range, chase it a little, then return (guard). After a move order
 //          or Stop it holds its ground instead (u.hold): it shoots what is in range but never chases.
 // Direct-fire weapons need a clear line of sight. Titans lob shells over obstacles at anything their side can
@@ -92,7 +94,7 @@ export class Units {
   // ---------- orders ----------
   order(units, kind, x, z) {
     const live = units.filter(u => u.alive);
-    for (const u of live) { u.order = kind; u.goal = { x, z }; u.attackTarget = null; u.hold = false; }
+    for (const u of live) { u.order = kind; u.goal = { x, z }; u.attackTarget = null; u.hold = false; u.defend = false; }
     if (live.length) this.movers.order(live.map(u => u.mover), x, z);
     // Remember each unit's formation slot as its goal.
     for (const u of live) if (u.mover.goal) u.goal = { ...u.mover.goal };
@@ -100,7 +102,15 @@ export class Units {
   attack(units, target) {
     for (const u of units) {
       if (!u.alive || u.team === target.team) continue;
-      u.order = 'attack'; u.attackTarget = target; u.goal = null; u.chaseT = 0; u.hold = false;
+      u.order = 'attack'; u.attackTarget = target; u.goal = null; u.chaseT = 0; u.hold = false; u.defend = false;
+    }
+  }
+  // Defend stance on or off: on also stops them where they are (they hold their ground and keep firing).
+  defend(units, on = true) {
+    for (const u of units) {
+      if (!u.alive || u.isStructure) continue;
+      if (on) this.stop([u]);
+      u.defend = on;
     }
   }
   stop(units) { for (const u of units) { u.order = 'idle'; u.goal = null; u.attackTarget = null; u.guard = { x: u.x, z: u.z }; u.hold = true; this.movers.stop(u.mover); } }
@@ -194,6 +204,7 @@ export class Units {
       u.amp += (Math.min(1, sp / 3) - u.amp) * Math.min(1, dt * 6);
       u.phase += dt * sp / (2.4 * u.t.scale) * Math.PI * 2;
       if (u.hitT > 0) u.hitT -= dt;
+      u.crouch = (u.crouch || 0) + ((u.defend ? 1 : 0) - (u.crouch || 0)) * Math.min(1, dt * 5);
     }
     for (const h of this.structures) if (h.alive && h.built >= 1) this._stepHQ(h, dt);
     this.projectiles.step(dt);
@@ -233,7 +244,8 @@ export class Units {
   hitChance(u, e) {
     const cover = coverAt(this.world, e.x, e.z);
     const high = Math.max(-1, Math.min(2, (u.y - e.y) / 4)) * COMBAT.highGround;
-    return Math.max(0.05, Math.min(0.98, u.t.accuracy * (1 - cover) + high));
+    const p = u.t.accuracy * (1 - cover) + high;
+    return Math.max(0.03, Math.min(0.98, e.defend ? p * COMBAT.defendHit : p));
   }
 
   _fire(u, e) {

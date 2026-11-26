@@ -56,9 +56,20 @@ await page.screenshot({ path: join(out, 'builder-preview.png') });
 await touch('touchEnd'); await page.waitForTimeout(150);
 await g(() => { window.__game.config.CAMERA.strokeHoldMs = 1e5; });
 check(prev.length === 3 && prev.every(Boolean), `dragging shows a preview of the walls (${prev.length}, all buildable)`);
+// The line is planned, not yet ordered: turn it a bit, then Build.
+check(await page.isVisible('#placebar') && (await g(() => window.__game.construction.jobs.length)) === 0, 'lifting the finger leaves the walls planned, with Turn / Build / Cancel');
+const rot0 = await g(() => window.__game.commander.pending.rot);
+await page.tap('#btnRotR'); await page.tap('#btnRotL'); await page.tap('#btnRotL');
+const rot1 = await g(() => window.__game.commander.pending.rot);
+check(Math.abs(rot1 - rot0 - Math.PI / 12) < 1e-6, `⟲ ⟳ turn the planned walls in 15° steps (${((rot1 - rot0) * 180 / Math.PI).toFixed(0)}°)`);
+await page.tap('#btnRotR');
+await g(() => window.__game.render());
+await page.screenshot({ path: join(out, 'builder-planned.png') });
+await page.tap('#btnPlace');
+check(!(await page.isVisible('#placebar')), 'Build orders them and closes the bar');
 const jobs = await g(() => window.__game.construction.jobs.map(j => j.kind));
 const cr1 = await g(() => window.__game.match.teams[0].credits);
-check(jobs.length === 3 && jobs.every(k => k === 'wall') && Math.abs(cr0 - cr1 - 180) < 1e-6, `lifting the finger orders 3 walls for ⚡180 (${jobs.join(', ')})`);
+check(jobs.length === 3 && jobs.every(k => k === 'wall') && Math.abs(cr0 - cr1 - 180) < 1e-6, `Build orders 3 walls for ⚡180 (${jobs.join(', ')})`);
 
 // Turret: tap.
 await page.tap('[data-build="turret"]');
@@ -73,7 +84,20 @@ await touch('touchStart', ta.x, ta.y);
 for (let k = 1; k <= 6; k++) await touch('touchMove', ta.x + (tb.x - ta.x) * k / 6, ta.y + (tb.y - ta.y) * k / 6);
 await touch('touchEnd'); await page.waitForTimeout(150);
 await g(() => { window.__game.config.CAMERA.strokeHoldMs = 1e5; });
-check((await g(() => window.__game.construction.jobs.filter(j => j.kind === 'trench').length)) === 2, 'Trench: a drag orders two sections');
+check((await g(() => window.__game.commander.pending?.kind)) === 'trench', 'Trench: a drag plans it');
+// A single tap elsewhere moves the plan (keeping its length and angle), then turn it 90° and back, and Build.
+const tm = await screen(site.x, site.z - 9);
+const before = await g(() => ({ ...window.__game.commander.pending }));
+await tap(tm.x, tm.y);
+const after = await g(() => ({ ...window.__game.commander.pending }));
+check(Math.abs(after.len - before.len) < 1e-6 && Math.abs(after.rot - before.rot) < 1e-6 && Math.abs(after.cz - before.cz) > 0.3, 'tapping again moves the planned trench, keeping its length and angle');
+for (let k = 0; k < 6; k++) await page.tap('#btnRotL');
+const r90 = await g(() => window.__game.mechView.preview.map(p => p.rot));
+check(r90.every(r => Math.abs(Math.abs(r - before.rot) - Math.PI / 2) < 1e-6), 'six turns: the trench now runs at right angles to before');
+for (let k = 0; k < 6; k++) await page.tap('#btnRotR');
+await page.evaluate(b => { const G = window.__game, p = G.commander.pending; G.commander._setPending({ ...p, cz: b.cz, cx: b.cx }); }, before);
+await page.tap('#btnPlace');
+check((await g(() => window.__game.construction.jobs.filter(j => j.kind === 'trench').length)) === 2, 'Build orders the two trench sections');
 await g(() => window.__game.render());
 await page.screenshot({ path: join(out, 'builder-sites.png') });
 const res = await g(() => {

@@ -305,9 +305,22 @@ function setPlacing(kind) {
   buildHint.style.display = kind ? 'block' : 'none';
   buildHint.textContent = kind === 'turret' ? 'Tap where the turret goes' : kind ? `Tap to place a ${BUILD[kind].name.toLowerCase()}, or drag a line for a longer one` : '';
 }
+// A planned wall / trench: Turn (15° steps), Build, Cancel.
+const placeBar = document.getElementById('placebar');
+commander.onPending = p => {
+  placeBar.style.display = p ? 'flex' : 'none';
+  document.body.classList.toggle('pending', !!p);
+  if (p) buildHint.textContent = 'Turn it with ⟲ ⟳ · tap elsewhere to move it · then Build';
+};
+const ROT = Math.PI / 12;
+document.getElementById('btnRotL').addEventListener('pointerup', () => commander.rotatePending(ROT));
+document.getElementById('btnRotR').addEventListener('pointerup', () => commander.rotatePending(-ROT));
+document.getElementById('btnPlace').addEventListener('pointerup', () => commander.confirmPending());
+document.getElementById('btnPlaceX').addEventListener('pointerup', () => setPlacing(null));
 buildBtns.forEach(b => b.addEventListener('pointerup', () => { selectWeapon('move'); setPlacing(commander.placing === b.dataset.build ? null : b.dataset.build); }));
 commander.onPlaced = (r, kind) => {
   setPlacing(null);
+  commander.onPending(null);
   if (r.refused === 'poor') hud.refused('poor');
   else if (r.refused === 'site' && !r.jobs.length) hud.banner("Can't build there", '#ffd25a', 1.8);
   else if (r.jobs.length) hud.banner(`${r.jobs.length > 1 ? r.jobs.length + ' ' : ''}${BUILD[kind].name}${r.jobs.length > 1 ? (kind === 'trench' ? ' sections' : 's') : ''} ordered`, '#e8b02a', 1.5);
@@ -335,6 +348,18 @@ document.getElementById('btnEnemy').addEventListener('pointerup', () => spawnSqu
 document.getElementById('btnFog').addEventListener('pointerup', () => setFog(!fog.on));
 document.getElementById('btnStats').addEventListener('pointerup', () => stats.open());
 document.getElementById('btnStop').addEventListener('pointerup', () => units.stop([...selected].filter(u => u.alive)));
+// Defend: on for the selected mechs (off again if they are all defending already).
+const btnDefend = document.getElementById('btnDefend');
+function toggleDefend() {
+  const sel = [...selected].filter(u => u.alive && !u.isStructure);
+  if (!sel.length) return;
+  units.defend(sel, !sel.every(u => u.defend));
+}
+btnDefend.addEventListener('pointerup', toggleDefend);
+function updateDefendBtn() {
+  const sel = [...selected].filter(u => u.alive);
+  btnDefend.classList.toggle('on', sel.length > 0 && sel.every(u => u.defend));
+}
 document.getElementById('btnDev').addEventListener('pointerup', () => {
   const on = document.body.classList.toggle('devopen');
   document.getElementById('btnDev').classList.toggle('on', on);
@@ -417,6 +442,7 @@ function frame(now) {
   updateMatchView(dt);
   if (selected.size !== lastSel) { lastSel = selected.size; updateSelInfo(); }
   updateBuildPanel();
+  updateDefendBtn();
   view.render();
   debug.frame(dt);
   requestAnimationFrame(frame);

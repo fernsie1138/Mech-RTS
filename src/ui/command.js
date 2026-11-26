@@ -4,10 +4,11 @@
 //   Tap an enemy: the selected mechs attack it. Tap the ground: they go there, by attack-move (default) or move.
 //   Two fingers pan / pinch / rotate the camera (right or middle drag with a mouse).
 // In a fire test mode (MG / Cannon / Shell) a tap fires at the ground or building instead.
-// Builder orders (placing = 'wall' | 'turret' | 'trench'): tap to place one (a wall or trench runs across the
-// screen), or drag a line to place a row of them; a preview shows where (green ok, red can't build there).
+// Builder orders (placing = 'wall' | 'turret' | 'trench'): a turret is placed with a tap. A wall or trench is
+// planned first (`pending`, shown as a green / red preview): tap for one (across the screen) or drag a line for a
+// row; tap again to move it; turn it with rotatePending(); then confirmPending() orders it (cancelPending drops it).
 // Tapping an unfinished site with Builders selected puts them back to work on it.
-import { CAMERA } from '../config.js';
+import { CAMERA, BUILD } from '../config.js';
 
 
 export class Commander {
@@ -18,6 +19,8 @@ export class Commander {
     this.placing = null;
     this.line = null;
     this.onPlaced = null;        // fn(result, kind) after a Builder order (result from construction.order)
+    this.pending = null;         // a planned wall / trench: { kind, cx, cz, len, rot }
+    this.onPending = null;       // fn(pending or null) when it changes (the page shows Turn / Build / Cancel)
     this.team = 0;
     this.moveKind = 'move';      // a tap on the ground: plain move (the A-Move button switches to attack-move)
     this.lastTap = { t: 0, unit: null };
@@ -54,7 +57,21 @@ export class Commander {
 
   builders() { return [...this.selected].filter(u => u.alive && u.t.unarmed); }
 
-  setPlacing(kind) { this.placing = kind; this.line = null; this.mechView.preview = null; }
+  setPlacing(kind) { this.placing = kind; this.line = null; this.pending = null; this.mechView.preview = null; this.onPending?.(null); }
+
+  // ---------- a planned wall / trench, before it is ordered ----------
+  _setPending(p) {
+    this.pending = p;
+    this.mechView.preview = p ? this._pendingPlan() : null;
+    this.onPending?.(p);
+  }
+  _pendingPlan() {
+    const p = this.pending, dx = Math.cos(p.rot), dz = -Math.sin(p.rot);
+    return this.construction.plan(p.kind, p.cx - dx * p.len / 2, p.cz - dz * p.len / 2, p.cx + dx * p.len / 2, p.cz + dz * p.len / 2);
+  }
+  rotatePending(d) { if (this.pending) this._setPending({ ...this.pending, rot: this.pending.rot + d }); }
+  confirmPending() { if (this.pending) this._place(this._pendingPlan()); }
+  cancelPending() { this.setPlacing(null); }
 
   // Wall / trench direction for a single tap: across the screen at (cx, cy).
   _acrossRot(cx, cy) {
@@ -75,7 +92,11 @@ export class Commander {
     if (this.state.weapon !== 'move') return this.fireTap(cx, cy);
     if (this.placing && this.construction) {
       const g = this.view.pickGround(cx, cy);
-      if (g) this._place(this._plan(g, null, cx, cy));
+      if (!g) return;
+      if (this.placing === 'turret') { this._place(this._plan(g, null, cx, cy)); return; }
+      // Wall / trench: plan one here (or move the one already planned, keeping its angle and length).
+      const p = this.pending;
+      this._setPending(p ? { ...p, cx: g.x, cz: g.z } : { kind: this.placing, cx: g.x, cz: g.z, len: BUILD[this.placing].len, rot: this._acrossRot(cx, cy) });
       return;
     }
     const ray = this.rts.screenRay(cx, cy);
@@ -139,7 +160,12 @@ export class Commander {
   boxEnd(cx, cy) {
     if (this.line) {
       const { a, b } = this.line;
-      this._place(this._plan(a, b || null, cx, cy));
+      this.line = null;
+      if (this.placing === 'turret') { this._place(this._plan(a, b || null, cx, cy)); return; }
+      // A line drawn with a finger: planned along it, ready to turn or build.
+      const L = b ? Math.hypot(b.x - a.x, b.z - a.z) : 0, len = BUILD[this.placing].len;
+      if (L < len * 0.5) this._setPending({ kind: this.placing, cx: a.x, cz: a.z, len, rot: this._acrossRot(cx, cy) });
+      else this._setPending({ kind: this.placing, cx: (a.x + b.x) / 2, cz: (a.z + b.z) / 2, len: L, rot: Math.atan2(-(b.z - a.z), b.x - a.x) });
       return;
     }
     const b = this.box;

@@ -1,8 +1,15 @@
 // Single entry point for all damage, to units and to the world (CLAUDE.md §4).
 // Terrain (craters, wear, flooding), trees, buildings and units take damage here. Every change is
 // reported to the nav grid (world.nav) so paths re-plan around new craters, rubble and fallen trees.
-import { TERRAIN_DAMAGE } from '../config.js';
+import { TERRAIN_DAMAGE, COMBAT } from '../config.js';
 import { BUILDING_DAMAGE, addRubble } from '../world/buildings.js';
+import { FEATURE } from '../terrain/surface.js';
+
+// Is (x, z) in a trench dug by a Builder?
+function inTrench(world, x, z) {
+  const { hf, surface } = world;
+  return (surface.features[hf.index(Math.round(hf.gx(x)), Math.round(hf.gz(z)))] & FEATURE.TRENCH) !== 0;
+}
 
 export class Damage {
   constructor(world) {
@@ -61,7 +68,11 @@ export class Damage {
         if (!u.alive || u.team === unitHit.team || u === unitHit.exclude) continue;
         const d = Math.hypot(u.x - x, u.z - z) - u.radius;
         if (d < unitHit.splash && Math.abs(u.y + u.height / 2 - by) < u.height + unitHit.splash) {
-          this.hitUnit(u, unitHit.dmg * (1 - 0.6 * Math.max(0, d) / unitHit.splash));
+          // Braced (Defend) and dug in (trench): less hurt by the blast.
+          let k = 1 - 0.6 * Math.max(0, d) / unitHit.splash;
+          if (u.defend) k *= COMBAT.defendSplash;
+          if (inTrench(this.world, u.x, u.z)) k *= COMBAT.trenchSplash;
+          this.hitUnit(u, unitHit.dmg * k);
           unitsHit++;
         }
       }

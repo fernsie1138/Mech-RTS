@@ -75,6 +75,9 @@ export const COMBAT = {
   guardRadius: 30,           // idle units chase this far from where they were left
   wreckTime: 40,             // seconds a wreck stays before sinking away
   trenchCover: 0.5,          // hit chance x (1 - this) for a mech standing in a trench
+  defendHit: 0.55,           // Defend stance: incoming hit chance x this (on top of cover, e.g. a trench)
+  defendSplash: 0.65,        // ... and splash damage (shells, cannon bursts) x this
+  trenchSplash: 0.6,         // splash damage x this for a mech in a trench
 };
 
 // ---------------- match: economy, HQs, capture points, enemy AI (milestone 8) ----------------
