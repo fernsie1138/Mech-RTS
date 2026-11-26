@@ -31,6 +31,7 @@ export const MUZZLES = {
   hq: [[-0.4, 10.3, 2.9], [0.4, 10.3, 2.9]],          // the HQ's roof turret
   turret: [[-0.3, 0.55, 1.8], [0.3, 0.55, 1.8]],
   builder: [[0.85, 0.4, 1.6]],
+  medium: [[0.91, 0.73, 0.91]],                    // the right-shoulder autocannon (units/mediummech.js MEDIUM_MUZZLE)
 };
 export const TORSO_Y = 2.45;          // torso pivot height in model units (x scale)
 export const MECH_HEIGHT = 3.6;       // model height in model units

@@ -17,7 +17,7 @@ export class Hud {
       const t = UNIT_TYPES[k], c = document.createElement('div');
       c.className = 'card btn';
       c.dataset.type = k;
-      c.innerHTML = `<div class="nm">${t.name}</div><div class="cost">⚡${t.cost}</div><div class="q"></div><div class="pb"></div>`;
+      c.innerHTML = `<div class="nm">${t.short || t.name}</div><div class="cost">⚡${t.cost}</div><div class="q"></div><div class="pb"></div>`;
       this.el.build.appendChild(c);
       this.cards[k] = c;
       // Tap: build one. Press and hold: take one off the queue (refund).

@@ -21,6 +21,7 @@ export const BUILDING = {
 // d = distance from the blast to the piece's surface.
 export const BUILDING_DAMAGE = {
   mg: { power: 6, radius: 1.2 },
+  autocannon: { power: 30, radius: 2 },
   cannon: { power: 80, radius: 3.5 },
   shell: { power: 170, radius: 6 },
 };
