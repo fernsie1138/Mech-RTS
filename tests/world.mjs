@@ -14,7 +14,7 @@ const w = watchPage(page, server.url);
 const ready = n => page.waitForFunction(x => window[x]?.ready, n, { timeout: 30000 });
 
 // ================= game =================
-await page.goto(server.url);
+await page.goto(server.url + '?sandbox');
 await ready('__game');
 await page.evaluate(() => window.__game.pause());
 

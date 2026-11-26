@@ -107,7 +107,8 @@ export class MechView {
     // Selection rings and health bars (shown when selected or damaged), facing the camera.
     let r = 0, b = 0;
     const camQ = camera.quaternion;
-    for (const u of units.list) {
+    for (const u of units.structures ? [...units.list, ...units.structures] : units.list) {
+      if (!u.alive) continue;
       const sel = selected.has(u);
       if (sel && r < MAX_UNITS) {
         this._m.compose(this._p.set(u.x, u.y + 0.15, u.z), this._q.identity(), this._s.set(u.radius, 1, u.radius));
@@ -148,11 +149,12 @@ export class MechView {
   }
 
   // Unit under a screen ray (closest to the ray within its body), or null.
-  pick(ray, units, team = null) {
+  // withStructures: HQs can be picked too (to attack them).
+  pick(ray, units, team = null, withStructures = false) {
     let best = null, bd = Infinity;
     const c = new THREE.Vector3(), p = new THREE.Vector3();
-    for (const u of units.list) {
-      if (team !== null && u.team !== team) continue;
+    for (const u of withStructures && units.structures ? [...units.list, ...units.structures] : units.list) {
+      if (!u.alive || (team !== null && u.team !== team)) continue;
       c.set(u.x, u.y + u.height * 0.55, u.z);
       ray.closestPointToPoint(c, p);
       const d = p.distanceTo(c);

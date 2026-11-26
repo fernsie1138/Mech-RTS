@@ -1,6 +1,7 @@
 // Game bootstrap and main loop.
-// Loads a map (?map=<name> from maps/, ?map=@test from the editor, ?map=@procedural), then runs a combat
-// sandbox on it: your mechs and test enemy squads, plus the test weapons.
+// Loads a map (?map=<name> from maps/, ?map=@test from the editor, ?map=@procedural), then plays a match on it:
+// both HQs, an economy, capture points and the enemy AI (CLAUDE.md §9). With ?sandbox (or a map without both
+// HQs) it is the combat sandbox instead: your squad, test enemy squads and the test weapons, no AI.
 import * as THREE from 'three';
 import { VERSION } from './version.js';
 import * as config from './config.js';
@@ -15,6 +16,11 @@ import { Movers } from './units/movers.js';
 import { Units } from './units/units.js';
 import { MechView } from './units/mech.js';
 import { Commander } from './ui/command.js';
+import { Match } from './game/match.js';
+import { EnemyAI } from './ai/enemy.js';
+import { Hud } from './ui/hud.js';
+import { Minimap } from './ui/minimap.js';
+import { MAP_SIZE } from './config.js';
 
 // ---------- version label (warns if index.html and the JS are from different builds) ----------
 const htmlBuild = document.querySelector('meta[name="build"]')?.content;
@@ -37,6 +43,7 @@ function fatal(msg) {
 const params = new URLSearchParams(location.search);
 const mapParam = params.get('map') || 'sample';
 const fromEditor = mapParam === '@test';
+const wantSandbox = params.has('sandbox');
 
 async function loadChosenMap() {
   if (mapParam === '@procedural') return proceduralMap();
@@ -99,7 +106,31 @@ const SQUAD = ['scout', 'assault', 'titan'];
 function spawnSquad(team, x, z, types = SQUAD) {
   return types.map((type, k) => units.spawn(type, team, x + (k - 1) * 7, z));
 }
+// Match or sandbox.
+const sandbox = wantSandbox || !map.markers.playerHQ || !map.markers.enemyHQ;
+document.body.classList.toggle('match', !sandbox);
+let match = null, ai = null;
+const game = { started: sandbox, endAt: null, hqWarnT: -99 };
+function clearUnits() {
+  for (const u of units.list) movers.remove(u.mover);
+  units.list.length = 0; units.structures.length = 0; units.wrecks.length = 0; units.projectiles.list.length = 0; units.events.length = 0;
+  world.blockers = [];
+  selected.clear();
+}
+// Units at the start: a squad each side in a match (by the HQs), just yours in the sandbox.
 function startUnits() {
+  clearUnits();
+  if (!sandbox) {
+    match = new Match(units, map.markers, { size: MAP_SIZE });
+    ai = new EnemyAI(match);
+    nav.flush();                                // the HQs block movement before anything spawns
+    for (const T of match.teams) {
+      const sq = spawnSquad(T.team, T.rally.x, T.rally.z);
+      if (T.team === 0) sq.forEach(u => selected.add(u));
+    }
+    game.endAt = null;
+    return;
+  }
   const P = map.markers.playerHQ || { x: 0, z: 40 };
   const sq = spawnSquad(0, P.x, P.z - 18);
   selected.clear(); sq.forEach(u => selected.add(u));
@@ -125,7 +156,8 @@ const debug = new DebugOverlay(document.getElementById('debug'), document.getEle
 debug.extra = () => {
   const c = view.forest.counts();
   const uc = units.counts();
-  return `mechs      ${uc[0]} yours, ${uc[1]} enemy (${units.wrecks.length} wrecks) shots ${units.stats.shots} hits ${units.stats.hits}\n` +
+  return (match ? `match      ${match.time.toFixed(0)} s  credits ${match.teams.map(T => Math.floor(T.credits)).join(' / ')}  queue ${match.teams.map(T => T.queue.length).join(' / ')}  AI wave ${ai.wave} (next ${ai.waveSize})\n` : '') +
+         `mechs      ${uc[0]} yours, ${uc[1]} enemy (${units.wrecks.length} wrecks) shots ${units.stats.shots} hits ${units.stats.hits}\n` +
          `paths      ${movers.stats.paths}  projectiles ${units.projectiles.list.length}  particles ${effects.activeCount()}\n` +
          `nav queue  ${nav.queue.length}  escapes ${movers.stats.escapes}  replans ${movers.stats.replans}\n` +
          `chunks     ${view.terrain.chunks.length} (dirty ${view.terrain.dirty.size})\n` +
@@ -154,12 +186,27 @@ function simStep(dt) {
   }
   movers.step(dt);
   units.step(dt);
+  if (match) { match.step(dt); ai.step(dt); }
   for (const e of units.events) {
     if (e.type === 'fire') effects.muzzle(e.x, e.y, e.z, e.kind === 'mg' ? 0.4 : e.kind === 'cannon' ? 0.8 : 1.3);
-    else if (e.type === 'hit') effects.sparksAt(e.x, e.y, e.z, e.kind === 'mg' ? 3 : 8);
-    else if (e.type === 'death') selected.delete(e.unit);
+    else if (e.type === 'hit') {
+      effects.sparksAt(e.x, e.y, e.z, e.kind === 'mg' ? 3 : 8);
+      if (e.unit.isHQ && e.unit.team === 0 && state.time - game.hqWarnT > 20) { game.hqWarnT = state.time; hud.banner('Your HQ is under attack!', '#ff8a70'); }
+    }
+    else if (e.type === 'death') { selected.delete(e.unit); match?.unitLost(e.unit); }
   }
   units.events.length = 0;
+  if (match) {
+    for (const e of match.events) {
+      if (e.type === 'captured') hud.banner(e.team === 0 ? 'Capture point secured' : 'The enemy took a capture point', e.team === 0 ? '#7cb8ff' : '#ff8a70');
+      else if (e.type === 'lost' && e.team === 0) hud.banner('Capture point lost', '#ff8a70');
+      else if (e.type === 'end') { game.endAt = state.time + 3; hud.banner(e.winner === 0 ? 'Enemy HQ destroyed!' : 'Your HQ has fallen', e.winner === 0 ? '#7cb8ff' : '#ff8a70', 3); }
+    }
+    match.events.length = 0;
+    for (const e of ai.events) if (e.target === 'hq') hud.banner('Enemy attack heading for your HQ!', '#ff8a70');
+    ai.events.length = 0;
+    if (game.endAt !== null && state.time >= game.endAt) { game.endAt = null; hud.end(match.over.winner === 0, match); }
+  }
   effects.update(dt);
 }
 
@@ -187,11 +234,10 @@ function resetTerrain() {
   view.reloadTrees();
   view.reloadBuildings();
   hookWater();
+  clearUnits();
   nav.queue.length = 0;
   nav.rebuild();
   if (navOverlay.on) view.terrain.rebuildAll();
-  for (const u of [...units.list]) { units.movers.remove(u.mover); }
-  units.list.length = 0; units.wrecks.length = 0; units.projectiles.list.length = 0;
   startUnits();
 }
 
@@ -212,6 +258,12 @@ setMoveKind('amove');
 document.getElementById('btnAll').addEventListener('pointerup', () => { selectWeapon('move'); commander.setSelection(commander.mine()); });
 document.getElementById('btnSpawn').addEventListener('pointerup', () => { selectWeapon('move'); commander.setSelection(spawnSquad(0, rts.target.x, rts.target.z + 12)); });
 document.getElementById('btnEnemy').addEventListener('pointerup', () => spawnSquad(1, rts.target.x, rts.target.z - 30, [...SQUAD, 'scout', 'assault']));
+document.getElementById('btnStop').addEventListener('pointerup', () => units.stop([...selected].filter(u => u.alive)));
+document.getElementById('btnDev').addEventListener('pointerup', () => {
+  const on = document.body.classList.toggle('devopen');
+  document.getElementById('btnDev').classList.toggle('on', on);
+  if (!on) selectWeapon('move');
+});
 document.getElementById('btnBarrage').addEventListener('pointerup', () => barrage(rts.target.x, rts.target.z, { seed: (state.steps % 9973) + 1 }));
 document.getElementById('btnReset').addEventListener('pointerup', resetTerrain);
 const selInfo = document.getElementById('selinfo');
@@ -221,6 +273,24 @@ function updateSelInfo() {
   selInfo.textContent = txt; selInfo.style.display = txt ? 'block' : 'none';
 }
 updateSelInfo();
+// Match HUD and minimap.
+const hud = new Hud({
+  getMatch: () => match,
+  onBuild: type => { if (!match) return; const r = match.enqueue(0, type); if (r !== true) hud.refused(r); },
+  onUnbuild: type => match?.dequeue(0, type),
+  onStart: () => { game.started = true; hud.banner('Build mechs and take the capture points'); },
+  onAgain: () => { resetTerrain(); game.started = true; },
+});
+const minimap = new Minimap(document.getElementById('minimap'), { world, rts, units, size: MAP_SIZE, getMatch: () => match, selected });
+if (!sandbox) hud.showStart();
+function updateMatchView(dt) {
+  if (!match) return;
+  for (const h of units.structures) view.markers.setHQ(h.team, h.yaw + h.torsoYaw, h.alive);
+  for (const p of match.points) view.markers.setCapture(p.index, p.control);
+  hud.update(dt);
+  minimap.update(dt);
+}
+
 window.addEventListener('keydown', e => {
   if (e.key === '0') selectWeapon('move');
   if (e.key === '1') selectWeapon('mg');
@@ -239,7 +309,7 @@ let lastSel = -1;
 function frame(now) {
   const dt = Math.min((now - lastT) / 1000, 0.25);
   lastT = now;
-  if (!paused) {
+  if (!paused && game.started) {
     accum += dt;
     let n = 0;
     while (accum >= SIM.stepSeconds && n < SIM.maxStepsPerFrame) {
@@ -251,6 +321,7 @@ function frame(now) {
   }
   view.update(dt);
   mechView.update(units, selected, camera);
+  updateMatchView(dt);
   if (selected.size !== lastSel) { lastSel = selected.size; updateSelInfo(); }
   view.render();
   debug.frame(dt);
@@ -267,6 +338,7 @@ window.__game = {
   get water() { return view.water; }, get forest() { return view.forest; }, get buildings() { return view.buildings; },
   heightAt, pickGround, fireAt, barrage, resetTerrain, selectWeapon,
   nav, movers, units, mechView, commander, selected, spawnSquad, setNavOverlay, setMoveKind, NAV_CLASSES,
+  get match() { return match; }, get ai() { return ai; }, sandbox, game, hud, minimap,
   pause(on = true) { paused = on; },
   // Advance the simulation by `seconds` in fixed steps, independent of real time.
   step(seconds) {
@@ -275,7 +347,7 @@ window.__game = {
     return state.time;
   },
   // Rebuild dirty chunks (all, or up to `limit`) and render one frame immediately.
-  render(limit = Infinity) { view.update(0, limit); mechView.update(units, selected, camera); view.render(); return debug.stats(); },
+  render(limit = Infinity) { view.update(0, limit); mechView.update(units, selected, camera); updateMatchView(0.3); view.render(); return debug.stats(); },
   stats: () => debug.stats(),
   ready: true,
 };

@@ -118,6 +118,13 @@ export class NavGrid {
     return (a1 - a0 + 1) * (b1 - b0 + 1);
   }
 
+  // Round obstacles that aren't buildings (HQs): world.blockers = [{ x, z, r }].
+  _blocker(x, z) {
+    const b = this.world.blockers;
+    if (b) for (const o of b) if ((x - o.x) ** 2 + (z - o.z) ** 2 < o.r * o.r) return true;
+    return false;
+  }
+
   // Read the world into the per-cell facts.
   _sense(i0, j0, i1, j1) {
     const { hf, surface, water, forest, buildings } = this.world;
@@ -144,7 +151,7 @@ export class NavGrid {
       }
       this.slope[k] = slope;
       this.mult[k] = mult;
-      this.hard[k] = buildings && buildings.blockedAt(x, z, 0.1) ? 1 : 0;
+      this.hard[k] = (buildings && buildings.blockedAt(x, z, 0.1)) || this._blocker(x, z) ? 1 : 0;
       this.rubble[k] = surface.base[sk] === SURFACE.RUBBLE ? 1 : 0;
       this.trees[k] = 0;
     }

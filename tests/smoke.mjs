@@ -73,7 +73,7 @@ check(html.includes(`<div id="ver">${VERSION}</div>`), `index.html fallback labe
   const ctx = await browser.newContext({ ...devices['iPad Pro 11 landscape'] });
   const page = await ctx.newPage();
   const w = watchPage(page, server.url);
-  await page.goto(server.url, { waitUntil: 'load' });
+  await page.goto(server.url + '?sandbox', { waitUntil: 'load' });
   await page.waitForFunction(() => window.__game?.ready, null, { timeout: 15000 });
   await page.waitForTimeout(1500);
 
@@ -153,7 +153,7 @@ check(html.includes(`<div id="ver">${VERSION}</div>`), `index.html fallback labe
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   const page = await ctx.newPage();
   const w = watchPage(page, server.url);
-  await page.goto(server.url, { waitUntil: 'load' });
+  await page.goto(server.url + '?sandbox', { waitUntil: 'load' });
   await page.waitForFunction(() => window.__game?.ready, null, { timeout: 15000 });
   const d0 = await page.evaluate(() => window.__game.rts.distance);
   await page.mouse.move(640, 400);

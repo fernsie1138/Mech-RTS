@@ -57,7 +57,7 @@ export class Damage {
     }
     let unitsHit = 0;
     if (unitHit && this.world.units) {
-      for (const u of [...this.world.units.list]) {
+      for (const u of [...this.world.units.list, ...this.world.units.structures]) {
         if (!u.alive || u.team === unitHit.team || u === unitHit.exclude) continue;
         const d = Math.hypot(u.x - x, u.z - z) - u.radius;
         if (d < unitHit.splash && Math.abs(u.y + u.height / 2 - by) < u.height + unitHit.splash) {
@@ -80,6 +80,13 @@ export class Damage {
     if (u.hp > 0) return false;
     const { surface, effects, units } = this.world;
     units?.kill(u);
+    if (u.isHQ) {
+      // The HQ goes up in a chain of blasts and burns for a long time.
+      surface.wear(u.x, u.z, 14, 1, 1);
+      for (let k = 0; k < 5; k++) effects?.explosion(u.x + (Math.random() - 0.5) * 8, u.y + 2 + Math.random() * 6, u.z + (Math.random() - 0.5) * 8, 2.2);
+      effects?.burn(u.x, u.y + 3, u.z, 3, 60);
+      return true;
+    }
     surface.wear(u.x, u.z, 3 * u.t.scale, 0.6, 0.7);
     effects?.explosion(u.x, u.y + u.height * 0.4, u.z, 1.1 * u.t.scale);
     effects?.burn(u.x, u.y + 0.5, u.z, 0.9 * u.t.scale, 8 + Math.random() * 6);

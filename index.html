@@ -9,64 +9,97 @@
 <meta name="apple-mobile-web-app-title" content="Mech RTS">
 <meta name="theme-color" content="#0b1015">
 <!-- Must match VERSION in src/version.js. If they differ, the HUD warns that Safari served stale code. -->
-<meta name="build" content="v10">
+<meta name="build" content="v11">
 <title>Mech RTS</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" type="image/png" href="icons/icon-180.png">
-<link rel="stylesheet" href="style.css?v=10">
+<link rel="stylesheet" href="style.css?v=11">
 <style>
   #topright { position:fixed; top:calc(env(safe-area-inset-top) + 10px); right:calc(env(safe-area-inset-right) + 12px);
               display:flex; gap:8px; }
   #fire { position:fixed; bottom:calc(env(safe-area-inset-bottom) + 12px); left:50%; transform:translateX(-50%);
           display:flex; gap:8px; padding:8px; align-items:center; }
   #fire .lbl { font-size:13px; color:#b9c7d2; padding:0 4px 0 6px; }
+  #fire .sep, #fire .lbl { display:flex; align-items:center; }
   #fire .sep { width:1px; align-self:stretch; background:rgba(160,200,230,.25); margin:0 2px; }
   #selinfo { position:fixed; left:calc(env(safe-area-inset-left) + 12px); bottom:calc(env(safe-area-inset-bottom) + 84px);
              padding:6px 10px; font-size:14px; display:none; pointer-events:none; }
   #boxsel { position:fixed; border:1.5px solid #7cff9a; background:rgba(124,255,154,.12); pointer-events:none; display:none; z-index:6; }
+  /* Match HUD */
+  #res { position:fixed; top:calc(env(safe-area-inset-top) + 10px); left:calc(env(safe-area-inset-left) + 12px);
+         display:flex; gap:14px; align-items:baseline; padding:8px 14px; font-size:16px; font-weight:700; pointer-events:none; }
+  #credits { color:#ffd25a; font-size:19px; } #income { color:#9fd18b; font-size:14px; } #points { color:#ffd23a; }
+  #army { color:#b9d6ff; } #clock { color:#b9c7d2; font-weight:600; font-size:14px; }
+  #build { position:fixed; top:calc(env(safe-area-inset-top) + 62px); left:calc(env(safe-area-inset-left) + 12px);
+           display:flex; flex-direction:column; gap:8px; }
+  .card { position:relative; width:112px; height:62px; flex-direction:column; align-items:flex-start; justify-content:center;
+          padding:0 12px; overflow:hidden; }
+  .card .nm { font-size:15px; } .card .cost { font-size:13px; color:#ffd25a; font-weight:600; }
+  .card .q { position:absolute; right:10px; top:8px; font-size:15px; color:#9dffb0; }
+  .card .pb { position:absolute; left:0; bottom:0; height:4px; width:0; background:#7cff9a; }
+  .card.poor .cost { color:#ff8a70; } .card.poor { opacity:.72; }
+  #banner { position:fixed; top:calc(env(safe-area-inset-top) + 56px); left:50%; transform:translateX(-50%);
+            font-size:20px; font-weight:700; text-shadow:0 2px 6px #000; pointer-events:none; opacity:0; transition:opacity .4s; white-space:nowrap; }
+  #minimap { position:fixed; right:calc(env(safe-area-inset-right) + 12px); bottom:calc(env(safe-area-inset-bottom) + 24px);
+             width:180px; height:180px; border-radius:8px; border:1px solid rgba(160,200,230,.35); touch-action:none; }
+  .screen { position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(6,10,14,.72); z-index:30; }
+  .screen .box { width:min(520px, calc(100% - 40px)); padding:24px 26px; text-align:center; }
+  .screen h1 { margin:0 0 10px; font-size:34px; letter-spacing:2px; }
+  .screen p { color:#b9c7d2; font-size:15px; line-height:1.5; margin:8px 0; }
+  .screen .help { text-align:left; display:grid; grid-template-columns:auto 1fr; gap:4px 14px; font-size:14px; color:#b9c7d2; margin:14px 0; }
+  .screen .help b { color:#e8eef2; }
+  .screen .btn { display:inline-flex; margin:14px 6px 0; min-width:150px; height:50px; font-size:17px; }
+  .btn.go { background:rgba(40,110,60,.95); border-color:#7cff9a; }
+  body.match .dev { display:none !important; }
+  body.match.devopen .dev { display:flex !important; }
+  body:not(.match) #res, body:not(.match) #build, body:not(.match) #minimap, body:not(.match) #btnDev { display:none; }
   #mapname { position:fixed; top:calc(env(safe-area-inset-top) + 10px); left:50%; transform:translateX(-50%);
              padding:6px 14px; font-size:14px; font-weight:600; pointer-events:none; }
 </style>
 <script type="importmap">
 {
   "imports": {
-    "three": "./lib/three.module.js?v=10",
-    "./editor/editor.js": "./editor/editor.js?v=10",
-    "./editor/history.js": "./editor/history.js?v=10",
-    "./editor/tools/features.js": "./editor/tools/features.js?v=10",
-    "./editor/tools/markers.js": "./editor/tools/markers.js?v=10",
-    "./editor/tools/terrain.js": "./editor/tools/terrain.js?v=10",
-    "./src/combat/damage.js": "./src/combat/damage.js?v=10",
-    "./src/combat/effects.js": "./src/combat/effects.js?v=10",
-    "./src/combat/los.js": "./src/combat/los.js?v=10",
-    "./src/combat/projectiles.js": "./src/combat/projectiles.js?v=10",
-    "./src/config.js": "./src/config.js?v=10",
-    "./src/main.js": "./src/main.js?v=10",
-    "./src/maps/format.js": "./src/maps/format.js?v=10",
-    "./src/maps/imageimport.js": "./src/maps/imageimport.js?v=10",
-    "./src/maps/loader.js": "./src/maps/loader.js?v=10",
-    "./src/nav/navgrid.js": "./src/nav/navgrid.js?v=10",
-    "./src/nav/pathfinding.js": "./src/nav/pathfinding.js?v=10",
-    "./src/terrain/chunks.js": "./src/terrain/chunks.js?v=10",
-    "./src/terrain/heightfield.js": "./src/terrain/heightfield.js?v=10",
-    "./src/terrain/surface.js": "./src/terrain/surface.js?v=10",
-    "./src/terrain/testmap.js": "./src/terrain/testmap.js?v=10",
-    "./src/terrain/water.js": "./src/terrain/water.js?v=10",
-    "./src/terrain/watermesh.js": "./src/terrain/watermesh.js?v=10",
-    "./src/ui/camera.js": "./src/ui/camera.js?v=10",
-    "./src/ui/command.js": "./src/ui/command.js?v=10",
-    "./src/ui/debug.js": "./src/ui/debug.js?v=10",
-    "./src/units/mech.js": "./src/units/mech.js?v=10",
-    "./src/units/movers.js": "./src/units/movers.js?v=10",
-    "./src/units/units.js": "./src/units/units.js?v=10",
-    "./src/version.js": "./src/version.js?v=10",
-    "./src/view.js": "./src/view.js?v=10",
-    "./src/world/buildings.js": "./src/world/buildings.js?v=10",
-    "./src/world/buildingview.js": "./src/world/buildingview.js?v=10",
-    "./src/world/forest.js": "./src/world/forest.js?v=10",
-    "./src/world/markers.js": "./src/world/markers.js?v=10",
-    "./src/world/trees.js": "./src/world/trees.js?v=10"
+    "three": "./lib/three.module.js?v=11",
+    "./editor/editor.js": "./editor/editor.js?v=11",
+    "./editor/history.js": "./editor/history.js?v=11",
+    "./editor/tools/features.js": "./editor/tools/features.js?v=11",
+    "./editor/tools/markers.js": "./editor/tools/markers.js?v=11",
+    "./editor/tools/terrain.js": "./editor/tools/terrain.js?v=11",
+    "./src/ai/enemy.js": "./src/ai/enemy.js?v=11",
+    "./src/combat/damage.js": "./src/combat/damage.js?v=11",
+    "./src/combat/effects.js": "./src/combat/effects.js?v=11",
+    "./src/combat/los.js": "./src/combat/los.js?v=11",
+    "./src/combat/projectiles.js": "./src/combat/projectiles.js?v=11",
+    "./src/config.js": "./src/config.js?v=11",
+    "./src/game/match.js": "./src/game/match.js?v=11",
+    "./src/main.js": "./src/main.js?v=11",
+    "./src/maps/format.js": "./src/maps/format.js?v=11",
+    "./src/maps/imageimport.js": "./src/maps/imageimport.js?v=11",
+    "./src/maps/loader.js": "./src/maps/loader.js?v=11",
+    "./src/nav/navgrid.js": "./src/nav/navgrid.js?v=11",
+    "./src/nav/pathfinding.js": "./src/nav/pathfinding.js?v=11",
+    "./src/terrain/chunks.js": "./src/terrain/chunks.js?v=11",
+    "./src/terrain/heightfield.js": "./src/terrain/heightfield.js?v=11",
+    "./src/terrain/surface.js": "./src/terrain/surface.js?v=11",
+    "./src/terrain/testmap.js": "./src/terrain/testmap.js?v=11",
+    "./src/terrain/water.js": "./src/terrain/water.js?v=11",
+    "./src/terrain/watermesh.js": "./src/terrain/watermesh.js?v=11",
+    "./src/ui/camera.js": "./src/ui/camera.js?v=11",
+    "./src/ui/command.js": "./src/ui/command.js?v=11",
+    "./src/ui/debug.js": "./src/ui/debug.js?v=11",
+    "./src/ui/hud.js": "./src/ui/hud.js?v=11",
+    "./src/ui/minimap.js": "./src/ui/minimap.js?v=11",
+    "./src/units/mech.js": "./src/units/mech.js?v=11",
+    "./src/units/movers.js": "./src/units/movers.js?v=11",
+    "./src/units/units.js": "./src/units/units.js?v=11",
+    "./src/version.js": "./src/version.js?v=11",
+    "./src/view.js": "./src/view.js?v=11",
+    "./src/world/buildings.js": "./src/world/buildings.js?v=11",
+    "./src/world/buildingview.js": "./src/world/buildingview.js?v=11",
+    "./src/world/forest.js": "./src/world/forest.js?v=11",
+    "./src/world/markers.js": "./src/world/markers.js?v=11",
+    "./src/world/trees.js": "./src/world/trees.js?v=11"
   }
 }
 </script>
@@ -81,26 +114,48 @@
   <div class="btn" id="btnDebug" title="Debug overlay (`)">FPS</div>
 </div>
 <div id="fire" class="panel">
-  <div class="btn" data-weapon="move">Command</div>
+  <div class="btn dev" data-weapon="move">Command</div>
   <div class="btn" id="btnKind">A-Move</div>
   <div class="btn" id="btnAll">All</div>
-  <div class="btn" id="btnSpawn">+Squad</div>
-  <div class="btn" id="btnEnemy">+Enemy</div>
-  <div class="sep"></div>
-  <span class="lbl">Fire</span>
-  <div class="btn" data-weapon="mg">MG</div>
-  <div class="btn" data-weapon="cannon">Cannon</div>
-  <div class="btn" data-weapon="shell">Shell</div>
-  <div class="btn" id="btnBarrage">Barrage</div>
-  <div class="btn" id="btnReset">Reset</div>
+  <div class="btn" id="btnStop">Stop</div>
+  <div class="btn" id="btnDev" title="Test tools">Dev</div>
+  <div class="btn dev" id="btnSpawn">+Squad</div>
+  <div class="btn dev" id="btnEnemy">+Enemy</div>
+  <div class="sep dev"></div>
+  <span class="lbl dev">Fire</span>
+  <div class="btn dev" data-weapon="mg">MG</div>
+  <div class="btn dev" data-weapon="cannon">Cannon</div>
+  <div class="btn dev" data-weapon="shell">Shell</div>
+  <div class="btn dev" id="btnBarrage">Barrage</div>
+  <div class="btn dev" id="btnReset">Reset</div>
 </div>
+<div id="res" class="panel"><span id="credits"></span><span id="income"></span><span id="points"></span><span id="army"></span><span id="clock"></span></div>
+<div id="build"></div>
+<div id="banner"></div>
+<canvas id="minimap" width="360" height="360"></canvas>
+<div id="startScreen" class="screen"><div class="box panel">
+  <h1>MECH RTS</h1>
+  <p><b>Destroy the enemy HQ</b> (red, north). Hold the yellow capture points for more income.</p>
+  <div class="help">
+    <b>Build</b><span>tap Scout, Assault or Titan (left). Hold to cancel one.</span>
+    <b>Select</b><span>tap a mech; double-tap for all of that type; drag one finger to box-select.</span>
+    <b>Orders</b><span>tap the ground to go there (A-Move fights on the way); tap an enemy or its HQ to attack.</span>
+    <b>Camera</b><span>two fingers pan, pinch to zoom, twist to turn; tap the map (bottom right) to jump.</span>
+  </div>
+  <div class="btn go" id="btnStart">Start</div>
+</div></div>
+<div id="endScreen" class="screen"><div class="box panel">
+  <h1 id="endTitle"></h1>
+  <p id="endText"></p>
+  <div class="btn go" id="btnAgain">Play again</div>
+</div></div>
 <div id="selinfo" class="panel"></div>
 <div id="boxsel"></div>
 </div>
-<div id="ver">v10</div>
+<div id="ver">v11</div>
 <div id="loading">Loading map…</div>
 <div id="fatal"></div>
-<script src="src/ui/page.js?v=10"></script>
-<script type="module" src="src/main.js?v=10"></script>
+<script src="src/ui/page.js?v=11"></script>
+<script type="module" src="src/main.js?v=11"></script>
 </body>
 </html>

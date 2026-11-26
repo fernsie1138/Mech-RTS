@@ -8,7 +8,7 @@
 //   idle   hold position; shoot what comes in range, chase it a little, then return (guard)
 // Direct-fire weapons need a clear line of sight. Titans lob shells over obstacles at anything their side can
 // see. Hit chance falls with the target's cover (forest, rubble, ruins) and rises with height advantage.
-import { UNIT_TYPES, COMBAT } from '../config.js';
+import { UNIT_TYPES, COMBAT, HQ_TYPE } from '../config.js';
 import { NAV_CLASSES } from '../nav/navgrid.js';
 import { lineOfSight, coverAt } from '../combat/los.js';
 import { Projectiles } from '../combat/projectiles.js';
@@ -21,6 +21,7 @@ export const MUZZLES = {
   scout: [[-0.98, 0.35, 1.5], [0.98, 0.35, 1.5]],
   assault: [[-1.32, 0.45, 2.2], [1.32, 0.45, 2.2]],
   titan: [[1.6, 0.55, 3.15], [-1.5, 1.7, 0.75]],
+  hq: [[-0.4, 10.3, 2.9], [0.4, 10.3, 2.9]],          // the HQ's roof turret
 };
 export const TORSO_Y = 2.45;          // torso pivot height in model units (x scale)
 export const MECH_HEIGHT = 3.6;       // model height in model units
@@ -33,7 +34,8 @@ export class Units {
     this.world = world;
     this.movers = movers;
     this.damage = damage;
-    this.list = [];
+    this.list = [];            // mechs
+    this.structures = [];      // HQs: targets with hit points that don't move (their turret shoots)
     this.wrecks = [];
     this.events = [];          // for the view: { type: 'fire' | 'hit' | 'death', ... } (cleared by whoever reads them)
     this.time = 0;
@@ -57,6 +59,20 @@ export class Units {
     mover.unit = u;
     this.list.push(u);
     return u;
+  }
+
+  // An HQ at (x, z): blocks movement (world.blockers), has a turret, and is a target.
+  addHQ(team, x, z) {
+    const t = HQ_TYPE, y = this.world.hf.heightAt(x, z);
+    const h = {
+      id: nextId++, type: 'hq', isHQ: true, t, team, alive: true, hp: t.hp, maxHp: t.hp,
+      x, z, y, yaw: team === 0 ? Math.PI : 0, torsoYaw: 0, radius: t.radius, height: t.height,
+      target: null, near: null, cool: 0, retargetT: 0, gun: 0, seenBy: [0, 0], hitT: 0,
+    };
+    this.structures.push(h);
+    (this.world.blockers ||= []).push({ x, z, r: t.radius + 0.5 });
+    this.world.nav?.markDirty(x, z, t.radius + 4);
+    return h;
   }
 
   // ---------- orders ----------
@@ -91,7 +107,7 @@ export class Units {
     // Nearest shootable enemy in range, and nearest visible enemy within chase distance.
     let best = null, bd = Infinity, near = null, nd = Infinity;
     const reach = u.t.range + COMBAT.chaseRange;
-    for (const e of this.list) {
+    for (let li = 0; li < 2; li++) for (const e of li ? this.structures : this.list) {
       if (!e.alive || e.team === u.team) continue;
       const d = Math.hypot(e.x - u.x, e.z - u.z) - e.radius;
       if (d > Math.max(reach, COMBAT.sightRange)) continue;
@@ -163,9 +179,25 @@ export class Units {
       u.phase += dt * sp / (2.4 * u.t.scale) * Math.PI * 2;
       if (u.hitT > 0) u.hitT -= dt;
     }
+    for (const h of this.structures) if (h.alive) this._stepHQ(h, dt);
     this.projectiles.step(dt);
     for (const w of this.wrecks) w.t += dt;
     this.wrecks = this.wrecks.filter(w => w.t < COMBAT.wreckTime + 3);
+  }
+
+  // HQ turret: turn toward the nearest visible enemy in range and fire.
+  _stepHQ(h, dt) {
+    h.y = this.world.hf.heightAt(h.x, h.z);
+    if ((h.retargetT -= dt) <= 0) { h.retargetT = COMBAT.retarget; this._findTargets(h); }
+    if (h.target && !this.canShootQuick(h, h.target)) h.target = null;
+    const target = h.target;
+    if (target) {
+      const aim = wrap(Math.atan2(target.x - h.x, target.z - h.z) - h.yaw);
+      h.torsoYaw = turnToward(h.torsoYaw, aim, h.t.turn * dt);
+      h.cool -= dt;
+      if (h.cool <= 0 && Math.abs(wrap(aim - h.torsoYaw)) < 0.15) { h.cool = h.t.rof * (0.9 + this.rng() * 0.2); this._fire(h, target); }
+    } else h.cool = Math.max(0, h.cool - dt);
+    if (h.hitT > 0) h.hitT -= dt;
   }
 
   // Cheap re-check between target searches: still in range and (for direct fire) still visible every few frames.
@@ -215,7 +247,7 @@ export class Units {
     if (unit) {
       this.stats.hits++;
       this.damage.hitUnit(unit, p.dmg, p.shooter);
-      this.events.push({ type: 'hit', kind: p.kind, x, y, z, unit });
+      this.events.push({ type: 'hit', kind: p.kind, x, y, z, unit, team: p.team });
       // Cannon rounds also burst (splash) on the mech they hit.
       if (p.splash > 0) this.damage.explode(x, z, p.kind, y, { dmg: p.dmg * 0.4, splash: p.splash, team: p.team, exclude: unit });
       return;
@@ -227,6 +259,11 @@ export class Units {
   // Called by Damage when a unit's hp reaches 0.
   kill(u) {
     if (!u.alive) return;
+    if (u.isHQ) {
+      u.alive = false; u.hp = 0;
+      this.events.push({ type: 'hqDestroyed', team: u.team, x: u.x, y: u.y + u.height * 0.5, z: u.z, unit: u });
+      return;
+    }
     u.alive = false; u.hp = 0;
     this.stats.kills++;
     this.movers.remove(u.mover);
