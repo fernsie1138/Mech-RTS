@@ -80,4 +80,12 @@ node tests/match-unit.mjs
 node tests/match.mjs
 ```
 
+```bash
+node tests/builder-unit.mjs
+```
+
+```bash
+node tests/builder.mjs
+```
+
 Screenshots are written to `tests/out/` (not committed).

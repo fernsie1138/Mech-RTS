@@ -9,12 +9,12 @@
 <meta name="apple-mobile-web-app-title" content="Mech RTS">
 <meta name="theme-color" content="#0b1015">
 <!-- Must match VERSION in src/version.js. If they differ, the HUD warns that Safari served stale code. -->
-<meta name="build" content="v11">
+<meta name="build" content="v12">
 <title>Mech RTS</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" type="image/png" href="icons/icon-180.png">
-<link rel="stylesheet" href="style.css?v=11">
+<link rel="stylesheet" href="style.css?v=12">
 <style>
   #topright { position:fixed; top:calc(env(safe-area-inset-top) + 10px); right:calc(env(safe-area-inset-right) + 12px);
               display:flex; gap:8px; z-index:35; }
@@ -51,6 +51,12 @@
   .screen .help b { color:#e8eef2; }
   .screen .btn { display:inline-flex; margin:14px 6px 0; min-width:150px; height:50px; font-size:17px; }
   .btn.go { background:rgba(40,110,60,.95); border-color:#7cff9a; }
+  #buildpanel { position:fixed; bottom:calc(env(safe-area-inset-bottom) + 84px); left:50%; transform:translateX(-50%);
+                display:none; gap:8px; padding:8px; align-items:center; }
+  #buildpanel .lbl { font-size:13px; color:#e8b02a; font-weight:700; padding:0 4px; }
+  #buildpanel .btn .c { color:#ffd25a; font-size:12px; margin-left:6px; }
+  #buildhint { position:fixed; bottom:calc(env(safe-area-inset-bottom) + 146px); left:50%; transform:translateX(-50%);
+               font-size:14px; color:#fff; text-shadow:0 1px 4px #000; pointer-events:none; white-space:nowrap; display:none; }
   body.match .dev { display:none !important; }
   body.match.devopen .dev { display:flex !important; }
   body:not(.match) #res, body:not(.match) #build, body:not(.match) #minimap, body:not(.match) #btnDev { display:none; }
@@ -60,46 +66,47 @@
 <script type="importmap">
 {
   "imports": {
-    "three": "./lib/three.module.js?v=11",
-    "./editor/editor.js": "./editor/editor.js?v=11",
-    "./editor/history.js": "./editor/history.js?v=11",
-    "./editor/tools/features.js": "./editor/tools/features.js?v=11",
-    "./editor/tools/markers.js": "./editor/tools/markers.js?v=11",
-    "./editor/tools/terrain.js": "./editor/tools/terrain.js?v=11",
-    "./src/ai/enemy.js": "./src/ai/enemy.js?v=11",
-    "./src/combat/damage.js": "./src/combat/damage.js?v=11",
-    "./src/combat/effects.js": "./src/combat/effects.js?v=11",
-    "./src/combat/los.js": "./src/combat/los.js?v=11",
-    "./src/combat/projectiles.js": "./src/combat/projectiles.js?v=11",
-    "./src/config.js": "./src/config.js?v=11",
-    "./src/game/match.js": "./src/game/match.js?v=11",
-    "./src/main.js": "./src/main.js?v=11",
-    "./src/maps/format.js": "./src/maps/format.js?v=11",
-    "./src/maps/imageimport.js": "./src/maps/imageimport.js?v=11",
-    "./src/maps/loader.js": "./src/maps/loader.js?v=11",
-    "./src/nav/navgrid.js": "./src/nav/navgrid.js?v=11",
-    "./src/nav/pathfinding.js": "./src/nav/pathfinding.js?v=11",
-    "./src/terrain/chunks.js": "./src/terrain/chunks.js?v=11",
-    "./src/terrain/heightfield.js": "./src/terrain/heightfield.js?v=11",
-    "./src/terrain/surface.js": "./src/terrain/surface.js?v=11",
-    "./src/terrain/testmap.js": "./src/terrain/testmap.js?v=11",
-    "./src/terrain/water.js": "./src/terrain/water.js?v=11",
-    "./src/terrain/watermesh.js": "./src/terrain/watermesh.js?v=11",
-    "./src/ui/camera.js": "./src/ui/camera.js?v=11",
-    "./src/ui/command.js": "./src/ui/command.js?v=11",
-    "./src/ui/debug.js": "./src/ui/debug.js?v=11",
-    "./src/ui/hud.js": "./src/ui/hud.js?v=11",
-    "./src/ui/minimap.js": "./src/ui/minimap.js?v=11",
-    "./src/units/mech.js": "./src/units/mech.js?v=11",
-    "./src/units/movers.js": "./src/units/movers.js?v=11",
-    "./src/units/units.js": "./src/units/units.js?v=11",
-    "./src/version.js": "./src/version.js?v=11",
-    "./src/view.js": "./src/view.js?v=11",
-    "./src/world/buildings.js": "./src/world/buildings.js?v=11",
-    "./src/world/buildingview.js": "./src/world/buildingview.js?v=11",
-    "./src/world/forest.js": "./src/world/forest.js?v=11",
-    "./src/world/markers.js": "./src/world/markers.js?v=11",
-    "./src/world/trees.js": "./src/world/trees.js?v=11"
+    "three": "./lib/three.module.js?v=12",
+    "./editor/editor.js": "./editor/editor.js?v=12",
+    "./editor/history.js": "./editor/history.js?v=12",
+    "./editor/tools/features.js": "./editor/tools/features.js?v=12",
+    "./editor/tools/markers.js": "./editor/tools/markers.js?v=12",
+    "./editor/tools/terrain.js": "./editor/tools/terrain.js?v=12",
+    "./src/ai/enemy.js": "./src/ai/enemy.js?v=12",
+    "./src/combat/damage.js": "./src/combat/damage.js?v=12",
+    "./src/combat/effects.js": "./src/combat/effects.js?v=12",
+    "./src/combat/los.js": "./src/combat/los.js?v=12",
+    "./src/combat/projectiles.js": "./src/combat/projectiles.js?v=12",
+    "./src/config.js": "./src/config.js?v=12",
+    "./src/game/match.js": "./src/game/match.js?v=12",
+    "./src/main.js": "./src/main.js?v=12",
+    "./src/maps/format.js": "./src/maps/format.js?v=12",
+    "./src/maps/imageimport.js": "./src/maps/imageimport.js?v=12",
+    "./src/maps/loader.js": "./src/maps/loader.js?v=12",
+    "./src/nav/navgrid.js": "./src/nav/navgrid.js?v=12",
+    "./src/nav/pathfinding.js": "./src/nav/pathfinding.js?v=12",
+    "./src/terrain/chunks.js": "./src/terrain/chunks.js?v=12",
+    "./src/terrain/heightfield.js": "./src/terrain/heightfield.js?v=12",
+    "./src/terrain/surface.js": "./src/terrain/surface.js?v=12",
+    "./src/terrain/testmap.js": "./src/terrain/testmap.js?v=12",
+    "./src/terrain/water.js": "./src/terrain/water.js?v=12",
+    "./src/terrain/watermesh.js": "./src/terrain/watermesh.js?v=12",
+    "./src/ui/camera.js": "./src/ui/camera.js?v=12",
+    "./src/ui/command.js": "./src/ui/command.js?v=12",
+    "./src/ui/debug.js": "./src/ui/debug.js?v=12",
+    "./src/ui/hud.js": "./src/ui/hud.js?v=12",
+    "./src/ui/minimap.js": "./src/ui/minimap.js?v=12",
+    "./src/units/mech.js": "./src/units/mech.js?v=12",
+    "./src/units/movers.js": "./src/units/movers.js?v=12",
+    "./src/units/units.js": "./src/units/units.js?v=12",
+    "./src/version.js": "./src/version.js?v=12",
+    "./src/view.js": "./src/view.js?v=12",
+    "./src/world/buildings.js": "./src/world/buildings.js?v=12",
+    "./src/world/buildingview.js": "./src/world/buildingview.js?v=12",
+    "./src/world/construction.js": "./src/world/construction.js?v=12",
+    "./src/world/forest.js": "./src/world/forest.js?v=12",
+    "./src/world/markers.js": "./src/world/markers.js?v=12",
+    "./src/world/trees.js": "./src/world/trees.js?v=12"
   }
 }
 </script>
@@ -129,6 +136,13 @@
   <div class="btn dev" id="btnBarrage">Barrage</div>
   <div class="btn dev" id="btnReset">Reset</div>
 </div>
+<div id="buildpanel" class="panel">
+  <span class="lbl">Builder</span>
+  <div class="btn" data-build="wall">Wall<span class="c"></span></div>
+  <div class="btn" data-build="turret">Turret<span class="c"></span></div>
+  <div class="btn" data-build="trench">Trench<span class="c"></span></div>
+</div>
+<div id="buildhint"></div>
 <div id="res" class="panel"><span id="credits"></span><span id="income"></span><span id="points"></span><span id="army"></span><span id="clock"></span></div>
 <div id="build"></div>
 <div id="banner"></div>
@@ -140,6 +154,7 @@
     <b>Build</b><span>tap Scout, Assault or Titan (left). Hold to cancel one.</span>
     <b>Select</b><span>tap a mech; double-tap for all of that type; drag one finger to box-select.</span>
     <b>Orders</b><span>tap the ground to go there (A-Move fights on the way); tap an enemy or its HQ to attack.</span>
+    <b>Builders</b><span>select one, pick Wall, Turret or Trench, then tap the ground (or drag a line).</span>
     <b>Camera</b><span>two fingers pan, pinch to zoom, twist to turn; tap the map (bottom right) to jump.</span>
   </div>
   <div class="btn go" id="btnStart">Start</div>
@@ -152,10 +167,10 @@
 <div id="selinfo" class="panel"></div>
 <div id="boxsel"></div>
 </div>
-<div id="ver">v11</div>
+<div id="ver">v12</div>
 <div id="loading">Loading map…</div>
 <div id="fatal"></div>
-<script src="src/ui/page.js?v=11"></script>
-<script type="module" src="src/main.js?v=11"></script>
+<script src="src/ui/page.js?v=12"></script>
+<script type="module" src="src/main.js?v=12"></script>
 </body>
 </html>

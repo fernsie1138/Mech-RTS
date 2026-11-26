@@ -68,7 +68,7 @@ export class Minimap {
       }
     }
     for (const h of this.units.structures || []) {
-      const [x, y] = this.toMap(h.x, h.z), r = 6 * s;
+      const [x, y] = this.toMap(h.x, h.z), r = (h.isHQ ? 6 : 2.6) * s;
       c.fillStyle = h.alive ? TEAM[h.team] : '#222';
       c.fillRect(x - r, y - r, 2 * r, 2 * r);
       c.strokeStyle = '#000'; c.lineWidth = 1.5 * s; c.strokeRect(x - r, y - r, 2 * r, 2 * r);

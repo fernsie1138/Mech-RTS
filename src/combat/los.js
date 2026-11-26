@@ -1,7 +1,7 @@
 // Line of sight and cover (CLAUDE.md §9). Pure: no three.js.
 // A sight line from a to b is blocked by the terrain and by standing building pieces; trees don't block it,
 // but units in forest, on rubble or behind ruined walls are harder to hit (cover).
-import { SURFACE } from '../terrain/surface.js';
+import { SURFACE, FEATURE } from '../terrain/surface.js';
 import { COMBAT } from '../config.js';
 
 // Is the straight line from (ax, ay, az) to (bx, by, bz) clear? Returns { clear, x, y, z } where (x, y, z) is
@@ -31,6 +31,7 @@ export function coverAt(world, x, z) {
   if (forest) cover = Math.max(cover, forest.coverAt(x, z, 4) * COMBAT.forestCover);
   const k = hf.index(Math.round(hf.gx(x)), Math.round(hf.gz(z)));
   if (surface.base[k] === SURFACE.RUBBLE) cover = Math.max(cover, COMBAT.rubbleCover);
+  if (surface.features[k] & FEATURE.TRENCH) cover = Math.max(cover, COMBAT.trenchCover);
   if (buildings) {
     // Hugging a standing wall (within 3 units, but not inside it).
     for (let a = 0; a < 6.28; a += 0.785) {

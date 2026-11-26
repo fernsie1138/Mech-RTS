@@ -4,11 +4,17 @@
 //   Tap an enemy: the selected mechs attack it. Tap the ground: they go there, by attack-move (default) or move.
 //   Two fingers pan / pinch / rotate the camera (right or middle drag with a mouse).
 // In a fire test mode (MG / Cannon / Shell) a tap fires at the ground or building instead.
+// Builder orders (placing = 'wall' | 'turret' | 'trench'): tap to place one (a wall or trench runs across the
+// screen), or drag a line to place a row of them; a preview shows where (green ok, red can't build there).
+// Tapping an unfinished site with Builders selected puts them back to work on it.
 import { CAMERA } from '../config.js';
 
 export class Commander {
-  constructor({ units, mechView, view, rts, effects, damage, selected, state, boxEl }) {
-    Object.assign(this, { units, mechView, view, rts, effects, damage, selected, state, boxEl });
+  constructor({ units, mechView, view, rts, effects, damage, selected, state, boxEl, construction = null }) {
+    Object.assign(this, { units, mechView, view, rts, effects, damage, selected, state, boxEl, construction });
+    this.placing = null;
+    this.line = null;
+    this.onPlaced = null;        // fn(result, kind) after a Builder order (result from construction.order)
     this.team = 0;
     this.moveKind = 'amove';
     this.lastTap = { t: 0, unit: null };
@@ -31,8 +37,32 @@ export class Commander {
     return { x: (v.x + 1) / 2 * innerWidth, y: (1 - v.y) / 2 * innerHeight };
   }
 
+  builders() { return [...this.selected].filter(u => u.alive && u.t.unarmed); }
+
+  setPlacing(kind) { this.placing = kind; this.line = null; this.mechView.preview = null; }
+
+  // Wall / trench direction for a single tap: across the screen at (cx, cy).
+  _acrossRot(cx, cy) {
+    const a = this.view.pickGround(cx - 60, cy), b = this.view.pickGround(cx + 60, cy);
+    return a && b ? Math.atan2(-(b.z - a.z), b.x - a.x) : 0;
+  }
+  _plan(a, b, cx, cy) {
+    return this.construction.plan(this.placing, a.x, a.z, b ? b.x : null, b ? b.z : null, this._acrossRot(cx, cy));
+  }
+  _place(plan) {
+    const kind = this.placing;
+    const r = this.construction.order(this.builders(), plan);
+    this.setPlacing(null);
+    this.onPlaced?.(r, kind);
+  }
+
   tap(cx, cy) {
     if (this.state.weapon !== 'move') return this.fireTap(cx, cy);
+    if (this.placing && this.construction) {
+      const g = this.view.pickGround(cx, cy);
+      if (g) this._place(this._plan(g, null, cx, cy));
+      return;
+    }
     const ray = this.rts.screenRay(cx, cy);
     const own = this.mechView.pick(ray, this.units, this.team);
     const enemy = own ? null : this.mechView.pick(ray, this.units, 1 - this.team, true);
@@ -48,10 +78,15 @@ export class Commander {
     this.lastTap = { t: now, unit: null };
     const sel = [...this.selected].filter(u => u.alive);
     if (!sel.length) return;
-    if (enemy) { this.units.attack(sel, enemy); this.effects.dust(enemy.x, enemy.y, enemy.z, 0.8); return; }
+    if (enemy) { this.units.attack(sel.filter(u => !u.t.unarmed), enemy); this.effects.dust(enemy.x, enemy.y, enemy.z, 0.8); return; }
     const g = this.view.pickGround(cx, cy);
     if (!g) return;
-    this.units.order(sel, this.moveKind, g.x, g.z);
+    // An unfinished site: selected Builders go back to work on it; the rest of the selection moves there.
+    const site = this.construction?.siteAt(g.x, g.z, this.team);
+    const builders = site ? this.builders() : [];
+    if (builders.length) this.construction.assign(builders, [site]);
+    const rest = sel.filter(u => !builders.includes(u));
+    if (rest.length) this.units.order(rest, this.moveKind, g.x, g.z);
     this.effects.dust(g.x, g.y, g.z, 0.6);
   }
 
@@ -65,11 +100,29 @@ export class Commander {
 
   boxStart(cx, cy) {
     if (this.state.weapon !== 'move') return;
+    if (this.placing && this.construction) {
+      const a = this.view.pickGround(cx, cy);
+      if (a) { this.line = { a }; this.mechView.preview = this._plan(a, null, cx, cy); }
+      return;
+    }
     this.box = { x0: cx, y0: cy, x1: cx, y1: cy };
     this._drawBox();
   }
-  boxMove(cx, cy) { if (!this.box) return; this.box.x1 = cx; this.box.y1 = cy; this._drawBox(); }
-  boxEnd() {
+  boxMove(cx, cy) {
+    if (this.line) {
+      const b = this.view.pickGround(cx, cy);
+      if (b) { this.line.b = b; this.mechView.preview = this._plan(this.line.a, b, cx, cy); }
+      return;
+    }
+    if (!this.box) return;
+    this.box.x1 = cx; this.box.y1 = cy; this._drawBox();
+  }
+  boxEnd(cx, cy) {
+    if (this.line) {
+      const { a, b } = this.line;
+      this._place(this._plan(a, b || null, cx, cy));
+      return;
+    }
     const b = this.box;
     this.box = null;
     this.boxEl.style.display = 'none';

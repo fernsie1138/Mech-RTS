@@ -20,7 +20,8 @@ import { Match } from './game/match.js';
 import { EnemyAI } from './ai/enemy.js';
 import { Hud } from './ui/hud.js';
 import { Minimap } from './ui/minimap.js';
-import { MAP_SIZE } from './config.js';
+import { MAP_SIZE, BUILD, BUILD_KEYS } from './config.js';
+import { Construction } from './world/construction.js';
 
 // ---------- version label (warns if index.html and the JS are from different builds) ----------
 const htmlBuild = document.querySelector('meta[name="build"]')?.content;
@@ -100,7 +101,15 @@ hookWater();
 const movers = new Movers(nav);
 world.nav = nav;
 const units = new Units(world, movers, damage, 7);
-const mechView = new MechView(scene);
+const mechView = new MechView(scene, heightAt);
+// Builders' construction: walls, turrets, trenches. Paid from the match's credits (free in the sandbox).
+const construction = new Construction(world, {
+  pay: (team, cost) => { if (!match) return true; const T = match.teams[team]; if (T.credits < cost) return false; T.credits -= cost; return true; },
+  onBuilding: () => view.buildingView.setBuildings(view.buildings),
+  enemyDir: team => { const m = map.markers; return m.playerHQ && m.enemyHQ ? Math.sign((team === 0 ? m.enemyHQ.z - m.playerHQ.z : m.playerHQ.z - m.enemyHQ.z)) || -1 : (team === 0 ? -1 : 1); },
+});
+mechView.construction = construction;
+world.units = units;
 const selected = new Set();
 const SQUAD = ['scout', 'assault', 'titan'];
 function spawnSquad(team, x, z, types = SQUAD) {
@@ -116,6 +125,7 @@ function clearUnits() {
   units.list.length = 0; units.structures.length = 0; units.wrecks.length = 0; units.projectiles.list.length = 0; units.events.length = 0;
   world.blockers = [];
   selected.clear();
+  construction.clear();
 }
 // Units at the start: a squad each side in a match (by the HQs), just yours in the sandbox.
 function startUnits() {
@@ -186,6 +196,12 @@ function simStep(dt) {
   }
   movers.step(dt);
   units.step(dt);
+  construction.step(dt);
+  for (const e of construction.events) {
+    if (e.type === 'work') { if (e.kind === 'trench') effects.dust(e.x, e.y, e.z, 0.5); else effects.sparksAt(e.x, e.y + 0.8, e.z, 2); }
+    else if (e.type === 'built' && e.job.team === 0) hud.banner(`${BUILD[e.job.kind].name} finished`, '#e8b02a', 1.5);
+  }
+  construction.events.length = 0;
   if (match) { match.step(dt); ai.step(dt); }
   for (const e of units.events) {
     if (e.type === 'fire') effects.muzzle(e.x, e.y, e.z, e.kind === 'mg' ? 0.4 : e.kind === 'cannon' ? 0.8 : 1.3);
@@ -242,8 +258,30 @@ function resetTerrain() {
 }
 
 // ---------- HUD: orders and test toolbar ----------
-const commander = new Commander({ units, mechView, view, rts, effects, damage, selected, state, boxEl: document.getElementById('boxsel') });
+const commander = new Commander({ units, mechView, view, rts, effects, damage, selected, state, boxEl: document.getElementById('boxsel'), construction });
 commander.onSelect = () => { if (navOverlay.on) view.terrain.rebuildAll(); updateSelInfo(); };
+// Builder panel: shown while Builders are selected.
+const buildPanel = document.getElementById('buildpanel'), buildHint = document.getElementById('buildhint');
+const buildBtns = buildPanel.querySelectorAll('[data-build]');
+buildBtns.forEach(b => { b.querySelector('.c').textContent = `⚡${BUILD[b.dataset.build].cost}`; });
+function setPlacing(kind) {
+  commander.setPlacing(kind);
+  buildBtns.forEach(b => b.classList.toggle('on', b.dataset.build === kind));
+  buildHint.style.display = kind ? 'block' : 'none';
+  buildHint.textContent = kind === 'turret' ? 'Tap where the turret goes' : kind ? `Tap to place a ${BUILD[kind].name.toLowerCase()}, or drag a line for a longer one` : '';
+}
+buildBtns.forEach(b => b.addEventListener('pointerup', () => { selectWeapon('move'); setPlacing(commander.placing === b.dataset.build ? null : b.dataset.build); }));
+commander.onPlaced = (r, kind) => {
+  setPlacing(null);
+  if (r.refused === 'poor') hud.refused('poor');
+  else if (r.refused === 'site' && !r.jobs.length) hud.banner("Can't build there", '#ffd25a', 1.8);
+  else if (r.jobs.length) hud.banner(`${r.jobs.length > 1 ? r.jobs.length + ' ' : ''}${BUILD[kind].name}${r.jobs.length > 1 ? (kind === 'trench' ? ' sections' : 's') : ''} ordered`, '#e8b02a', 1.5);
+};
+function updateBuildPanel() {
+  const any = commander.builders().length > 0;
+  buildPanel.style.display = any ? 'flex' : 'none';
+  if (!any && commander.placing) setPlacing(null);
+}
 const weaponBtns = document.querySelectorAll('[data-weapon]');
 function selectWeapon(w) {
   state.weapon = w;
@@ -323,6 +361,7 @@ function frame(now) {
   mechView.update(units, selected, camera);
   updateMatchView(dt);
   if (selected.size !== lastSel) { lastSel = selected.size; updateSelInfo(); }
+  updateBuildPanel();
   view.render();
   debug.frame(dt);
   requestAnimationFrame(frame);
@@ -338,7 +377,7 @@ window.__game = {
   get water() { return view.water; }, get forest() { return view.forest; }, get buildings() { return view.buildings; },
   heightAt, pickGround, fireAt, barrage, resetTerrain, selectWeapon,
   nav, movers, units, mechView, commander, selected, spawnSquad, setNavOverlay, setMoveKind, NAV_CLASSES,
-  get match() { return match; }, get ai() { return ai; }, sandbox, game, hud, minimap,
+  get match() { return match; }, get ai() { return ai; }, sandbox, game, hud, minimap, construction, setPlacing,
   pause(on = true) { paused = on; },
   // Advance the simulation by `seconds` in fixed steps, independent of real time.
   step(seconds) {

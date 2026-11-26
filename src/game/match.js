@@ -105,5 +105,5 @@ export class Match {
   }
 
   // Count kills against each side (called from the game when a mech dies).
-  unitLost(u) { if (this.teams[u.team]) this.teams[u.team].lost++; }
+  unitLost(u) { if (!u.isStructure && this.teams[u.team]) this.teams[u.team].lost++; }
 }
