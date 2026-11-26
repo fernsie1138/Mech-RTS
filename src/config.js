@@ -8,6 +8,15 @@ export const TERRAIN = {
   maxRebuildsPerFrame: 4,
   bedrock: -8,                        // nothing digs below this height
   maxSlope: 1.6,                      // rise/run; steeper slopes slide after a hit
+  maxDig: 1.5,                        // in a match, craters never take the ground more than this below where it began
+};
+
+// Crater pictures baked into the ground (world/decals.js, assets/craters.png).
+export const DECALS = {
+  pxPerUnit: 8,                       // ground decal texture resolution: 2048 x 2048 over the map
+  scale: 3.4,                         // picture size = crater radius x this (the bowl fills about 60% of it)
+  opacity: 0.95,
+  minDepth: 0.2,                      // weapons that dig at least this deep leave a crater picture (not MG)
 };
 
 // How each weapon damages the ground. radius/depth in world units.
@@ -16,9 +25,9 @@ export const TERRAIN = {
 //   wearRadius: wear/scorch radius as a multiple of crater radius   fxSize: explosion effect size
 //   treeFall: trees within this radius are knocked flat (inner 45% shattered to stumps)   ignite: chance to set trees alight
 export const TERRAIN_DAMAGE = {
-  mg:     { radius: 0.7, depth: 0.06, rim: 0,   erode: 0,    wear: 0.35, scorch: 0.15, wearRadius: 1.4, fxSize: 0.35, treeFall: 0,   ignite: 0.03 },
-  cannon: { radius: 1.8, depth: 0.7,  rim: 0.3, erode: 0.25, wear: 1.2,  scorch: 0.3,  wearRadius: 1.8, fxSize: 1.2,  treeFall: 3,   ignite: 0.15 },
-  shell:  { radius: 3.6, depth: 1.7,  rim: 0.3, erode: 0.4,  wear: 1.6,  scorch: 0.45, wearRadius: 1.8, fxSize: 2.6,  treeFall: 6.5, ignite: 0.4 },
+  mg:     { radius: 0.7, depth: 0.03, rim: 0,   erode: 0,    wear: 0.35, scorch: 0.15, wearRadius: 1.4, fxSize: 0.35, treeFall: 0,   ignite: 0.03 },
+  cannon: { radius: 1.8, depth: 0.3,  rim: 0.3, erode: 0.25, wear: 1.2,  scorch: 0.3,  wearRadius: 1.8, fxSize: 1.2,  treeFall: 3,   ignite: 0.15 },
+  shell:  { radius: 3.6, depth: 0.8,  rim: 0.3, erode: 0.6,  wear: 1.6,  scorch: 0.45, wearRadius: 1.8, fxSize: 2.6,  treeFall: 6.5, ignite: 0.4 },
 };
 
 export const RENDER = {
@@ -58,7 +67,7 @@ export const UNIT_TYPES = {
   assault: { name: 'Assault', cls: 1, cost: 220, build: 7,  hp: 360, range: 23, sight: 36,  dmg: 28,  rof: 0.9,  proj: 'cannon', projSpeed: 60, splash: 1.5, scale: 1.15, turn: 4, accuracy: 0.8 },
   titan:   { name: 'Titan',   cls: 2, cost: 420, build: 12, hp: 950, range: 32, sight: 34,  dmg: 110, rof: 2.6,  proj: 'shell',  projSpeed: 20, splash: 5,   scale: 1.6,  turn: 2, accuracy: 1, indirect: true },
   // Unarmed: builds walls and turrets and digs trenches (see BUILD). Spots for Titans like any mech.
-  builder: { name: 'Builder', cls: 0, cost: 150, build: 6,  hp: 220, range: 0, sight: 30,  dmg: 0,   rof: 1,    proj: null,     projSpeed: 0,  splash: 0,   scale: 0.85, turn: 5, accuracy: 0, unarmed: true, speed: 0.7 },
+  builder: { name: 'Builder', cls: 0, cost: 150, build: 6,  hp: 220, range: 0, sight: 30,  dmg: 0,   rof: 1,    proj: null,     projSpeed: 0,  splash: 0,   scale: 0.85, turn: 5, accuracy: 0, unarmed: true, speed: 0.7, repair: 25 },   // repair: hp per second it mends
 };
 export const UNIT_KEYS = ['scout', 'assault', 'titan', 'builder'];
 export const COMBAT_KEYS = ['scout', 'assault', 'titan'];
@@ -105,6 +114,7 @@ export const BUILD = {
   turret: { name: 'Turret', cost: 180, work: 12 },
   trench: { name: 'Trench', cost: 30,  work: 7,  len: 10, depth: 1.4, halfWidth: 1.7, bank: 0.7 },
   reach: 3,                  // a Builder works from this close to the site
+  repairAuto: 10,            // an idle Builder repairs damaged friendly mechs and turrets this close by itself
 };
 export const BUILD_KEYS = ['wall', 'turret', 'trench'];
 

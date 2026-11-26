@@ -36,9 +36,10 @@ const flood = await page.evaluate(() => {
   const wet0 = wt.wetCount();
   const hits = [g.fireAt(edge - 2, -20, 'shell'), g.fireAt(edge - 5, -20, 'shell'), g.fireAt(edge - 8, -20, 'shell')];
   g.render();
-  return { edge, flooded: hits.map(h => h.flooded), wet: wt.wetCount() - wet0, depth: wt.depthAt(edge - 2, -20), dirty: g.view.waterMesh.dirty.size };
+  let deepest = 0; for (let x = edge - 5; x <= edge; x += 0.25) deepest = Math.max(deepest, wt.depthAt(x, -20));
+  return { edge, flooded: hits.map(h => h.flooded), wet: wt.wetCount() - wet0, depth: deepest, dirty: g.view.waterMesh.dirty.size };
 });
-check(flood.flooded[0] > 20 && flood.depth > 0.3, `shell beside the river floods its crater (${flood.flooded.join(', ')} samples; depth ${flood.depth.toFixed(2)})`);
+check(flood.flooded[0] > 20 && flood.depth > 0.05, `shell beside the river floods the part of its crater below the river level (${flood.flooded.join(', ')} samples; deepest water ${flood.depth.toFixed(2)})`);
 check(flood.dirty === 0, 'water mesh rebuilt after flooding');
 await page.evaluate(() => { const g = window.__game; g.rts.target.set(-40, 0, -20); g.rts.distance = 40; g.rts.update(0); g.render(); });
 await page.screenshot({ path: join(out, 'world-flood.png') });

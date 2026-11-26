@@ -18,6 +18,7 @@ const { check, done } = checker();
 function world(fn = () => 0, { trees = [], buildings = [], seed = 3 } = {}) {
   const hf = new Heightfield({ size: MAP_SIZE, cells: TERRAIN.cells, bedrock: TERRAIN.bedrock, maxSlope: TERRAIN.maxSlope });
   hf.generate(fn);
+  hf.setFloor(TERRAIN.maxDig);                    // as in the game: craters never go deeper than this
   const surface = new Surface(hf);
   const w = { hf, surface, water: new Water(hf, surface), forest: new Forest(trees, MAP_SIZE, 1) };
   w.buildings = new Buildings(buildings, hf);

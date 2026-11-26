@@ -11,6 +11,10 @@
 //           when finished. It can be shot at while being built.
 //   trench: dug progressively as the Builder works along it. The spoil is heaped on the side facing the enemy.
 // Kinds are a table (BUILD), so new things to build (e.g. factories) slot in the same way.
+//
+// Repair: a Builder ordered to repair a friendly mech, turret or HQ walks over and mends it (UNIT_TYPES.builder.repair
+// hp per second; several Builders add up) until it is whole. An idle Builder does this by itself for damaged
+// friendly units within BUILD.repairAuto. Repairs are free.
 import { BUILD, MAP_SIZE } from '../config.js';
 import { FEATURE } from '../terrain/surface.js';
 import { flattenFootprint } from './buildings.js';
@@ -117,7 +121,17 @@ export class Construction {
     const units = this.units;
     for (const u of units.list) {
       if (!u.jobs || !u.alive) continue;
-      if (u.order !== 'build') { if (u.jobs.length) u.jobs = []; u.working = false; continue; }
+      if (u.order === 'repair') { this._repair(u, dt); continue; }
+      if (u.order !== 'build') {
+        if (u.jobs.length) u.jobs = [];
+        u.working = false;
+        if (u.order === 'idle' && (u.repairLook = (u.repairLook || 0) - dt) <= 0) {
+          u.repairLook = 0.5;
+          const t = this._damagedNear(u, BUILD.repairAuto);
+          if (t) { u.order = 'repair'; u.repairTarget = t; u.repairAuto = true; u.workT = 0; }
+        }
+        continue;
+      }
       while (u.jobs.length && u.jobs[0].done) u.jobs.shift();
       const j = u.jobs[0];
       u.working = false;
@@ -138,6 +152,54 @@ export class Construction {
       this._work(j, dt / BUILD[j.kind].work);
       if (Math.random() < dt * 4) this.events.push({ type: 'work', job: j, x: tx, y: this.world.hf.heightAt(tx, tz) + 0.4, z: tz, kind: j.kind });
     }
+  }
+
+  // Order Builders to repair a friendly unit or structure.
+  repair(builders, target) {
+    for (const u of builders) {
+      if (!u.alive || !u.jobs || u === target || u.team !== target.team) continue;
+      u.order = 'repair'; u.repairTarget = target; u.repairAuto = false; u.goal = null; u.attackTarget = null; u.workT = 0; u.defend = false;
+      u.jobs = [];
+    }
+  }
+
+  // The most damaged friendly unit or structure within r of a Builder (not itself), or null.
+  _damagedNear(u, r) {
+    let best = null, bf = 0.999;
+    for (const lst of [this.units.list, this.units.structures]) for (const o of lst) {
+      if (o === u || !o.alive || o.team !== u.team || (o.built !== undefined && o.built < 1)) continue;
+      const f = o.hp / o.maxHp;
+      if (f < bf && Math.hypot(o.x - u.x, o.z - u.z) - o.radius < r) { bf = f; best = o; }
+    }
+    return best;
+  }
+
+  _repair(u, dt) {
+    const t = u.repairTarget, units = this.units;
+    u.working = false;
+    if (!t || !t.alive || t.hp >= t.maxHp) {
+      // Done (or it was destroyed). An automatic repair goes back to guarding; an ordered one holds there.
+      u.repairTarget = null;
+      units.stop([u]);
+      if (u.repairAuto) u.hold = false;
+      return;
+    }
+    const d = Math.hypot(t.x - u.x, t.z - u.z) - t.radius - u.radius;
+    if (d > 1.6) {
+      if ((u.workT -= dt) <= 0 || u.mover.state === 'idle') {
+        u.workT = 1;
+        const a = Math.atan2(u.x - t.x, u.z - t.z), r = t.radius + u.radius + 0.8;
+        units.movers.order([u.mover], t.x + Math.sin(a) * r, t.z + Math.cos(a) * r);
+      }
+      if (u.repairAuto && d > BUILD.repairAuto * 1.5) { u.repairTarget = null; units.stop([u]); u.hold = false; }
+      return;
+    }
+    if (u.mover.state !== 'idle') units.movers.stop(u.mover);
+    u.working = true;
+    u.yaw = Math.atan2(t.x - u.x, t.z - u.z);
+    u.torsoYaw = Math.sin(units.time * 5 + u.id) * 0.35;
+    t.hp = Math.min(t.maxHp, t.hp + u.t.repair * dt);
+    if (Math.random() < dt * 5) this.events.push({ type: 'work', kind: 'repair', x: t.x + (Math.random() - 0.5) * t.radius, y: t.y + t.height * (0.3 + Math.random() * 0.5), z: t.z + (Math.random() - 0.5) * t.radius });
   }
 
   // Where a Builder stands to work: beside the wall (on its side of it), by the turret, or along the trench

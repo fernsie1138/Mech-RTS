@@ -20,12 +20,13 @@ import { Match } from './game/match.js';
 import { EnemyAI } from './ai/enemy.js';
 import { Hud } from './ui/hud.js';
 import { Minimap } from './ui/minimap.js';
-import { MAP_SIZE, BUILD, BUILD_KEYS } from './config.js';
+import { MAP_SIZE, BUILD, BUILD_KEYS, TERRAIN } from './config.js';
 import { Construction } from './world/construction.js';
 import { initMobileMode } from './ui/mobile.js';
 import { Vision } from './game/vision.js';
 import { StatsEditor } from './ui/stats.js';
 import { FogView } from './world/fogview.js';
+import { Decals } from './world/decals.js';
 
 // ---------- version label (warns if index.html and the JS are from different builds) ----------
 const htmlBuild = document.querySelector('meta[name="build"]')?.content;
@@ -93,7 +94,11 @@ if (map.markers.playerHQ) { rts.target.set(map.markers.playerHQ.x, heightAt(map.
 // ---------- effects and damage ----------
 const effects = new Effects(scene, (x, z) => hf.heightAt(x, z));
 const world = { hf, surface, get water() { return view.water; }, get forest() { return view.forest; }, get buildings() { return view.buildings; } };
-const damage = new Damage({ hf, surface, effects,
+// Crater pictures baked into the ground, and in a match a limit on how deep craters can go.
+const decals = new Decals(renderer, `assets/craters.png?${VERSION}`);
+decals.patch(view.terrain.material);
+hf.setFloor(TERRAIN.maxDig);
+const damage = new Damage({ hf, surface, effects, decals,
   get water() { return view.water; }, get forest() { return view.forest; }, get buildings() { return view.buildings; }, get nav() { return nav; }, get units() { return units; } });
 
 // ---------- nav grid and test units (milestone 6) ----------
@@ -274,6 +279,8 @@ function barrage(cx, cz, { count = 24, radius = 22, seconds = 3, weapon = 'shell
 function resetTerrain() {
   state.pending.length = 0;
   restore(map, pristine);
+  hf.setFloor(TERRAIN.maxDig);
+  decals.clear();
   view.terrain.rebuildAll();
   view.rebuildWater();
   view.reloadTrees();
@@ -301,11 +308,19 @@ function refreshCosts() {
 }
 function setPlacing(kind) {
   commander.setPlacing(kind);
+  document.getElementById('btnRepair')?.classList.remove('on');
   buildBtns.forEach(b => b.classList.toggle('on', b.dataset.build === kind));
   buildHint.style.display = kind ? 'block' : 'none';
   buildHint.textContent = kind === 'turret' ? 'Tap where the turret goes' : kind ? `Tap to place a ${BUILD[kind].name.toLowerCase()}, or drag a line for a longer one` : '';
 }
 // A planned wall / trench: Turn (15° steps), Build, Cancel.
+const btnRepair = document.getElementById('btnRepair');
+btnRepair.addEventListener('pointerup', () => {
+  selectWeapon('move');
+  const on = commander.placing !== 'repair';
+  setPlacing(null);
+  if (on) { commander.setPlacing('repair'); btnRepair.classList.add('on'); buildHint.style.display = 'block'; buildHint.textContent = 'Tap the mech, turret or HQ to repair'; }
+});
 const placeBar = document.getElementById('placebar');
 commander.onPending = p => {
   placeBar.style.display = p ? 'flex' : 'none';
@@ -321,6 +336,7 @@ buildBtns.forEach(b => b.addEventListener('pointerup', () => { selectWeapon('mov
 commander.onPlaced = (r, kind) => {
   setPlacing(null);
   commander.onPending(null);
+  if (kind === 'repair') { hud.banner(r.repair ? `Repairing ${r.repair.t.name}` : 'Tap one of your mechs to repair it', '#e8b02a', 1.5); return; }
   if (r.refused === 'poor') hud.refused('poor');
   else if (r.refused === 'site' && !r.jobs.length) hud.banner("Can't build there", '#ffd25a', 1.8);
   else if (r.jobs.length) hud.banner(`${r.jobs.length > 1 ? r.jobs.length + ' ' : ''}${BUILD[kind].name}${r.jobs.length > 1 ? (kind === 'trench' ? ' sections' : 's') : ''} ordered`, '#e8b02a', 1.5);
@@ -438,6 +454,7 @@ function frame(now) {
   }
   view.update(dt);
   updateFogView(dt);
+  decals.flush();
   mechView.update(units, selected, camera);
   updateMatchView(dt);
   if (selected.size !== lastSel) { lastSel = selected.size; updateSelInfo(); }
@@ -459,7 +476,7 @@ window.__game = {
   heightAt, pickGround, fireAt, barrage, resetTerrain, selectWeapon,
   nav, movers, units, mechView, commander, selected, spawnSquad, setNavOverlay, setMoveKind, NAV_CLASSES,
   get match() { return match; }, get ai() { return ai; }, sandbox, game, hud, minimap, construction, setPlacing, mobile,
-  vision, fogView, fog, setFog, statsEditor: stats,
+  vision, fogView, fog, setFog, statsEditor: stats, decals,
   pause(on = true) { paused = on; },
   // Advance the simulation by `seconds` in fixed steps, independent of real time.
   step(seconds) {
@@ -468,7 +485,7 @@ window.__game = {
     return state.time;
   },
   // Rebuild dirty chunks (all, or up to `limit`) and render one frame immediately.
-  render(limit = Infinity) { view.update(0, limit); updateFogView(1); mechView.update(units, selected, camera); updateMatchView(0.3); view.render(); return debug.stats(); },
+  render(limit = Infinity) { view.update(0, limit); updateFogView(1); decals.flush(); mechView.update(units, selected, camera); updateMatchView(0.3); view.render(); return debug.stats(); },
   stats: () => debug.stats(),
   ready: true,
 };

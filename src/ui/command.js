@@ -90,6 +90,15 @@ export class Commander {
 
   tap(cx, cy) {
     if (this.state.weapon !== 'move') return this.fireTap(cx, cy);
+    if (this.placing === 'repair' && this.construction) {
+      // Repair: tap one of your mechs, turrets or the HQ; the selected Builders go and mend it.
+      const t = this.mechView.pick(this.rts.screenRay(cx, cy), this.units, this.team, true) || this.nearestOnScreen(cx, cy, this.team);
+      const kind = this.placing;
+      this.setPlacing(null);
+      if (t) this.construction.repair(this.builders(), t);
+      this.onPlaced?.({ jobs: [], refused: t ? null : 'none', repair: t }, kind);
+      return;
+    }
     if (this.placing && this.construction) {
       const g = this.view.pickGround(cx, cy);
       if (!g) return;

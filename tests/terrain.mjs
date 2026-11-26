@@ -64,7 +64,7 @@ const fire = await page.evaluate(() => {
   for (let f = 0; f < 10 && g.terrain.dirty.size; f++) perFrame.push(g.terrain.update());
   return { y0, y1: g.heightAt(x, z), dirty, perFrame, rebuilt: g.terrain.rebuildCount - before, left: g.terrain.dirty.size };
 });
-check(fire.y1 < fire.y0 - 1.4, `shell lowers the ground (${fire.y0.toFixed(2)} -> ${fire.y1.toFixed(2)})`);
+check(fire.y1 < fire.y0 - 0.6, `shell lowers the ground (${fire.y0.toFixed(2)} -> ${fire.y1.toFixed(2)})`);
 check(fire.dirty >= 4, `a hit on a chunk corner marks the touching chunks dirty (${fire.dirty})`);
 check(fire.perFrame.every(n => n <= 4) && fire.left === 0, `dirty chunks rebuilt at most 4 per frame (${fire.perFrame.join(', ')})`);
 m = await meshCheck();
@@ -84,7 +84,16 @@ const off = Math.hypot(tap.x - aim.x, tap.z - aim.z);
 check(tap.n === aim.n + 1 && tap.weapon === 'shell', `tap fires one shot with the selected weapon (${tap.weapon})`);
 check(off < 0.05, `shot lands on the ground under the finger (off by ${off.toFixed(3)})`);
 const after = await page.evaluate(([x, z]) => window.__game.heightAt(x, z), [aim.x, aim.z]);
-check(after < aim.h - 1, `the tapped spot is cratered (${aim.h.toFixed(2)} -> ${after.toFixed(2)})`);
+check(after < aim.h - 0.6, `the tapped spot is cratered (${aim.h.toFixed(2)} -> ${after.toFixed(2)})`);
+// The crater picture is baked into the ground texture there.
+const dec = await page.evaluate(([x, z]) => {
+  const G = window.__game, D = G.decals; G.render();
+  const N = D.N, px = Math.floor((x / 256 + 0.5) * N), py = Math.floor((z / 256 + 0.5) * N);
+  const a = D.ctx.getImageData(px - 3, py - 3, 7, 7).data; let alpha = 0; for (let i = 3; i < a.length; i += 4) alpha = Math.max(alpha, a[i]);
+  const far = D.ctx.getImageData(px + 300, py, 1, 1).data[3];
+  return { count: D.count, alpha, far };
+}, [aim.x, aim.z]);
+check(dec.count >= 2 && dec.alpha > 200 && dec.far === 0, `a crater picture is painted into the ground where it hit (${dec.count} so far; opacity there ${dec.alpha}, far away ${dec.far})`);
 
 // A drag must not fire.
 await page.waitForTimeout(400);

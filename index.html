@@ -9,12 +9,12 @@
 <meta name="apple-mobile-web-app-title" content="Mech RTS">
 <meta name="theme-color" content="#0b1015">
 <!-- Must match VERSION in src/version.js. If they differ, the HUD warns that Safari served stale code. -->
-<meta name="build" content="v17">
+<meta name="build" content="v18">
 <title>Mech RTS</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" type="image/png" href="icons/icon-180.png">
-<link rel="stylesheet" href="style.css?v=17">
+<link rel="stylesheet" href="style.css?v=18">
 <style>
   #topright { position:fixed; top:calc(env(safe-area-inset-top) + 10px); right:calc(env(safe-area-inset-right) + 12px);
               display:flex; gap:8px; z-index:35; }
@@ -104,7 +104,10 @@
   body.mobile #fire .lbl, body.mobile #fire .sep { display:none !important; }
   body.mobile.devopen #selinfo { display:none !important; }
   body.mobile #buildpanel { left:auto; right:calc(env(safe-area-inset-right) + 6px); top:calc(env(safe-area-inset-top) + 44px); bottom:auto;
-                            transform:none; flex-direction:column; align-items:stretch; gap:4px; padding:4px; border-radius:8px; }
+                            transform:none; flex-direction:row; flex-wrap:wrap; width:156px; align-items:stretch; gap:4px; padding:4px; border-radius:8px; }
+  body.mobile #buildpanel .lbl { flex:1 1 100%; }
+  body.mobile #buildpanel .btn { flex:0 0 auto; box-sizing:border-box; width:calc(50% - 2px); min-width:0; padding:0 2px; flex-direction:column; height:38px; line-height:1.1; }
+  body.mobile #buildpanel .btn .c { margin-left:0; }
   body.mobile #buildpanel .lbl { font-size:11px; } body.mobile #buildpanel .btn .c { font-size:10px; margin-left:4px; }
   body.mobile #buildhint { bottom:calc(env(safe-area-inset-bottom) + 92px); font-size:12px; }
   body.mobile #selinfo { left:calc(env(safe-area-inset-left) + 6px); top:calc(env(safe-area-inset-top) + 230px); bottom:auto; font-size:11px; padding:3px 7px; }
@@ -135,51 +138,52 @@
 <script type="importmap">
 {
   "imports": {
-    "three": "./lib/three.module.js?v=17",
-    "./editor/editor.js": "./editor/editor.js?v=17",
-    "./editor/history.js": "./editor/history.js?v=17",
-    "./editor/tools/features.js": "./editor/tools/features.js?v=17",
-    "./editor/tools/markers.js": "./editor/tools/markers.js?v=17",
-    "./editor/tools/terrain.js": "./editor/tools/terrain.js?v=17",
-    "./src/ai/enemy.js": "./src/ai/enemy.js?v=17",
-    "./src/combat/damage.js": "./src/combat/damage.js?v=17",
-    "./src/combat/effects.js": "./src/combat/effects.js?v=17",
-    "./src/combat/los.js": "./src/combat/los.js?v=17",
-    "./src/combat/projectiles.js": "./src/combat/projectiles.js?v=17",
-    "./src/config.js": "./src/config.js?v=17",
-    "./src/game/match.js": "./src/game/match.js?v=17",
-    "./src/game/vision.js": "./src/game/vision.js?v=17",
-    "./src/main.js": "./src/main.js?v=17",
-    "./src/maps/format.js": "./src/maps/format.js?v=17",
-    "./src/maps/imageimport.js": "./src/maps/imageimport.js?v=17",
-    "./src/maps/loader.js": "./src/maps/loader.js?v=17",
-    "./src/nav/navgrid.js": "./src/nav/navgrid.js?v=17",
-    "./src/nav/pathfinding.js": "./src/nav/pathfinding.js?v=17",
-    "./src/terrain/chunks.js": "./src/terrain/chunks.js?v=17",
-    "./src/terrain/heightfield.js": "./src/terrain/heightfield.js?v=17",
-    "./src/terrain/surface.js": "./src/terrain/surface.js?v=17",
-    "./src/terrain/testmap.js": "./src/terrain/testmap.js?v=17",
-    "./src/terrain/water.js": "./src/terrain/water.js?v=17",
-    "./src/terrain/watermesh.js": "./src/terrain/watermesh.js?v=17",
-    "./src/ui/camera.js": "./src/ui/camera.js?v=17",
-    "./src/ui/command.js": "./src/ui/command.js?v=17",
-    "./src/ui/debug.js": "./src/ui/debug.js?v=17",
-    "./src/ui/hud.js": "./src/ui/hud.js?v=17",
-    "./src/ui/minimap.js": "./src/ui/minimap.js?v=17",
-    "./src/ui/mobile.js": "./src/ui/mobile.js?v=17",
-    "./src/ui/stats.js": "./src/ui/stats.js?v=17",
-    "./src/units/mech.js": "./src/units/mech.js?v=17",
-    "./src/units/movers.js": "./src/units/movers.js?v=17",
-    "./src/units/units.js": "./src/units/units.js?v=17",
-    "./src/version.js": "./src/version.js?v=17",
-    "./src/view.js": "./src/view.js?v=17",
-    "./src/world/buildings.js": "./src/world/buildings.js?v=17",
-    "./src/world/buildingview.js": "./src/world/buildingview.js?v=17",
-    "./src/world/construction.js": "./src/world/construction.js?v=17",
-    "./src/world/fogview.js": "./src/world/fogview.js?v=17",
-    "./src/world/forest.js": "./src/world/forest.js?v=17",
-    "./src/world/markers.js": "./src/world/markers.js?v=17",
-    "./src/world/trees.js": "./src/world/trees.js?v=17"
+    "three": "./lib/three.module.js?v=18",
+    "./editor/editor.js": "./editor/editor.js?v=18",
+    "./editor/history.js": "./editor/history.js?v=18",
+    "./editor/tools/features.js": "./editor/tools/features.js?v=18",
+    "./editor/tools/markers.js": "./editor/tools/markers.js?v=18",
+    "./editor/tools/terrain.js": "./editor/tools/terrain.js?v=18",
+    "./src/ai/enemy.js": "./src/ai/enemy.js?v=18",
+    "./src/combat/damage.js": "./src/combat/damage.js?v=18",
+    "./src/combat/effects.js": "./src/combat/effects.js?v=18",
+    "./src/combat/los.js": "./src/combat/los.js?v=18",
+    "./src/combat/projectiles.js": "./src/combat/projectiles.js?v=18",
+    "./src/config.js": "./src/config.js?v=18",
+    "./src/game/match.js": "./src/game/match.js?v=18",
+    "./src/game/vision.js": "./src/game/vision.js?v=18",
+    "./src/main.js": "./src/main.js?v=18",
+    "./src/maps/format.js": "./src/maps/format.js?v=18",
+    "./src/maps/imageimport.js": "./src/maps/imageimport.js?v=18",
+    "./src/maps/loader.js": "./src/maps/loader.js?v=18",
+    "./src/nav/navgrid.js": "./src/nav/navgrid.js?v=18",
+    "./src/nav/pathfinding.js": "./src/nav/pathfinding.js?v=18",
+    "./src/terrain/chunks.js": "./src/terrain/chunks.js?v=18",
+    "./src/terrain/heightfield.js": "./src/terrain/heightfield.js?v=18",
+    "./src/terrain/surface.js": "./src/terrain/surface.js?v=18",
+    "./src/terrain/testmap.js": "./src/terrain/testmap.js?v=18",
+    "./src/terrain/water.js": "./src/terrain/water.js?v=18",
+    "./src/terrain/watermesh.js": "./src/terrain/watermesh.js?v=18",
+    "./src/ui/camera.js": "./src/ui/camera.js?v=18",
+    "./src/ui/command.js": "./src/ui/command.js?v=18",
+    "./src/ui/debug.js": "./src/ui/debug.js?v=18",
+    "./src/ui/hud.js": "./src/ui/hud.js?v=18",
+    "./src/ui/minimap.js": "./src/ui/minimap.js?v=18",
+    "./src/ui/mobile.js": "./src/ui/mobile.js?v=18",
+    "./src/ui/stats.js": "./src/ui/stats.js?v=18",
+    "./src/units/mech.js": "./src/units/mech.js?v=18",
+    "./src/units/movers.js": "./src/units/movers.js?v=18",
+    "./src/units/units.js": "./src/units/units.js?v=18",
+    "./src/version.js": "./src/version.js?v=18",
+    "./src/view.js": "./src/view.js?v=18",
+    "./src/world/buildings.js": "./src/world/buildings.js?v=18",
+    "./src/world/buildingview.js": "./src/world/buildingview.js?v=18",
+    "./src/world/construction.js": "./src/world/construction.js?v=18",
+    "./src/world/decals.js": "./src/world/decals.js?v=18",
+    "./src/world/fogview.js": "./src/world/fogview.js?v=18",
+    "./src/world/forest.js": "./src/world/forest.js?v=18",
+    "./src/world/markers.js": "./src/world/markers.js?v=18",
+    "./src/world/trees.js": "./src/world/trees.js?v=18"
   }
 }
 </script>
@@ -217,6 +221,7 @@
   <div class="btn" data-build="wall">Wall<span class="c"></span></div>
   <div class="btn" data-build="turret">Turret<span class="c"></span></div>
   <div class="btn" data-build="trench">Trench<span class="c"></span></div>
+  <div class="btn" id="btnRepair" title="Tap one of your mechs to repair it">Repair</div>
 </div>
 <div id="buildhint"></div>
 <div id="placebar" class="panel">
@@ -240,6 +245,7 @@
     <b>Select</b><span>tap a mech; double-tap for all of that type; drag one finger to box-select.</span>
     <b>Orders</b><span>tap the ground to go there (they shoot on the way, then hold); <b>A-Move</b> makes them stop to fight; tap an enemy or its HQ to attack.</span>
     <b>Builders</b><span>select one, pick Wall, Turret or Trench, then tap the ground (or drag a line); turn walls and trenches with ⟲ ⟳, then Build.</span>
+    <b>Repair</b><span>Builders mend damaged mechs and turrets near them; or tap Repair, then the mech.</span>
     <b>Defend</b><span>selected mechs crouch where they are: harder to hit, even more so in a trench.</span>
     <b>Camera</b><span>two fingers pan, pinch to zoom, twist to turn; tap the map (bottom right) to jump.</span>
   </div>
@@ -254,10 +260,10 @@
 <div id="selinfo" class="panel"></div>
 <div id="boxsel"></div>
 </div>
-<div id="ver">v17</div>
+<div id="ver">v18</div>
 <div id="loading">Loading map…</div>
 <div id="fatal"></div>
-<script src="src/ui/page.js?v=17"></script>
-<script type="module" src="src/main.js?v=17"></script>
+<script src="src/ui/page.js?v=18"></script>
+<script type="module" src="src/main.js?v=18"></script>
 </body>
 </html>
