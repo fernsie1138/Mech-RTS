@@ -9,12 +9,12 @@
 <meta name="apple-mobile-web-app-title" content="Mech RTS">
 <meta name="theme-color" content="#0b1015">
 <!-- Must match VERSION in src/version.js. If they differ, the HUD warns that Safari served stale code. -->
-<meta name="build" content="v14">
+<meta name="build" content="v15">
 <title>Mech RTS</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" type="image/png" href="icons/icon-180.png">
-<link rel="stylesheet" href="style.css?v=14">
+<link rel="stylesheet" href="style.css?v=15">
 <style>
   #topright { position:fixed; top:calc(env(safe-area-inset-top) + 10px); right:calc(env(safe-area-inset-right) + 12px);
               display:flex; gap:8px; z-index:35; }
@@ -30,8 +30,9 @@
              padding:6px 10px; font-size:14px; display:none; pointer-events:none; }
   #boxsel { position:fixed; border:1.5px solid #7cff9a; background:rgba(124,255,154,.12); pointer-events:none; display:none; z-index:6; }
   /* Match HUD */
-  #res { position:fixed; top:calc(env(safe-area-inset-top) + 10px); left:calc(env(safe-area-inset-left) + 12px);
-         display:flex; gap:14px; align-items:baseline; padding:8px 14px; font-size:16px; font-weight:700; pointer-events:none; }
+  #topleft { position:fixed; top:calc(env(safe-area-inset-top) + 10px); left:calc(env(safe-area-inset-left) + 12px);
+             display:flex; gap:8px; align-items:center; z-index:35; }   /* above the start screen: Mobile is usable there */
+  #res { display:flex; gap:14px; align-items:baseline; padding:8px 14px; font-size:16px; font-weight:700; pointer-events:none; }
   #credits { color:#ffd25a; font-size:19px; } #income { color:#9fd18b; font-size:14px; } #points { color:#ffd23a; }
   #army { color:#b9d6ff; } #clock { color:#b9c7d2; font-weight:600; font-size:14px; }
   #build { position:fixed; top:calc(env(safe-area-inset-top) + 62px); left:calc(env(safe-area-inset-left) + 12px);
@@ -60,6 +61,22 @@
   #buildpanel .btn .c { color:#ffd25a; font-size:12px; margin-left:6px; }
   #buildhint { position:fixed; bottom:calc(env(safe-area-inset-bottom) + 146px); left:50%; transform:translateX(-50%);
                font-size:14px; color:#fff; text-shadow:0 1px 4px #000; pointer-events:none; white-space:nowrap; display:none; }
+  /* Dev: unit stats dialog */
+  #statsDialog { z-index:45; }
+  #statsDialog .box { width:min(860px, calc(100% - 24px)); max-height:calc(100% - 24px); display:flex; flex-direction:column; text-align:left; padding:16px 18px; }
+  #statsDialog h2 { margin:0 0 4px; font-size:20px; } #statsDialog h3 { margin:14px 0 6px; font-size:15px; color:#e8b02a; }
+  #statsDialog .sub { margin:0 0 10px; font-size:13px; }
+  #statsDialog .scroll { overflow:auto; -webkit-overflow-scrolling:touch; touch-action:pan-x pan-y; flex:1; min-height:0; }
+  #statsDialog table { border-collapse:collapse; font-size:13px; }
+  #statsDialog th { text-align:left; font-weight:600; color:#b9c7d2; padding:3px 8px 3px 0; white-space:nowrap; }
+  #statsDialog tr:first-child th { color:#e8eef2; text-align:center; }
+  #statsDialog td { padding:2px 3px; } #statsDialog td.na { text-align:center; color:#56636e; }
+  #statsDialog input { width:64px; height:30px; font-size:15px; border-radius:6px; border:1px solid #567; background:#0e141a; color:#fff; padding:0 6px; -webkit-user-select:text; user-select:text; }
+  #statsDialog input.mod { border-color:#ffd25a; color:#ffd25a; }
+  #statsDialog .actions { display:flex; gap:8px; justify-content:flex-end; margin-top:12px; }
+  #statsDialog .actions .btn { margin:0; min-width:90px; height:42px; font-size:15px; }
+  body.mobile #statsDialog .box { padding:10px 12px; } body.mobile #statsDialog h2 { font-size:16px; }
+  body.mobile #statsDialog input { width:52px; height:26px; font-size:13px; } body.mobile #statsDialog table { font-size:11px; }
   body.match .dev { display:none !important; }
   body.match.devopen .dev { display:flex !important; }
   body:not(.match) #res, body:not(.match) #build, body:not(.match) #minimap, body:not(.match) #btnDev { display:none; }
@@ -68,9 +85,10 @@
   body.mobile .btn { height:32px; min-width:34px; padding:0 8px; font-size:12px; border-radius:8px; }
   body.mobile #topright { top:calc(env(safe-area-inset-top) + 6px); right:calc(env(safe-area-inset-right) + 6px); gap:5px; }
   body.mobile #mapname { display:none; }
-  body.mobile #res { top:calc(env(safe-area-inset-top) + 6px); left:calc(env(safe-area-inset-left) + 6px); gap:8px; padding:4px 8px; font-size:12px; border-radius:8px; }
+  body.mobile #topleft { top:calc(env(safe-area-inset-top) + 6px); left:calc(env(safe-area-inset-left) + 6px); gap:5px; }
+  body.mobile #res { gap:8px; padding:4px 8px; font-size:12px; border-radius:8px; }
   body.mobile #credits { font-size:14px; } body.mobile #income, body.mobile #clock { font-size:11px; }
-  body.mobile #build { top:calc(env(safe-area-inset-top) + 38px); left:calc(env(safe-area-inset-left) + 6px); gap:5px; }
+  body.mobile #build { top:calc(env(safe-area-inset-top) + 42px); left:calc(env(safe-area-inset-left) + 6px); gap:5px; }
   body.mobile .card { width:76px; height:40px; padding:0 8px; }
   body.mobile .card .nm { font-size:12px; } body.mobile .card .cost { font-size:11px; }
   body.mobile .card .q { font-size:12px; right:6px; top:4px; } body.mobile .card .pb { height:3px; }
@@ -82,7 +100,7 @@
                             transform:none; flex-direction:column; align-items:stretch; gap:4px; padding:4px; border-radius:8px; }
   body.mobile #buildpanel .lbl { font-size:11px; } body.mobile #buildpanel .btn .c { font-size:10px; margin-left:4px; }
   body.mobile #buildhint { bottom:calc(env(safe-area-inset-bottom) + 90px); font-size:12px; }
-  body.mobile #selinfo { left:calc(env(safe-area-inset-left) + 6px); top:calc(env(safe-area-inset-top) + 226px); bottom:auto; font-size:11px; padding:3px 7px; }
+  body.mobile #selinfo { left:calc(env(safe-area-inset-left) + 6px); top:calc(env(safe-area-inset-top) + 230px); bottom:auto; font-size:11px; padding:3px 7px; }
   body.mobile #minimap { width:112px; height:112px; right:calc(env(safe-area-inset-right) + 6px); bottom:calc(env(safe-area-inset-bottom) + 16px); border-radius:6px; }
   body.mobile #banner { top:calc(env(safe-area-inset-top) + 40px); font-size:15px; }
   body.mobile #ver { font-size:10px; bottom:calc(env(safe-area-inset-bottom) + 2px); }
@@ -106,50 +124,51 @@
 <script type="importmap">
 {
   "imports": {
-    "three": "./lib/three.module.js?v=14",
-    "./editor/editor.js": "./editor/editor.js?v=14",
-    "./editor/history.js": "./editor/history.js?v=14",
-    "./editor/tools/features.js": "./editor/tools/features.js?v=14",
-    "./editor/tools/markers.js": "./editor/tools/markers.js?v=14",
-    "./editor/tools/terrain.js": "./editor/tools/terrain.js?v=14",
-    "./src/ai/enemy.js": "./src/ai/enemy.js?v=14",
-    "./src/combat/damage.js": "./src/combat/damage.js?v=14",
-    "./src/combat/effects.js": "./src/combat/effects.js?v=14",
-    "./src/combat/los.js": "./src/combat/los.js?v=14",
-    "./src/combat/projectiles.js": "./src/combat/projectiles.js?v=14",
-    "./src/config.js": "./src/config.js?v=14",
-    "./src/game/match.js": "./src/game/match.js?v=14",
-    "./src/game/vision.js": "./src/game/vision.js?v=14",
-    "./src/main.js": "./src/main.js?v=14",
-    "./src/maps/format.js": "./src/maps/format.js?v=14",
-    "./src/maps/imageimport.js": "./src/maps/imageimport.js?v=14",
-    "./src/maps/loader.js": "./src/maps/loader.js?v=14",
-    "./src/nav/navgrid.js": "./src/nav/navgrid.js?v=14",
-    "./src/nav/pathfinding.js": "./src/nav/pathfinding.js?v=14",
-    "./src/terrain/chunks.js": "./src/terrain/chunks.js?v=14",
-    "./src/terrain/heightfield.js": "./src/terrain/heightfield.js?v=14",
-    "./src/terrain/surface.js": "./src/terrain/surface.js?v=14",
-    "./src/terrain/testmap.js": "./src/terrain/testmap.js?v=14",
-    "./src/terrain/water.js": "./src/terrain/water.js?v=14",
-    "./src/terrain/watermesh.js": "./src/terrain/watermesh.js?v=14",
-    "./src/ui/camera.js": "./src/ui/camera.js?v=14",
-    "./src/ui/command.js": "./src/ui/command.js?v=14",
-    "./src/ui/debug.js": "./src/ui/debug.js?v=14",
-    "./src/ui/hud.js": "./src/ui/hud.js?v=14",
-    "./src/ui/minimap.js": "./src/ui/minimap.js?v=14",
-    "./src/ui/mobile.js": "./src/ui/mobile.js?v=14",
-    "./src/units/mech.js": "./src/units/mech.js?v=14",
-    "./src/units/movers.js": "./src/units/movers.js?v=14",
-    "./src/units/units.js": "./src/units/units.js?v=14",
-    "./src/version.js": "./src/version.js?v=14",
-    "./src/view.js": "./src/view.js?v=14",
-    "./src/world/buildings.js": "./src/world/buildings.js?v=14",
-    "./src/world/buildingview.js": "./src/world/buildingview.js?v=14",
-    "./src/world/construction.js": "./src/world/construction.js?v=14",
-    "./src/world/fogview.js": "./src/world/fogview.js?v=14",
-    "./src/world/forest.js": "./src/world/forest.js?v=14",
-    "./src/world/markers.js": "./src/world/markers.js?v=14",
-    "./src/world/trees.js": "./src/world/trees.js?v=14"
+    "three": "./lib/three.module.js?v=15",
+    "./editor/editor.js": "./editor/editor.js?v=15",
+    "./editor/history.js": "./editor/history.js?v=15",
+    "./editor/tools/features.js": "./editor/tools/features.js?v=15",
+    "./editor/tools/markers.js": "./editor/tools/markers.js?v=15",
+    "./editor/tools/terrain.js": "./editor/tools/terrain.js?v=15",
+    "./src/ai/enemy.js": "./src/ai/enemy.js?v=15",
+    "./src/combat/damage.js": "./src/combat/damage.js?v=15",
+    "./src/combat/effects.js": "./src/combat/effects.js?v=15",
+    "./src/combat/los.js": "./src/combat/los.js?v=15",
+    "./src/combat/projectiles.js": "./src/combat/projectiles.js?v=15",
+    "./src/config.js": "./src/config.js?v=15",
+    "./src/game/match.js": "./src/game/match.js?v=15",
+    "./src/game/vision.js": "./src/game/vision.js?v=15",
+    "./src/main.js": "./src/main.js?v=15",
+    "./src/maps/format.js": "./src/maps/format.js?v=15",
+    "./src/maps/imageimport.js": "./src/maps/imageimport.js?v=15",
+    "./src/maps/loader.js": "./src/maps/loader.js?v=15",
+    "./src/nav/navgrid.js": "./src/nav/navgrid.js?v=15",
+    "./src/nav/pathfinding.js": "./src/nav/pathfinding.js?v=15",
+    "./src/terrain/chunks.js": "./src/terrain/chunks.js?v=15",
+    "./src/terrain/heightfield.js": "./src/terrain/heightfield.js?v=15",
+    "./src/terrain/surface.js": "./src/terrain/surface.js?v=15",
+    "./src/terrain/testmap.js": "./src/terrain/testmap.js?v=15",
+    "./src/terrain/water.js": "./src/terrain/water.js?v=15",
+    "./src/terrain/watermesh.js": "./src/terrain/watermesh.js?v=15",
+    "./src/ui/camera.js": "./src/ui/camera.js?v=15",
+    "./src/ui/command.js": "./src/ui/command.js?v=15",
+    "./src/ui/debug.js": "./src/ui/debug.js?v=15",
+    "./src/ui/hud.js": "./src/ui/hud.js?v=15",
+    "./src/ui/minimap.js": "./src/ui/minimap.js?v=15",
+    "./src/ui/mobile.js": "./src/ui/mobile.js?v=15",
+    "./src/ui/stats.js": "./src/ui/stats.js?v=15",
+    "./src/units/mech.js": "./src/units/mech.js?v=15",
+    "./src/units/movers.js": "./src/units/movers.js?v=15",
+    "./src/units/units.js": "./src/units/units.js?v=15",
+    "./src/version.js": "./src/version.js?v=15",
+    "./src/view.js": "./src/view.js?v=15",
+    "./src/world/buildings.js": "./src/world/buildings.js?v=15",
+    "./src/world/buildingview.js": "./src/world/buildingview.js?v=15",
+    "./src/world/construction.js": "./src/world/construction.js?v=15",
+    "./src/world/fogview.js": "./src/world/fogview.js?v=15",
+    "./src/world/forest.js": "./src/world/forest.js?v=15",
+    "./src/world/markers.js": "./src/world/markers.js?v=15",
+    "./src/world/trees.js": "./src/world/trees.js?v=15"
   }
 }
 </script>
@@ -161,7 +180,6 @@
 <div id="topright">
   <div class="btn" id="btnEditor">Editor</div>
   <div class="btn" id="btnNav" title="Show where units can't go (red) or go slowly (yellow)">Nav</div>
-  <div class="btn" id="btnMobile" title="Mobile Mode: smaller controls for phones">Mobile</div>
   <div class="btn" id="btnDebug" title="Debug overlay (`)">FPS</div>
 </div>
 <div id="fire" class="panel">
@@ -180,6 +198,7 @@
   <div class="btn dev" id="btnBarrage">Barrage</div>
   <div class="btn dev" id="btnReset">Reset</div>
   <div class="btn dev" id="btnFog" title="Fog of war on/off">Fog</div>
+  <div class="btn dev" id="btnStats" title="Change unit stats">Stats</div>
 </div>
 <div id="buildpanel" class="panel">
   <span class="lbl">Builder</span>
@@ -188,7 +207,10 @@
   <div class="btn" data-build="trench">Trench<span class="c"></span></div>
 </div>
 <div id="buildhint"></div>
-<div id="res" class="panel"><span id="credits"></span><span id="income"></span><span id="points"></span><span id="army"></span><span id="clock"></span></div>
+<div id="topleft">
+  <div class="btn" id="btnMobile" title="Mobile Mode: smaller controls for phones">Mobile</div>
+  <div id="res" class="panel"><span id="credits"></span><span id="income"></span><span id="points"></span><span id="army"></span><span id="clock"></span></div>
+</div>
 <div id="build"></div>
 <div id="banner"></div>
 <canvas id="minimap" width="360" height="360"></canvas>
@@ -202,7 +224,7 @@
     <b>Builders</b><span>select one, pick Wall, Turret or Trench, then tap the ground (or drag a line).</span>
     <b>Camera</b><span>two fingers pan, pinch to zoom, twist to turn; tap the map (bottom right) to jump.</span>
   </div>
-  <p class="tip">On a phone? Turn on <b>Mobile</b> (top right) for smaller controls, and hold the phone sideways.</p>
+  <p class="tip">On a phone? Turn on <b>Mobile</b> (top left) for smaller controls, and hold the phone sideways.</p>
   <div class="btn go" id="btnStart">Start</div>
 </div></div>
 <div id="endScreen" class="screen"><div class="box panel">
@@ -213,10 +235,10 @@
 <div id="selinfo" class="panel"></div>
 <div id="boxsel"></div>
 </div>
-<div id="ver">v14</div>
+<div id="ver">v15</div>
 <div id="loading">Loading map…</div>
 <div id="fatal"></div>
-<script src="src/ui/page.js?v=14"></script>
-<script type="module" src="src/main.js?v=14"></script>
+<script src="src/ui/page.js?v=15"></script>
+<script type="module" src="src/main.js?v=15"></script>
 </body>
 </html>

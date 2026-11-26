@@ -8,11 +8,11 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0b1015">
 <!-- Must match VERSION in src/version.js. -->
-<meta name="build" content="v14">
+<meta name="build" content="v15">
 <title>Mech RTS Editor</title>
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" type="image/png" href="icons/icon-180.png">
-<link rel="stylesheet" href="style.css?v=14">
+<link rel="stylesheet" href="style.css?v=15">
 <style>
   .bar { position:fixed; display:flex; gap:8px; padding:8px; align-items:center; }
   #top { top:calc(env(safe-area-inset-top) + 8px); left:calc(env(safe-area-inset-left) + 8px); right:calc(env(safe-area-inset-right) + 8px);
@@ -51,56 +51,89 @@
   .dialog .actions { display:flex; gap:10px; justify-content:flex-end; margin-top:16px; }
   .dialog .list .btn { justify-content:flex-start; width:100%; margin:6px 0; }
   .dialog .warn { color:#ffb36b; }
+  /* ---------- Mobile Mode (phones) ---------- */
+  body.mobile .btn { height:32px; min-width:34px; padding:0 7px; font-size:12px; border-radius:8px; }
+  body.mobile #top { top:calc(env(safe-area-inset-top) + 4px); left:calc(env(safe-area-inset-left) + 4px); right:calc(env(safe-area-inset-right) + 4px); }
+  body.mobile #top .grp { gap:4px; padding:4px; border-radius:8px; }
+  body.mobile #mapname { font-size:12px; max-width:120px; padding:0 4px; }
+  body.mobile .long { display:none; }
+  body.mobile #tools { top:calc(env(safe-area-inset-top) + 48px); left:calc(env(safe-area-inset-left) + 4px); grid-template-columns:repeat(2, 64px); gap:4px; padding:4px;
+                       max-height:calc(100% - 68px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); overflow-y:auto; -webkit-overflow-scrolling:touch; touch-action:pan-y; border-radius:8px; }
+  body.mobile #tools .btn { padding:0 4px; font-size:11px; }
+  body.mobile #tools .hdr { font-size:9px; margin:2px 0 -2px 2px; }
+  body.mobile #brush { bottom:calc(env(safe-area-inset-bottom) + 4px); gap:10px; padding:4px 10px; left:calc(50% + 40px); border-radius:8px; }
+  body.mobile #brush label { font-size:12px; gap:6px; }
+  body.mobile #brush input[type=range] { width:110px; height:28px; }
+  body.mobile #brush .val { min-width:28px; }
+  body.mobile #bpanel { bottom:calc(env(safe-area-inset-bottom) + 4px); left:calc(50% + 40px); gap:4px; padding:4px; flex-wrap:wrap; justify-content:center; max-width:calc(100vw - 170px); border-radius:8px; }
+  body.mobile #bpanel #bname { min-width:0; font-size:12px; }
+  body.mobile #bpanel .angle { font-size:12px; gap:4px; }
+  body.mobile #bpanel input[type=range] { width:100px; height:28px; }
+  body.mobile #hint { bottom:calc(env(safe-area-inset-bottom) + 44px); font-size:11px; left:calc(50% + 40px); }
+  body.mobile.bpanel-on #hint { bottom:calc(env(safe-area-inset-bottom) + 94px); }
+  body.mobile #status { display:none; }
+  body.mobile .dialog .box { padding:12px 14px; }
+  body.mobile .dialog h2 { font-size:17px; }
+  body.mobile .dialog p, body.mobile .dialog li { font-size:12px; }
+  @media (orientation: portrait) {
+    body.mobile #top { flex-wrap:wrap; gap:4px; }
+    body.mobile #mapname { max-width:76px; }
+    body.mobile #tools { top:calc(env(safe-area-inset-top) + 100px); max-height:calc(100% - 112px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); }
+    body.mobile #brush, body.mobile #bpanel, body.mobile #hint { left:calc(env(safe-area-inset-left) + 150px); transform:none; max-width:calc(100vw - 156px); flex-wrap:wrap; }
+    body.mobile #brush input[type=range] { width:90px; }
+    body.mobile #hint { white-space:normal; text-align:center; }
+  }
   .keys { display:grid; grid-template-columns:auto 1fr; gap:2px 12px; font-size:13px; color:#b9c7d2; }
   .sw { display:inline-block; width:14px; height:14px; border:1px solid #888; vertical-align:middle; margin-right:4px; }
 </style>
 <script type="importmap">
 {
   "imports": {
-    "three": "./lib/three.module.js?v=14",
-    "./editor/editor.js": "./editor/editor.js?v=14",
-    "./editor/history.js": "./editor/history.js?v=14",
-    "./editor/tools/features.js": "./editor/tools/features.js?v=14",
-    "./editor/tools/markers.js": "./editor/tools/markers.js?v=14",
-    "./editor/tools/terrain.js": "./editor/tools/terrain.js?v=14",
-    "./src/ai/enemy.js": "./src/ai/enemy.js?v=14",
-    "./src/combat/damage.js": "./src/combat/damage.js?v=14",
-    "./src/combat/effects.js": "./src/combat/effects.js?v=14",
-    "./src/combat/los.js": "./src/combat/los.js?v=14",
-    "./src/combat/projectiles.js": "./src/combat/projectiles.js?v=14",
-    "./src/config.js": "./src/config.js?v=14",
-    "./src/game/match.js": "./src/game/match.js?v=14",
-    "./src/game/vision.js": "./src/game/vision.js?v=14",
-    "./src/main.js": "./src/main.js?v=14",
-    "./src/maps/format.js": "./src/maps/format.js?v=14",
-    "./src/maps/imageimport.js": "./src/maps/imageimport.js?v=14",
-    "./src/maps/loader.js": "./src/maps/loader.js?v=14",
-    "./src/nav/navgrid.js": "./src/nav/navgrid.js?v=14",
-    "./src/nav/pathfinding.js": "./src/nav/pathfinding.js?v=14",
-    "./src/terrain/chunks.js": "./src/terrain/chunks.js?v=14",
-    "./src/terrain/heightfield.js": "./src/terrain/heightfield.js?v=14",
-    "./src/terrain/surface.js": "./src/terrain/surface.js?v=14",
-    "./src/terrain/testmap.js": "./src/terrain/testmap.js?v=14",
-    "./src/terrain/water.js": "./src/terrain/water.js?v=14",
-    "./src/terrain/watermesh.js": "./src/terrain/watermesh.js?v=14",
-    "./src/ui/camera.js": "./src/ui/camera.js?v=14",
-    "./src/ui/command.js": "./src/ui/command.js?v=14",
-    "./src/ui/debug.js": "./src/ui/debug.js?v=14",
-    "./src/ui/hud.js": "./src/ui/hud.js?v=14",
-    "./src/ui/minimap.js": "./src/ui/minimap.js?v=14",
-    "./src/ui/mobile.js": "./src/ui/mobile.js?v=14",
-    "./src/units/mech.js": "./src/units/mech.js?v=14",
-    "./src/units/movers.js": "./src/units/movers.js?v=14",
-    "./src/units/units.js": "./src/units/units.js?v=14",
-    "./src/version.js": "./src/version.js?v=14",
-    "./src/view.js": "./src/view.js?v=14",
-    "./src/world/buildings.js": "./src/world/buildings.js?v=14",
-    "./src/world/buildingview.js": "./src/world/buildingview.js?v=14",
-    "./src/world/construction.js": "./src/world/construction.js?v=14",
-    "./src/world/fogview.js": "./src/world/fogview.js?v=14",
-    "./src/world/forest.js": "./src/world/forest.js?v=14",
-    "./src/world/markers.js": "./src/world/markers.js?v=14",
-    "./src/world/trees.js": "./src/world/trees.js?v=14"
+    "three": "./lib/three.module.js?v=15",
+    "./editor/editor.js": "./editor/editor.js?v=15",
+    "./editor/history.js": "./editor/history.js?v=15",
+    "./editor/tools/features.js": "./editor/tools/features.js?v=15",
+    "./editor/tools/markers.js": "./editor/tools/markers.js?v=15",
+    "./editor/tools/terrain.js": "./editor/tools/terrain.js?v=15",
+    "./src/ai/enemy.js": "./src/ai/enemy.js?v=15",
+    "./src/combat/damage.js": "./src/combat/damage.js?v=15",
+    "./src/combat/effects.js": "./src/combat/effects.js?v=15",
+    "./src/combat/los.js": "./src/combat/los.js?v=15",
+    "./src/combat/projectiles.js": "./src/combat/projectiles.js?v=15",
+    "./src/config.js": "./src/config.js?v=15",
+    "./src/game/match.js": "./src/game/match.js?v=15",
+    "./src/game/vision.js": "./src/game/vision.js?v=15",
+    "./src/main.js": "./src/main.js?v=15",
+    "./src/maps/format.js": "./src/maps/format.js?v=15",
+    "./src/maps/imageimport.js": "./src/maps/imageimport.js?v=15",
+    "./src/maps/loader.js": "./src/maps/loader.js?v=15",
+    "./src/nav/navgrid.js": "./src/nav/navgrid.js?v=15",
+    "./src/nav/pathfinding.js": "./src/nav/pathfinding.js?v=15",
+    "./src/terrain/chunks.js": "./src/terrain/chunks.js?v=15",
+    "./src/terrain/heightfield.js": "./src/terrain/heightfield.js?v=15",
+    "./src/terrain/surface.js": "./src/terrain/surface.js?v=15",
+    "./src/terrain/testmap.js": "./src/terrain/testmap.js?v=15",
+    "./src/terrain/water.js": "./src/terrain/water.js?v=15",
+    "./src/terrain/watermesh.js": "./src/terrain/watermesh.js?v=15",
+    "./src/ui/camera.js": "./src/ui/camera.js?v=15",
+    "./src/ui/command.js": "./src/ui/command.js?v=15",
+    "./src/ui/debug.js": "./src/ui/debug.js?v=15",
+    "./src/ui/hud.js": "./src/ui/hud.js?v=15",
+    "./src/ui/minimap.js": "./src/ui/minimap.js?v=15",
+    "./src/ui/mobile.js": "./src/ui/mobile.js?v=15",
+    "./src/ui/stats.js": "./src/ui/stats.js?v=15",
+    "./src/units/mech.js": "./src/units/mech.js?v=15",
+    "./src/units/movers.js": "./src/units/movers.js?v=15",
+    "./src/units/units.js": "./src/units/units.js?v=15",
+    "./src/version.js": "./src/version.js?v=15",
+    "./src/view.js": "./src/view.js?v=15",
+    "./src/world/buildings.js": "./src/world/buildings.js?v=15",
+    "./src/world/buildingview.js": "./src/world/buildingview.js?v=15",
+    "./src/world/construction.js": "./src/world/construction.js?v=15",
+    "./src/world/fogview.js": "./src/world/fogview.js?v=15",
+    "./src/world/forest.js": "./src/world/forest.js?v=15",
+    "./src/world/markers.js": "./src/world/markers.js?v=15",
+    "./src/world/trees.js": "./src/world/trees.js?v=15"
   }
 }
 </script>
@@ -111,9 +144,10 @@
 
 <div id="top" class="bar">
   <div class="grp panel">
+    <div class="btn" id="btnMobile" title="Mobile Mode: smaller controls for phones">Mobile</div>
     <div class="btn" id="btnNew">New</div>
     <div class="btn" id="btnOpen">Open</div>
-    <div class="btn" id="btnImport">Import images</div>
+    <div class="btn" id="btnImport">Import<span class="long">&nbsp;images</span></div>
     <div class="btn" id="btnSave">Save</div>
     <div id="mapname" title="Tap to rename"></div>
   </div>
@@ -163,7 +197,7 @@
 </div>
 <div id="hint"></div>
 <div id="status"></div>
-<div id="ver">v14</div>
+<div id="ver">v15</div>
 
 <div class="dialog" id="dlgOpen"><div class="box panel scroll">
   <h2>Open a map</h2>
@@ -188,7 +222,7 @@
 
 <div id="loading">Loading editor…</div>
 <div id="fatal"></div>
-<script src="src/ui/page.js?v=14"></script>
-<script type="module" src="editor/editor.js?v=14"></script>
+<script src="src/ui/page.js?v=15"></script>
+<script type="module" src="editor/editor.js?v=15"></script>
 </body>
 </html>
