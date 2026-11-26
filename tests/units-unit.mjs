@@ -178,6 +178,28 @@ const finite = w => w.units.list.every(u => Number.isFinite(u.x + u.y + u.z + u.
   check(Math.abs(zA) < 30 && ra.x > 5, `an A-Move that stopped to fight can be overridden by a move order (x ${ra.x.toFixed(0)})`);
 }
 
+// ---------- the Medium Mech sits between the Light and Heavy ----------
+{
+  const T = (await import('../src/config.js')).UNIT_TYPES, L = T.scout, M = T.medium, H = T.assault;
+  check(L.name === 'Light Mech' && M.name === 'Medium Mech' && H.name === 'Heavy Mech' && T.titan.name === 'Assault Mech', 'names: Light, Medium, Heavy and Assault Mechs');
+  check(L.cost < M.cost && M.cost < H.cost && L.hp < M.hp && M.hp < H.hp, `Medium costs and takes more than a Light, less than a Heavy (cost ${L.cost} < ${M.cost} < ${H.cost}, hp ${L.hp} < ${M.hp} < ${H.hp})`);
+  const sp = t => [9, 6, 3.6][t.cls] * (t.speed || 1);
+  check(sp(L) > sp(M) && sp(M) > sp(H), `and is quicker than a Heavy, slower than a Light (${sp(L)} > ${sp(M)} > ${sp(H)})`);
+  const duel = (a, b, seed) => {
+    const w = world(() => 0, { seed }), U = w.units, x = U.spawn(a, 0, 0, 12), y = U.spawn(b, 1, 0, -12);
+    U.stop([x, y]); x.hold = y.hold = false;
+    w.run(60, () => !x.alive || !y.alive);
+    return x.alive && !y.alive ? a : y.alive && !x.alive ? b : 'draw';
+  };
+  const r1 = [1, 2, 3].map(s => duel('medium', 'scout', s)), r2 = [1, 2, 3].map(s => duel('medium', 'assault', s));
+  check(r1.filter(r => r === 'medium').length >= 2, `one on one, a Medium usually beats a Light (${r1.join(', ')})`);
+  check(r2.filter(r => r === 'assault').length >= 2, `and usually loses to a Heavy (${r2.join(', ')})`);
+  const w = world(), U = w.units, m = U.spawn('medium', 0, 0, 10), e = U.spawn('assault', 1, 0, -8);
+  e.hp = e.maxHp = 1e6; U.stop([e]);
+  w.run(4);
+  check(U.stats.shots > 4 && w.damage.log.some(l => l.weapon === 'autocannon'), `it fires its autocannon (${U.stats.shots} shots)`);
+}
+
 // ---------- performance: 40 v 40 ----------
 {
   const w = world((x, z) => Math.sin(x / 13) * 2 + Math.cos(z / 11) * 2), U = w.units, A = [], B = [];

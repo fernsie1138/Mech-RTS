@@ -9,12 +9,12 @@
 <meta name="apple-mobile-web-app-title" content="Mech RTS">
 <meta name="theme-color" content="#0b1015">
 <!-- Must match VERSION in src/version.js. If they differ, the HUD warns that Safari served stale code. -->
-<meta name="build" content="v19">
+<meta name="build" content="v20">
 <title>Mech RTS</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" type="image/png" href="icons/icon-180.png">
-<link rel="stylesheet" href="style.css?v=19">
+<link rel="stylesheet" href="style.css?v=20">
 <style>
   #topright { position:fixed; top:calc(env(safe-area-inset-top) + 10px); right:calc(env(safe-area-inset-right) + 12px);
               display:flex; gap:8px; z-index:35; }
@@ -27,7 +27,7 @@
   #fire .sep, #fire .lbl { display:flex; align-items:center; }
   #fire .sep { width:1px; align-self:stretch; background:rgba(160,200,230,.25); margin:0 2px; }
   #selinfo { position:fixed; left:calc(env(safe-area-inset-left) + 12px); bottom:calc(env(safe-area-inset-bottom) + 84px);
-             padding:6px 10px; font-size:14px; display:none; pointer-events:none; }
+             padding:6px 10px; font-size:14px; display:none; pointer-events:none; max-width:200px; line-height:1.35; }
   #boxsel { position:fixed; border:1.5px solid #7cff9a; background:rgba(124,255,154,.12); pointer-events:none; display:none; z-index:6; }
   /* Match HUD */
   #topleft { position:fixed; top:calc(env(safe-area-inset-top) + 10px); left:calc(env(safe-area-inset-left) + 12px);
@@ -96,7 +96,7 @@
   body.mobile #res { gap:8px; padding:4px 8px; font-size:12px; border-radius:8px; }
   body.mobile #credits { font-size:14px; } body.mobile #income, body.mobile #clock { font-size:11px; }
   body.mobile #build { top:calc(env(safe-area-inset-top) + 42px); left:calc(env(safe-area-inset-left) + 6px); gap:5px; }
-  body.mobile .card { width:76px; height:40px; padding:0 8px; }
+  body.mobile .card { width:76px; height:35px; padding:0 8px; }
   body.mobile .card .nm { font-size:12px; } body.mobile .card .cost { font-size:11px; }
   body.mobile .card .q { font-size:12px; right:6px; top:4px; } body.mobile .card .pb { height:3px; }
   body.mobile #fire { bottom:calc(env(safe-area-inset-bottom) + 6px); gap:4px; padding:4px; flex-wrap:wrap; justify-content:center;
@@ -110,7 +110,7 @@
   body.mobile #buildpanel .btn .c { margin-left:0; }
   body.mobile #buildpanel .lbl { font-size:11px; } body.mobile #buildpanel .btn .c { font-size:10px; margin-left:4px; }
   body.mobile #buildhint { bottom:calc(env(safe-area-inset-bottom) + 92px); font-size:12px; }
-  body.mobile #selinfo { left:calc(env(safe-area-inset-left) + 6px); top:calc(env(safe-area-inset-top) + 230px); bottom:auto; font-size:11px; padding:3px 7px; }
+  body.mobile #selinfo { left:calc(env(safe-area-inset-left) + 6px); top:calc(env(safe-area-inset-top) + 272px); bottom:auto; font-size:11px; padding:3px 7px; max-width:150px; }
   body.mobile #minimap { width:112px; height:112px; right:calc(env(safe-area-inset-right) + 6px); bottom:calc(env(safe-area-inset-bottom) + 16px); border-radius:6px; }
   body.mobile #banner { top:calc(env(safe-area-inset-top) + 40px); font-size:15px; }
   body.mobile #ver { font-size:10px; bottom:calc(env(safe-area-inset-bottom) + 2px); }
@@ -138,52 +138,53 @@
 <script type="importmap">
 {
   "imports": {
-    "three": "./lib/three.module.js?v=19",
-    "./editor/editor.js": "./editor/editor.js?v=19",
-    "./editor/history.js": "./editor/history.js?v=19",
-    "./editor/tools/features.js": "./editor/tools/features.js?v=19",
-    "./editor/tools/markers.js": "./editor/tools/markers.js?v=19",
-    "./editor/tools/terrain.js": "./editor/tools/terrain.js?v=19",
-    "./src/ai/enemy.js": "./src/ai/enemy.js?v=19",
-    "./src/combat/damage.js": "./src/combat/damage.js?v=19",
-    "./src/combat/effects.js": "./src/combat/effects.js?v=19",
-    "./src/combat/los.js": "./src/combat/los.js?v=19",
-    "./src/combat/projectiles.js": "./src/combat/projectiles.js?v=19",
-    "./src/config.js": "./src/config.js?v=19",
-    "./src/game/match.js": "./src/game/match.js?v=19",
-    "./src/game/vision.js": "./src/game/vision.js?v=19",
-    "./src/main.js": "./src/main.js?v=19",
-    "./src/maps/format.js": "./src/maps/format.js?v=19",
-    "./src/maps/imageimport.js": "./src/maps/imageimport.js?v=19",
-    "./src/maps/loader.js": "./src/maps/loader.js?v=19",
-    "./src/nav/navgrid.js": "./src/nav/navgrid.js?v=19",
-    "./src/nav/pathfinding.js": "./src/nav/pathfinding.js?v=19",
-    "./src/terrain/chunks.js": "./src/terrain/chunks.js?v=19",
-    "./src/terrain/heightfield.js": "./src/terrain/heightfield.js?v=19",
-    "./src/terrain/surface.js": "./src/terrain/surface.js?v=19",
-    "./src/terrain/testmap.js": "./src/terrain/testmap.js?v=19",
-    "./src/terrain/water.js": "./src/terrain/water.js?v=19",
-    "./src/terrain/watermesh.js": "./src/terrain/watermesh.js?v=19",
-    "./src/ui/camera.js": "./src/ui/camera.js?v=19",
-    "./src/ui/command.js": "./src/ui/command.js?v=19",
-    "./src/ui/debug.js": "./src/ui/debug.js?v=19",
-    "./src/ui/hud.js": "./src/ui/hud.js?v=19",
-    "./src/ui/minimap.js": "./src/ui/minimap.js?v=19",
-    "./src/ui/mobile.js": "./src/ui/mobile.js?v=19",
-    "./src/ui/stats.js": "./src/ui/stats.js?v=19",
-    "./src/units/mech.js": "./src/units/mech.js?v=19",
-    "./src/units/movers.js": "./src/units/movers.js?v=19",
-    "./src/units/units.js": "./src/units/units.js?v=19",
-    "./src/version.js": "./src/version.js?v=19",
-    "./src/view.js": "./src/view.js?v=19",
-    "./src/world/buildings.js": "./src/world/buildings.js?v=19",
-    "./src/world/buildingview.js": "./src/world/buildingview.js?v=19",
-    "./src/world/construction.js": "./src/world/construction.js?v=19",
-    "./src/world/decals.js": "./src/world/decals.js?v=19",
-    "./src/world/fogview.js": "./src/world/fogview.js?v=19",
-    "./src/world/forest.js": "./src/world/forest.js?v=19",
-    "./src/world/markers.js": "./src/world/markers.js?v=19",
-    "./src/world/trees.js": "./src/world/trees.js?v=19"
+    "three": "./lib/three.module.js?v=20",
+    "./editor/editor.js": "./editor/editor.js?v=20",
+    "./editor/history.js": "./editor/history.js?v=20",
+    "./editor/tools/features.js": "./editor/tools/features.js?v=20",
+    "./editor/tools/markers.js": "./editor/tools/markers.js?v=20",
+    "./editor/tools/terrain.js": "./editor/tools/terrain.js?v=20",
+    "./src/ai/enemy.js": "./src/ai/enemy.js?v=20",
+    "./src/combat/damage.js": "./src/combat/damage.js?v=20",
+    "./src/combat/effects.js": "./src/combat/effects.js?v=20",
+    "./src/combat/los.js": "./src/combat/los.js?v=20",
+    "./src/combat/projectiles.js": "./src/combat/projectiles.js?v=20",
+    "./src/config.js": "./src/config.js?v=20",
+    "./src/game/match.js": "./src/game/match.js?v=20",
+    "./src/game/vision.js": "./src/game/vision.js?v=20",
+    "./src/main.js": "./src/main.js?v=20",
+    "./src/maps/format.js": "./src/maps/format.js?v=20",
+    "./src/maps/imageimport.js": "./src/maps/imageimport.js?v=20",
+    "./src/maps/loader.js": "./src/maps/loader.js?v=20",
+    "./src/nav/navgrid.js": "./src/nav/navgrid.js?v=20",
+    "./src/nav/pathfinding.js": "./src/nav/pathfinding.js?v=20",
+    "./src/terrain/chunks.js": "./src/terrain/chunks.js?v=20",
+    "./src/terrain/heightfield.js": "./src/terrain/heightfield.js?v=20",
+    "./src/terrain/surface.js": "./src/terrain/surface.js?v=20",
+    "./src/terrain/testmap.js": "./src/terrain/testmap.js?v=20",
+    "./src/terrain/water.js": "./src/terrain/water.js?v=20",
+    "./src/terrain/watermesh.js": "./src/terrain/watermesh.js?v=20",
+    "./src/ui/camera.js": "./src/ui/camera.js?v=20",
+    "./src/ui/command.js": "./src/ui/command.js?v=20",
+    "./src/ui/debug.js": "./src/ui/debug.js?v=20",
+    "./src/ui/hud.js": "./src/ui/hud.js?v=20",
+    "./src/ui/minimap.js": "./src/ui/minimap.js?v=20",
+    "./src/ui/mobile.js": "./src/ui/mobile.js?v=20",
+    "./src/ui/stats.js": "./src/ui/stats.js?v=20",
+    "./src/units/mech.js": "./src/units/mech.js?v=20",
+    "./src/units/mediummech.js": "./src/units/mediummech.js?v=20",
+    "./src/units/movers.js": "./src/units/movers.js?v=20",
+    "./src/units/units.js": "./src/units/units.js?v=20",
+    "./src/version.js": "./src/version.js?v=20",
+    "./src/view.js": "./src/view.js?v=20",
+    "./src/world/buildings.js": "./src/world/buildings.js?v=20",
+    "./src/world/buildingview.js": "./src/world/buildingview.js?v=20",
+    "./src/world/construction.js": "./src/world/construction.js?v=20",
+    "./src/world/decals.js": "./src/world/decals.js?v=20",
+    "./src/world/fogview.js": "./src/world/fogview.js?v=20",
+    "./src/world/forest.js": "./src/world/forest.js?v=20",
+    "./src/world/markers.js": "./src/world/markers.js?v=20",
+    "./src/world/trees.js": "./src/world/trees.js?v=20"
   }
 }
 </script>
@@ -241,7 +242,7 @@
   <h1>MECH RTS</h1>
   <p><b>Destroy the enemy HQ</b> (red, north). Hold the yellow capture points for more income.</p>
   <div class="help">
-    <b>Build</b><span>tap Scout, Assault or Titan (left). Hold to cancel one.</span>
+    <b>Build</b><span>tap Light, Medium, Heavy, Assault or Builder (left). Hold to cancel one.</span>
     <b>Select</b><span>tap a mech; double-tap for all of that type; drag one finger to box-select.</span>
     <b>Orders</b><span>tap the ground to go there (they shoot on the way, then hold); <b>A-Move</b> makes them stop to fight; tap an enemy or its HQ to attack.</span>
     <b>Builders</b><span>select one, pick Wall, Turret or Trench, then tap the ground (or drag a line); turn walls and trenches with ⟲ ⟳, then Build.</span>
@@ -260,10 +261,10 @@
 <div id="selinfo" class="panel"></div>
 <div id="boxsel"></div>
 </div>
-<div id="ver">v19</div>
+<div id="ver">v20</div>
 <div id="loading">Loading map…</div>
 <div id="fatal"></div>
-<script src="src/ui/page.js?v=19"></script>
-<script type="module" src="src/main.js?v=19"></script>
+<script src="src/ui/page.js?v=20"></script>
+<script type="module" src="src/main.js?v=20"></script>
 </body>
 </html>

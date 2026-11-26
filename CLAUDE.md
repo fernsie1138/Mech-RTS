@@ -71,6 +71,7 @@ src/
     movers.js         path following, re-planning, unsticking, separation (no three.js)
     units.js          mechs: orders, targeting, facing, firing, wrecks (no three.js; stats in config.js)
     mech.js           instanced mech models, walk animation, selection rings, health bars, tracers
+    mediummech.js     the Medium Mech's model (assets/medium-mech.gltf): instanced parts, digitigrade walk, painted look
   combat/
     projectiles.js    bullets, cannon rounds and arcing shells (no three.js)
     los.js            line of sight (terrain and walls), cover (forest, rubble, walls)
@@ -206,10 +207,11 @@ A separate page (`editor.html`), designed for **touch on iPad**:
 
 The single-file prototype v1 (`prototype/index.html`) contains a working version of the parts below. Reuse its ideas, but rebuild them on the new terrain.
 
-- **Mech classes**
-  - **Scout:** fast, machine gun.
-  - **Assault:** twin cannons.
-  - **Titan:** slow, arcing splash shells (indirect fire) that can miss fast targets.
+- **Mech classes** (shown names; internal keys in brackets, kept so saved stats and tests still work)
+  - **Light Mech** [scout]: fast, machine gun.
+  - **Medium Mech** [medium]: between Light and Heavy; autocannon. David's model (`assets/medium-mech.gltf`, drawn by `units/mediummech.js`): digitigrade legs, walk and crouch animated in code, colours and panel lines painted in the shader.
+  - **Heavy Mech** [assault]: twin cannons.
+  - **Assault Mech** [titan]: slow, arcing splash shells (indirect fire) that can miss fast targets.
 - Mechs have animated walking legs and a **torso that turns independently** of the legs, so they can fire while moving.
 - **Builder:** unarmed; builds walls and auto turrets, digs trenches (cover) and repairs friendly mechs, turrets and the HQ (on order, or by itself when idle and one is close). Walls and trenches are planned first (tap or drag), can be turned in 15° steps, then built. Later: buildings that produce other units (new kinds go in `BUILD` in config.js and `world/construction.js`).
 - **Defend** stance: selected mechs crouch and hold; harder to hit (×0.55) and less hurt by splash, stacking with trench cover.

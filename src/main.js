@@ -114,6 +114,7 @@ const units = new Units(world, movers, damage, 7);
 let costsReady = false;           // the HUD and Builder panel exist (set further down)
 const stats = new StatsEditor({ units, onChange: () => refreshCosts() });
 const mechView = new MechView(scene, heightAt);
+mechView.loadModels().catch(e => console.warn('Medium Mech model did not load:', e.message));
 // Builders' construction: walls, turrets, trenches. Paid from the match's credits (free in the sandbox).
 const construction = new Construction(world, {
   pay: (team, cost) => { if (!match) return true; const T = match.teams[team]; if (T.credits < cost) return false; T.credits -= cost; return true; },
@@ -238,7 +239,7 @@ function simStep(dt) {
   construction.events.length = 0;
   if (match) { match.step(dt); ai.step(dt); }
   for (const e of units.events) {
-    if (e.type === 'fire') effects.muzzle(e.x, e.y, e.z, e.kind === 'mg' ? 0.4 : e.kind === 'cannon' ? 0.8 : 1.3);
+    if (e.type === 'fire') effects.muzzle(e.x, e.y, e.z, e.kind === 'mg' ? 0.4 : e.kind === 'autocannon' ? 0.6 : e.kind === 'cannon' ? 0.8 : 1.3);
     else if (e.type === 'hit') {
       effects.sparksAt(e.x, e.y, e.z, e.kind === 'mg' ? 3 : 8);
       if (e.unit.isHQ && e.unit.team === 0 && state.time - game.hqWarnT > 20) { game.hqWarnT = state.time; hud.banner('Your HQ is under attack!', '#ff8a70'); }

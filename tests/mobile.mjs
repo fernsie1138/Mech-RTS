@@ -57,7 +57,7 @@ for (const [name, dev] of [['landscape', devices['iPhone 13 landscape']], ['port
   await page.screenshot({ path: join(out, `mobile-${name}.png`) });
   check(L.shown.includes('buildpanel') && L.shown.includes('minimap') && L.shown.includes('build'), `${name}: HUD, build buttons, Builder panel and minimap all showing (${L.w}x${L.h})`);
   check(L.bad.length === 0 && L.off.length === 0, `${name}: no controls overlap or run off the screen${L.bad.length ? ' (overlap: ' + L.bad.join(', ') + ')' : ''}${L.off.length ? ' (off screen: ' + L.off.join(', ') + ')' : ''}`);
-  check(L.area < 0.35, `${name}: controls cover ${(L.area * 100).toFixed(0)}% of the screen`);
+  check(L.area < 0.38, `${name}: controls cover ${(L.area * 100).toFixed(0)}% of the screen`);
   // Planning a wall: the Turn / Build / Cancel bar and the hint fit too.
   await page.evaluate(() => { const G = window.__game, h = G.map.markers.playerHQ; G.setPlacing('wall'); G.commander._setPending({ kind: 'wall', cx: h.x, cz: h.z - 40, len: 10, rot: 0 }); });
   await page.waitForTimeout(300);

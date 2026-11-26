@@ -39,7 +39,7 @@ await g(() => { window.__game.pause(); window.__game.setFog(false); });   // fog
 await g(() => window.__game.render());
 await page.waitForTimeout(300);
 const hud = await g(() => ({ c: document.getElementById('credits').textContent, p: document.getElementById('points').textContent, cards: document.querySelectorAll('#build .card').length }));
-check(/⚡ \d+/.test(hud.c) && /0\/5/.test(hud.p) && hud.cards === 4, `HUD: credits "${hud.c}", points "${hud.p}", ${hud.cards} build buttons`);
+check(/⚡ \d+/.test(hud.c) && /0\/5/.test(hud.p) && hud.cards === 5, `HUD: credits "${hud.c}", points "${hud.p}", ${hud.cards} build buttons`);
 check(!(await visible('#btnSpawn')) && (await visible('#btnDev')), 'test tools are tucked away behind Dev');
 await page.tap('#btnDev');
 check(await visible('#btnSpawn') && await visible('[data-weapon="shell"]'), 'Dev shows the test tools');
@@ -61,6 +61,16 @@ const qh = await g(() => window.__game.match.teams[0].queue.join());
 check(qh === 'scout', `press and hold on a build button cancels one (queue: ${qh})`);
 const built = await g(() => { const G = window.__game; G.step(5); return G.units.list.filter(u => u.team === 0).length; });
 check(built === 4, `the Scout is built and joins the army (${built} mechs)`);
+// A Medium Mech: built like the others, drawn with its own model.
+const med = await g(() => {
+  const G = window.__game, m = G.match; m.teams[0].credits += 500;
+  m.enqueue(0, 'medium'); G.step(7);
+  const u = G.units.list.find(x => x.type === 'medium' && x.team === 0);
+  G.rts.target.set(u.x, 0, u.z); G.rts.distance = 22; G.rts.update(0); G.render();
+  return { ok: !!u, parts: G.mechView.medium.ready ? Object.values(G.mechView.medium.meshes).map(m => m.count) : null, card: document.querySelector('.card[data-type="medium"] .nm')?.textContent };
+});
+check(med.ok && med.card === 'Medium' && med.parts && med.parts.every(c => c >= 1), `a Medium Mech can be built and is drawn with its model (${med.parts ? med.parts.length + ' parts' : 'model not loaded'})`);
+await page.screenshot({ path: join(out, 'match-medium.png') });
 
 // ---------- capture point ----------
 const cap = await g(() => {

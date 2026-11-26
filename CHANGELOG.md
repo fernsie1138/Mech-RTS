@@ -1,5 +1,17 @@
 # Changelog
 
+## v20 — New names, and the Medium Mech
+- **Renamed:** Scout -> **Light Mech**, Assault -> **Heavy Mech**, Titan -> **Assault Mech**. The build buttons say Light, Medium, Heavy, Assault and Builder. (Stats you changed in Dev -> Stats are kept.)
+- **New: the Medium Mech** (⚡160, 5.5 s to build), between the Light and the Heavy: 250 hp, 7.5 speed, sight 40, and an autocannon (15 damage twice a second, range 21, a little splash, small scorch marks). One on one it usually beats a Light Mech and loses to a Heavy. The enemy builds them too.
+- **Its look comes from your model** (`assets/medium-mech.gltf`). Each part (body, gun, hip pods, shins, feet) moves on its own:
+  - It walks on digitigrade legs: the hips swing, the knees fold backwards to lift each foot, and the feet stay level.
+  - The body bobs, and the body and gun turn to aim while the legs keep walking.
+  - It crouches low on Defend, and topples over as a dark wreck.
+  - Its colours are painted in code: team colour on the armour, gunmetal gun, steel legs, dark feet, with panel lines and grime toward the feet.
+  - The "Right_Thigh_Copy" part in the file duplicates the right hip pod, so it isn't used.
+- The selection label wraps onto two lines when it's long; the build buttons are a little shorter on phones.
+- Tests: Medium Mech checks in `tests/units-unit.mjs` (stats between Light and Heavy, duels, autocannon) and `tests/match.mjs` (built from the HQ and drawn with its model).
+
 ## v19 — Less smoke, fiery mech deaths
 - **Explosion smoke clears much sooner** (3-5 s instead of 6-10 s), is thinner and see-through (it starts at 45% opacity instead of 80%), and is blown sideways by a stronger wind.
 - **Smoke from fires, burning trees and wrecks** is lighter (24% opacity), thinner, comes off less often, and drifts sideways faster, so it no longer hides the battlefield.

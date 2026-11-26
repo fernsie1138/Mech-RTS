@@ -15,7 +15,7 @@ const ROWS = [
   ['Build time (s)', 'build', 'seconds to build (a turret: Builder-seconds)'],
   ['Speed', 'speed', 'world units per second on open ground'],
   ['Strength (hp)', 'hp', 'hit points'],
-  ['Damage', 'dmg', 'damage per hit (Titans and Assaults also splash)'],
+  ['Damage', 'dmg', 'damage per hit (Assault, Heavy and Medium Mechs also splash)'],
   ['Fire every (s)', 'rof', 'seconds between shots'],
   ['Range', 'range', 'how far it shoots'],
   ['Sight', 'sight', 'how far it sees (with a clear line of sight)'],
@@ -118,7 +118,7 @@ export class StatsEditor {
     const el = this.el = document.createElement('div');
     el.id = 'statsDialog';
     el.className = 'screen';
-    const name = k => (TYPES[k] ? TYPES[k].name : k[0].toUpperCase() + k.slice(1));
+    const name = k => (TYPES[k] ? TYPES[k].short || TYPES[k].name : k[0].toUpperCase() + k.slice(1));
     const cell = (k, key) => {
       const f = this.fields.find(f => f.k === k && f.key === key);
       return f ? `<td><input type="number" inputmode="decimal" step="any" data-id="${f.id}"></td>` : '<td class="na">–</td>';

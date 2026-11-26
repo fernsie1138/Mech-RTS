@@ -69,7 +69,7 @@ await tap(ground.x, ground.y);
 check((await mine()).every(x => x.order === 'amove'), 'with A-Move on, tapping the ground gives an attack-move order');
 await page.tap('#btnKind');
 const info = await page.textContent('#selinfo');
-check(/2 Scouts/.test(info) && /2 Titans/.test(info), `the selection panel lists the selected mechs ("${info.trim()}")`);
+check(/2 Light Mechs/.test(info) && /2 Assault Mechs/.test(info), `the selection panel lists the selected mechs ("${info.trim()}")`);
 
 // +Enemy, then tap an enemy: attack it.
 await page.tap('#btnEnemy');

@@ -4,6 +4,7 @@
 // the same way, dark, tilted and sinking. Also: selection rings, health bars and projectile tracers.
 import * as THREE from 'three';
 import { TORSO_Y, STRUCTURE_TYPES } from './units.js';
+import { MediumMechView } from './mediummech.js';
 import { COMBAT, UNIT_TYPES, BUILD } from '../config.js';
 
 const TEAM = [0x3d8fe0, 0xd9442e];
@@ -61,6 +62,7 @@ export class MechView {
     this.shown = () => true;
     this.inView = () => true;
     this.group = new THREE.Group();
+    this.medium = new MediumMechView(this.group);     // Medium Mechs use David's model (loaded by the game: loadModels)
     this.group.name = 'mechs';
     scene.add(this.group);
     this.parts = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshLambertMaterial({ flatShading: true }), MAX_PARTS);
@@ -115,10 +117,15 @@ export class MechView {
     return n;
   }
 
+  // Load the models that aren't boxes (the Medium Mech). Until then those mechs aren't drawn.
+  loadModels(base = '') { return this.medium.load(`${base}assets/medium-mech.gltf`); }
+
   update(units, selected, camera) {
     let n = 0;
+    this.medium.begin();
     for (const u of units.list) {
       if (!this.shown(u)) continue;
+      if (u.type === 'medium') { this.medium.pose(u.team, { x: u.x, y: u.y, z: u.z, yaw: u.yaw, torsoYaw: u.torsoYaw, phase: u.phase, amp: u.amp, flash: u.hitT, crouch: u.crouch }); continue; }
       n = this._pose(n, u.type, u.team, { x: u.x, y: u.y, z: u.z, yaw: u.yaw, torsoYaw: u.torsoYaw, phase: u.phase, amp: u.amp, flash: u.hitT, crouch: u.crouch });
     }
     for (const h of units.structures || []) {
@@ -131,10 +138,13 @@ export class MechView {
       if (!this.inView(w.x, w.z, true)) continue;
       // Wrecks topple over in the first second, then sink into the ground at the end of their time.
       const fall = Math.min(1, w.t / 0.8);
-      n = this._pose(n, w.type, w.team, { x: w.x, y: w.y, z: w.z, yaw: w.yaw, torsoYaw: w.torsoYaw, phase: w.phase, amp: 0.3,
+      if (w.type === 'medium') this.medium.pose(w.team, { x: w.x, y: w.y, z: w.z, yaw: w.yaw, torsoYaw: w.torsoYaw, phase: w.phase, amp: 0.3,
+        tiltX: 0.35 * fall, tiltZ: w.tilt * 1.1 * fall, wreck: true, sink: (w.sink0 || 0) + Math.max(0, w.t - COMBAT.wreckTime) * 1.5 });
+      else n = this._pose(n, w.type, w.team, { x: w.x, y: w.y, z: w.z, yaw: w.yaw, torsoYaw: w.torsoYaw, phase: w.phase, amp: 0.3,
         tiltX: 0.35 * fall, tiltZ: w.tilt * 1.1 * fall, wreck: true, sink: (w.sink0 || 0) + Math.max(0, w.t - COMBAT.wreckTime) * 1.5 });
     }
     this.parts.count = n;
+    this.medium.end();
     this.parts.instanceMatrix.needsUpdate = true;
     if (this.parts.instanceColor) this.parts.instanceColor.needsUpdate = true;
 
@@ -171,12 +181,12 @@ export class MechView {
     for (const p of units.projectiles.list) {
       if (t >= MAX_TRACERS || p.px === undefined || !this.inView(p.x, p.z)) continue;
       const dx = p.x - p.px, dy = p.y - p.py, dz = p.z - p.pz, len = Math.hypot(dx, dy, dz) || 0.01;
-      const w = p.kind === 'mg' ? 0.1 : p.kind === 'cannon' ? 0.25 : 0.55;
-      const l = p.kind === 'shell' ? 0.8 : Math.max(len, p.kind === 'mg' ? 1.6 : 1.1);
+      const w = p.kind === 'mg' ? 0.1 : p.kind === 'autocannon' ? 0.17 : p.kind === 'cannon' ? 0.25 : 0.55;
+      const l = p.kind === 'shell' ? 0.8 : Math.max(len, p.kind === 'mg' || p.kind === 'autocannon' ? 1.6 : 1.1);
       this._q.setFromUnitVectors(this._p.set(0, 0, 1), this._s.set(dx / len, dy / len, dz / len));
       this._m.compose(this._p.set(p.x - dx / 2, p.y - dy / 2, p.z - dz / 2), this._q, this._s.set(w, w, l));
       this.tracers.setMatrixAt(t, this._m);
-      this.tracers.setColorAt(t, this._c.setHex(p.kind === 'mg' ? 0xfff08a : p.kind === 'cannon' ? 0xffa040 : 0xff7a2a));
+      this.tracers.setColorAt(t, this._c.setHex(p.kind === 'mg' ? 0xfff08a : p.kind === 'autocannon' ? 0xffd060 : p.kind === 'cannon' ? 0xffa040 : 0xff7a2a));
       t++;
     }
     this.tracers.count = t;

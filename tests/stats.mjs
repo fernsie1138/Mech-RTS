@@ -29,7 +29,7 @@ await page.tap('#btnStats');
 check(await page.isVisible('#statsDialog'), 'it opens the unit stats dialog');
 const cols = await g(() => [...document.querySelectorAll('#statsDialog table:first-of-type tr:first-child th')].map(t => t.textContent).filter(Boolean));
 const rows = await g(() => [...document.querySelectorAll('#statsDialog table:first-of-type tr th:first-child')].map(t => t.textContent).filter(Boolean));
-check(['Scout', 'Assault', 'Titan', 'Builder', 'Turret', 'HQ'].every(c => cols.includes(c)), `columns for every unit (${cols.join(', ')})`);
+check(['Light', 'Medium', 'Heavy', 'Assault', 'Builder', 'Turret', 'HQ'].every(c => cols.includes(c)), `columns for every unit (${cols.join(', ')})`);
 check(['Cost (⚡)', 'Build time (s)', 'Speed', 'Strength (hp)', 'Damage', 'Sight'].every(r => rows.includes(r)), `rows include cost, build time, speed, strength, damage, sight (+ ${rows.length - 6} more)`);
 await page.screenshot({ path: join(out, 'stats-dialog.png') });
 

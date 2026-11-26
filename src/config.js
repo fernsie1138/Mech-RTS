@@ -26,6 +26,7 @@ export const DECALS = {
 //   treeFall: trees within this radius are knocked flat (inner 45% shattered to stumps)   ignite: chance to set trees alight
 export const TERRAIN_DAMAGE = {
   mg:     { radius: 0.7, depth: 0.03, rim: 0,   erode: 0,    wear: 0.35, scorch: 0.15, wearRadius: 1.4, fxSize: 0.35, treeFall: 0,   ignite: 0.03 },
+  autocannon: { radius: 1.0, depth: 0.1, rim: 0.2, erode: 0.05, wear: 0.6, scorch: 0.2, wearRadius: 1.5, fxSize: 0.6, treeFall: 1.2, ignite: 0.06 },
   cannon: { radius: 1.8, depth: 0.3,  rim: 0.3, erode: 0.25, wear: 1.2,  scorch: 0.3,  wearRadius: 1.8, fxSize: 1.2,  treeFall: 3,   ignite: 0.15 },
   shell:  { radius: 3.6, depth: 0.8,  rim: 0.3, erode: 0.6,  wear: 1.6,  scorch: 0.45, wearRadius: 1.8, fxSize: 2.6,  treeFall: 6.5, ignite: 0.4 },
 };
@@ -63,14 +64,18 @@ export const SIM = {
 //   (also its TERRAIN_DAMAGE profile), projSpeed, splash (radius of damage to units), scale (model size),
 //   turn (rad/s legs), spread (miss distance), indirect (lobs shells over obstacles).
 export const UNIT_TYPES = {
-  scout:   { name: 'Scout',   cls: 0, cost: 100, build: 4,  hp: 140, range: 18, sight: 46,  dmg: 9,   rof: 0.22, proj: 'mg',     projSpeed: 90, splash: 0,   scale: 0.8,  turn: 6, accuracy: 0.75 },
-  assault: { name: 'Assault', cls: 1, cost: 220, build: 7,  hp: 360, range: 23, sight: 36,  dmg: 28,  rof: 0.9,  proj: 'cannon', projSpeed: 60, splash: 1.5, scale: 1.15, turn: 4, accuracy: 0.8 },
-  titan:   { name: 'Titan',   cls: 2, cost: 420, build: 12, hp: 950, range: 32, sight: 34,  dmg: 110, rof: 2.6,  proj: 'shell',  projSpeed: 20, splash: 5,   scale: 1.6,  turn: 2, accuracy: 1, indirect: true },
+  scout:   { name: 'Light Mech', short: 'Light', cls: 0, cost: 100, build: 4,  hp: 140, range: 18, sight: 46,  dmg: 9,   rof: 0.22, proj: 'mg',     projSpeed: 90, splash: 0,   scale: 0.8,  turn: 6, accuracy: 0.75 },
+  // Medium Mech (David's model, units/mediummech.js): between the Light and Heavy. Autocannon, digitigrade legs.
+  medium:  { name: 'Medium Mech', short: 'Medium', cls: 1, cost: 160, build: 5.5, hp: 250, range: 21, sight: 40, dmg: 15, rof: 0.45, proj: 'autocannon', projSpeed: 75, splash: 0.6, scale: 1, turn: 5, accuracy: 0.78, speed: 1.25 },
+  assault: { name: 'Heavy Mech', short: 'Heavy', cls: 1, cost: 220, build: 7,  hp: 360, range: 23, sight: 36,  dmg: 28,  rof: 0.9,  proj: 'cannon', projSpeed: 60, splash: 1.5, scale: 1.15, turn: 4, accuracy: 0.8 },
+  titan:   { name: 'Assault Mech', short: 'Assault', cls: 2, cost: 420, build: 12, hp: 950, range: 32, sight: 34,  dmg: 110, rof: 2.6,  proj: 'shell',  projSpeed: 20, splash: 5,   scale: 1.6,  turn: 2, accuracy: 1, indirect: true },
   // Unarmed: builds walls and turrets and digs trenches (see BUILD). Spots for Titans like any mech.
-  builder: { name: 'Builder', cls: 0, cost: 150, build: 6,  hp: 220, range: 0, sight: 30,  dmg: 0,   rof: 1,    proj: null,     projSpeed: 0,  splash: 0,   scale: 0.85, turn: 5, accuracy: 0, unarmed: true, speed: 0.7, repair: 25 },   // repair: hp per second it mends
+  builder: { name: 'Builder', short: 'Builder', cls: 0, cost: 150, build: 6,  hp: 220, range: 0, sight: 30,  dmg: 0,   rof: 1,    proj: null,     projSpeed: 0,  splash: 0,   scale: 0.85, turn: 5, accuracy: 0, unarmed: true, speed: 0.7, repair: 25 },   // repair: hp per second it mends
 };
-export const UNIT_KEYS = ['scout', 'assault', 'titan', 'builder'];
-export const COMBAT_KEYS = ['scout', 'assault', 'titan'];
+// Internal keys stay as they were (saved stats, tests); the names shown are in `name` / `short`:
+//   scout = Light Mech, medium = Medium Mech, assault = Heavy Mech, titan = Assault Mech.
+export const UNIT_KEYS = ['scout', 'medium', 'assault', 'titan', 'builder'];
+export const COMBAT_KEYS = ['scout', 'medium', 'assault', 'titan'];
 
 export const COMBAT = {
   retarget: 0.35,            // seconds between target searches
