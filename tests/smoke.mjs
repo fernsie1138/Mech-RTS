@@ -102,17 +102,17 @@ check(html.includes(`<div id="ver">${VERSION}</div>`), `index.html fallback labe
     const r = window.__game.rts; return { x: r.target.x, z: r.target.z, d: r.distance };
   });
 
-  // One-finger drag: the ground point under the finger should stay under it (dragging right moves camera left).
+  // Two-finger drag (one finger box-selects in the game): the ground under the fingers stays under them.
   const before = await getCam();
-  const groundBefore = await page.evaluate(() => { const p = window.__game.rts.groundPoint(400, 400); return [p.x, p.z]; });
-  await touch('touchStart', [[400, 400]]);
-  for (let i = 1; i <= 10; i++) await touch('touchMove', [[400 + i * 20, 400 + i * 8]]);
+  const groundBefore = await page.evaluate(() => { const p = window.__game.rts.groundPoint(450, 400); return [p.x, p.z]; });
+  await touch('touchStart', [[400, 400], [500, 400]]);
+  for (let i = 1; i <= 10; i++) await touch('touchMove', [[400 + i * 20, 400 + i * 8], [500 + i * 20, 400 + i * 8]]);
   await touch('touchEnd', []);
   const afterPan = await getCam();
-  const groundAfter = await page.evaluate(() => { const p = window.__game.rts.groundPoint(600, 480); return [p.x, p.z]; });
-  check(afterPan.x < before.x - 1, `one-finger drag right pans camera (target x ${before.x.toFixed(1)} -> ${afterPan.x.toFixed(1)})`);
+  const groundAfter = await page.evaluate(() => { const p = window.__game.rts.groundPoint(650, 480); return [p.x, p.z]; });
+  check(afterPan.x < before.x - 1, `two-finger drag right pans camera (target x ${before.x.toFixed(1)} -> ${afterPan.x.toFixed(1)})`);
   const slip = Math.hypot(groundAfter[0] - groundBefore[0], groundAfter[1] - groundBefore[1]);
-  check(slip < 0.5, `ground stays under the finger while dragging (slip ${slip.toFixed(3)} world units)`);
+  check(slip < 0.5, `ground stays under the fingers while dragging (slip ${slip.toFixed(3)} world units)`);
 
   // Pinch out (fingers apart) should zoom in.
   await page.waitForTimeout(400);  // past the double-tap guard window
@@ -167,10 +167,10 @@ check(html.includes(`<div id="ver">${VERSION}</div>`), `index.html fallback labe
   const x1 = await page.evaluate(() => window.__game.rts.target.x);
   check(x1 > x0 + 1, `D key pans right (target x ${x0.toFixed(1)} -> ${x1.toFixed(1)})`);
 
-  await page.mouse.move(640, 400); await page.mouse.down();
-  await page.mouse.move(540, 400, { steps: 8 }); await page.mouse.up();
+  await page.mouse.move(640, 400); await page.mouse.down({ button: 'right' });
+  await page.mouse.move(540, 400, { steps: 8 }); await page.mouse.up({ button: 'right' });
   const x2 = await page.evaluate(() => window.__game.rts.target.x);
-  check(x2 > x1 + 1, `mouse drag left pans right (target x ${x1.toFixed(1)} -> ${x2.toFixed(1)})`);
+  check(x2 > x1 + 1, `right-mouse drag left pans right (target x ${x1.toFixed(1)} -> ${x2.toFixed(1)})`);
 
   await page.keyboard.press('`');
   const shown = await page.evaluate(() => getComputedStyle(document.getElementById('debug')).display !== 'none');

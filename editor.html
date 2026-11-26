@@ -8,11 +8,11 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0b1015">
 <!-- Must match VERSION in src/version.js. -->
-<meta name="build" content="v9">
+<meta name="build" content="v10">
 <title>Mech RTS Editor</title>
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" type="image/png" href="icons/icon-180.png">
-<link rel="stylesheet" href="style.css?v=9">
+<link rel="stylesheet" href="style.css?v=10">
 <style>
   .bar { position:fixed; display:flex; gap:8px; padding:8px; align-items:center; }
   #top { top:calc(env(safe-area-inset-top) + 8px); left:calc(env(safe-area-inset-left) + 8px); right:calc(env(safe-area-inset-right) + 8px);
@@ -57,38 +57,42 @@
 <script type="importmap">
 {
   "imports": {
-    "three": "./lib/three.module.js?v=9",
-    "./editor/editor.js": "./editor/editor.js?v=9",
-    "./editor/history.js": "./editor/history.js?v=9",
-    "./editor/tools/features.js": "./editor/tools/features.js?v=9",
-    "./editor/tools/markers.js": "./editor/tools/markers.js?v=9",
-    "./editor/tools/terrain.js": "./editor/tools/terrain.js?v=9",
-    "./src/combat/damage.js": "./src/combat/damage.js?v=9",
-    "./src/combat/effects.js": "./src/combat/effects.js?v=9",
-    "./src/config.js": "./src/config.js?v=9",
-    "./src/main.js": "./src/main.js?v=9",
-    "./src/maps/format.js": "./src/maps/format.js?v=9",
-    "./src/maps/imageimport.js": "./src/maps/imageimport.js?v=9",
-    "./src/maps/loader.js": "./src/maps/loader.js?v=9",
-    "./src/nav/navgrid.js": "./src/nav/navgrid.js?v=9",
-    "./src/nav/pathfinding.js": "./src/nav/pathfinding.js?v=9",
-    "./src/terrain/chunks.js": "./src/terrain/chunks.js?v=9",
-    "./src/terrain/heightfield.js": "./src/terrain/heightfield.js?v=9",
-    "./src/terrain/surface.js": "./src/terrain/surface.js?v=9",
-    "./src/terrain/testmap.js": "./src/terrain/testmap.js?v=9",
-    "./src/terrain/water.js": "./src/terrain/water.js?v=9",
-    "./src/terrain/watermesh.js": "./src/terrain/watermesh.js?v=9",
-    "./src/ui/camera.js": "./src/ui/camera.js?v=9",
-    "./src/ui/debug.js": "./src/ui/debug.js?v=9",
-    "./src/units/movers.js": "./src/units/movers.js?v=9",
-    "./src/units/moverview.js": "./src/units/moverview.js?v=9",
-    "./src/version.js": "./src/version.js?v=9",
-    "./src/view.js": "./src/view.js?v=9",
-    "./src/world/buildings.js": "./src/world/buildings.js?v=9",
-    "./src/world/buildingview.js": "./src/world/buildingview.js?v=9",
-    "./src/world/forest.js": "./src/world/forest.js?v=9",
-    "./src/world/markers.js": "./src/world/markers.js?v=9",
-    "./src/world/trees.js": "./src/world/trees.js?v=9"
+    "three": "./lib/three.module.js?v=10",
+    "./editor/editor.js": "./editor/editor.js?v=10",
+    "./editor/history.js": "./editor/history.js?v=10",
+    "./editor/tools/features.js": "./editor/tools/features.js?v=10",
+    "./editor/tools/markers.js": "./editor/tools/markers.js?v=10",
+    "./editor/tools/terrain.js": "./editor/tools/terrain.js?v=10",
+    "./src/combat/damage.js": "./src/combat/damage.js?v=10",
+    "./src/combat/effects.js": "./src/combat/effects.js?v=10",
+    "./src/combat/los.js": "./src/combat/los.js?v=10",
+    "./src/combat/projectiles.js": "./src/combat/projectiles.js?v=10",
+    "./src/config.js": "./src/config.js?v=10",
+    "./src/main.js": "./src/main.js?v=10",
+    "./src/maps/format.js": "./src/maps/format.js?v=10",
+    "./src/maps/imageimport.js": "./src/maps/imageimport.js?v=10",
+    "./src/maps/loader.js": "./src/maps/loader.js?v=10",
+    "./src/nav/navgrid.js": "./src/nav/navgrid.js?v=10",
+    "./src/nav/pathfinding.js": "./src/nav/pathfinding.js?v=10",
+    "./src/terrain/chunks.js": "./src/terrain/chunks.js?v=10",
+    "./src/terrain/heightfield.js": "./src/terrain/heightfield.js?v=10",
+    "./src/terrain/surface.js": "./src/terrain/surface.js?v=10",
+    "./src/terrain/testmap.js": "./src/terrain/testmap.js?v=10",
+    "./src/terrain/water.js": "./src/terrain/water.js?v=10",
+    "./src/terrain/watermesh.js": "./src/terrain/watermesh.js?v=10",
+    "./src/ui/camera.js": "./src/ui/camera.js?v=10",
+    "./src/ui/command.js": "./src/ui/command.js?v=10",
+    "./src/ui/debug.js": "./src/ui/debug.js?v=10",
+    "./src/units/mech.js": "./src/units/mech.js?v=10",
+    "./src/units/movers.js": "./src/units/movers.js?v=10",
+    "./src/units/units.js": "./src/units/units.js?v=10",
+    "./src/version.js": "./src/version.js?v=10",
+    "./src/view.js": "./src/view.js?v=10",
+    "./src/world/buildings.js": "./src/world/buildings.js?v=10",
+    "./src/world/buildingview.js": "./src/world/buildingview.js?v=10",
+    "./src/world/forest.js": "./src/world/forest.js?v=10",
+    "./src/world/markers.js": "./src/world/markers.js?v=10",
+    "./src/world/trees.js": "./src/world/trees.js?v=10"
   }
 }
 </script>
@@ -151,7 +155,7 @@
 </div>
 <div id="hint"></div>
 <div id="status"></div>
-<div id="ver">v9</div>
+<div id="ver">v10</div>
 
 <div class="dialog" id="dlgOpen"><div class="box panel scroll">
   <h2>Open a map</h2>
@@ -176,7 +180,7 @@
 
 <div id="loading">Loading editor…</div>
 <div id="fatal"></div>
-<script src="src/ui/page.js?v=9"></script>
-<script type="module" src="editor/editor.js?v=9"></script>
+<script src="src/ui/page.js?v=10"></script>
+<script type="module" src="editor/editor.js?v=10"></script>
 </body>
 </html>

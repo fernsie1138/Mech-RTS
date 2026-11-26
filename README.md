@@ -64,4 +64,12 @@ node tests/nav.mjs
 node tests/effects.mjs
 ```
 
+```bash
+node tests/units-unit.mjs
+```
+
+```bash
+node tests/combat.mjs
+```
+
 Screenshots are written to `tests/out/` (not committed).

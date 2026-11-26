@@ -1,5 +1,15 @@
 # Changelog
 
+## v10 — Milestone 7: mechs and combat
+- Mechs from the prototype, rebuilt on the new terrain: **Scout** (fast, machine gun), **Assault** (twin cannons, small splash), **Titan** (slow, arcing shells with a big splash). Walking legs, and a torso that turns on its own so mechs fire on the move. All mech parts are one instanced mesh; health bars show once a mech is hurt.
+- Every weapon damages the ground as it does to units: machine-gun fire scuffs it, cannons dig small craters, shells dig big ones, knock trees flat and set them alight. Misses land beside the target. Destroyed mechs explode and leave a burning wreck.
+- Line of sight: hills and standing walls block direct fire (trees don't). Cover: mechs in forest, on rubble or behind a wall are harder to hit. High ground makes hits easier.
+- Titans fire over hills, but only at enemies their side can see: any friendly mech that spots an enemy (within 40) lets the Titans shell it. Shells land where the target was, so a running Scout can dodge them.
+- Titans flatten trees as they walk through forest.
+- Controls: tap a mech to select it, **double-tap** to select all of that type on screen, **one-finger drag** to box-select (two fingers move the camera). Tap the ground to send them; **A-Move** (default: stop to fight anything on the way) toggles to **Move** (ignore enemies). Tap an enemy to attack it (they chase it and shoot only that). **+Enemy** brings an enemy squad for testing. Idle mechs guard where they stand.
+- Pinch zoom now zooms around your fingers instead of the screen centre, so the ground stays under them.
+- Tests: `tests/units-unit.mjs`, `tests/combat.mjs`.
+
 ## v9 — Bigger explosions, fires and drifting smoke; rotate and move buildings
 - Explosions rebuilt as pooled particles (one instanced mesh per kind): a flash that lights up the ground, a rolling fireball, a shockwave ring, showers of sparks, tumbling and bouncing debris (some trailing smoke), dust thrown out along the ground, and a billowing smoke column that lingers 6-10 s and drifts sideways on the wind.
 - Buildings that are hit catch fire for 6-12 s (flames and smoke; a fire goes out if its wall falls) and shed debris in their own colours; some rubble smoulders.

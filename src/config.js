@@ -39,10 +39,36 @@ export const CAMERA = {
   wheelZoomFactor: 0.0015,
   tapMaxMove: 12,                     // pixels: a touch that moves less than this is a tap
   tapMaxTime: 350,                    // ms
+  doubleTapMs: 400,                   // a second tap on the same type within this selects all of that type
   strokeHoldMs: 120,                  // editor: a finger held this long without moving starts painting
 };
 
 export const SIM = {
   stepSeconds: 1 / 60,                // fixed simulation step
   maxStepsPerFrame: 5,
+};
+
+// ---------------- units and combat (milestone 7) ----------------
+// From the prototype, rebalanced a little for the new terrain. cls = nav size class (0 small, 1 medium, 2 large).
+//   hp, speed (from MOVE.speeds via cls), range, dmg per hit, rof (seconds between shots), proj = weapon
+//   (also its TERRAIN_DAMAGE profile), projSpeed, splash (radius of damage to units), scale (model size),
+//   turn (rad/s legs), spread (miss distance), indirect (lobs shells over obstacles).
+export const UNIT_TYPES = {
+  scout:   { name: 'Scout',   cls: 0, cost: 100, build: 4,  hp: 140, range: 18, dmg: 9,   rof: 0.22, proj: 'mg',     projSpeed: 90, splash: 0,   scale: 0.8,  turn: 6, accuracy: 0.75 },
+  assault: { name: 'Assault', cls: 1, cost: 220, build: 7,  hp: 360, range: 23, dmg: 28,  rof: 0.9,  proj: 'cannon', projSpeed: 60, splash: 1.5, scale: 1.15, turn: 4, accuracy: 0.8 },
+  titan:   { name: 'Titan',   cls: 2, cost: 420, build: 12, hp: 950, range: 32, dmg: 110, rof: 2.6,  proj: 'shell',  projSpeed: 20, splash: 5,   scale: 1.6,  turn: 2, accuracy: 1, indirect: true },
+};
+export const UNIT_KEYS = ['scout', 'assault', 'titan'];
+
+export const COMBAT = {
+  retarget: 0.35,            // seconds between target searches
+  eyeHeight: 0.8,            // line-of-sight eye height, as a fraction of the mech's height
+  forestCover: 0.45,         // hit chance x (1 - cover) inside full forest
+  rubbleCover: 0.3,          // ... on a rubble heap / against a ruined wall
+  highGround: 0.15,          // +hit chance per 4 units of height above the target (capped at 2x this)
+  shellSpread: 1.5,          // Titan shells land within this of the aim point
+  sightRange: 40,            // how far a mech spots enemies (for itself and for friendly Titans)
+  chaseRange: 12,            // attack-move / idle units go after enemies within range + this
+  guardRadius: 30,           // idle units chase this far from where they were left
+  wreckTime: 40,             // seconds a wreck stays before sinking away
 };

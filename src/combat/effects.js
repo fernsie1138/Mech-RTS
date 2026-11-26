@@ -214,6 +214,24 @@ export class Effects {
     }
   }
 
+  // Muzzle flash when a mech fires (size ~ weapon).
+  muzzle(x, y, z, size) {
+    for (let k = 0; k < 2 + Math.round(size * 2); k++) {
+      this.fire.emit({ x, y, z, vx: rand(-1, 1), vy: rand(0, 1.5), vz: rand(-1, 1), life: rand(0.06, 0.14), s0: 0.35 * size, s1: 0.8 * size,
+        c0: [1, 0.9, 0.55], c1: [1, 0.5, 0.15], a0: 0.95, a1: 0 });
+    }
+    if (size >= 0.8) this.smokePuff(x, y, z, 0.5 * size, 0.3);
+  }
+
+  // Sparks where a round strikes armour.
+  sparksAt(x, y, z, n = 6) {
+    for (let k = 0; k < n; k++) {
+      const a = rand(0, 6.28), up = rand(0.2, 1), sp = rand(5, 12);
+      this.sparks.emit({ x, y, z, vx: Math.cos(a) * sp, vy: sp * up, vz: Math.sin(a) * sp, life: rand(0.2, 0.5), s0: rand(0.6, 1.2), s1: 0.2,
+        c0: [1, 0.95, 0.6], c1: [1, 0.5, 0.1], a0: 1, a1: 0, grav: 22, spin: rand(-12, 12) });
+    }
+  }
+
   smokePuff(x, y, z, size = 1, dark = 0.18) {
     this.smoke.emit({ x: x + rand(-0.3, 0.3) * size, y, z: z + rand(-0.3, 0.3) * size, vx: rand(-0.3, 0.3), vy: rand(1.2, 2.2), vz: rand(-0.3, 0.3),
       life: rand(2.5, 4), s0: 0.35 * size, s1: rand(1.4, 2) * size, c0: [dark, dark, dark], c1: [0.48, 0.47, 0.45], a0: 0.7, a1: 0, drag: 0.4, buoy: 0.6, wind: 1.2, spin: rand(-0.5, 0.5) });

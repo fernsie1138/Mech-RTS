@@ -72,9 +72,15 @@ export class RTSCamera {
     this._apply();
   }
 
-  zoomBy(factor) {
+  // Zoom; with a screen position, around the ground under it (pinch zooms around the fingers).
+  zoomBy(factor, cx, cy) {
+    const before = cx !== undefined ? this.groundPoint(cx, cy, new THREE.Vector3()) : null;
     this.distance = THREE.MathUtils.clamp(this.distance * factor, CAMERA.minDistance, CAMERA.maxDistance);
     this._apply();
+    if (before) {
+      const after = this.groundPoint(cx, cy, new THREE.Vector3());
+      if (after) { this.target.x += before.x - after.x; this.target.z += before.z - after.z; this._apply(); }
+    }
   }
 
   // Rotate around the point under screen position (cx, cy) so it stays put.
@@ -123,7 +129,7 @@ export class RTSCamera {
       if (this._last && !painting) this._panScreen(this._last.x, this._last.y, c.x, c.y);
       const pair = this._pair();
       if (pair && this._lastPair) {
-        if (pair.spread > 0 && this._lastPair.spread > 0) this.zoomBy(this._lastPair.spread / pair.spread);
+        if (pair.spread > 0 && this._lastPair.spread > 0) this.zoomBy(this._lastPair.spread / pair.spread, c.x, c.y);
         let da = pair.angle - this._lastPair.angle;
         if (da > Math.PI) da -= 2 * Math.PI;
         if (da < -Math.PI) da += 2 * Math.PI;

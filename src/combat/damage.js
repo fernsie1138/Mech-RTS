@@ -1,18 +1,19 @@
 // Single entry point for all damage, to units and to the world (CLAUDE.md §4).
-// Terrain (craters, wear, flooding), trees and buildings take damage here; units hook in later. Every change is
+// Terrain (craters, wear, flooding), trees, buildings and units take damage here. Every change is
 // reported to the nav grid (world.nav) so paths re-plan around new craters, rubble and fallen trees.
 import { TERRAIN_DAMAGE } from '../config.js';
 import { BUILDING_DAMAGE, addRubble } from '../world/buildings.js';
 
 export class Damage {
   constructor(world) {
-    this.world = world;        // { hf, surface, effects, water?, forest?, buildings?, nav? }
+    this.world = world;        // { hf, surface, effects, water?, forest?, buildings?, nav?, units? }
     this.log = [];             // recent impacts, for tests/debugging
   }
 
   // An explosion of weapon type `weapon` (a key of TERRAIN_DAMAGE) at (x, z), at height y (default: the ground).
   // A blast well above the ground (e.g. on a roof or bridge deck) doesn't crater the ground.
-  explode(x, z, weapon, y = null) {
+  // unitHit: { dmg, splash, team, exclude } damages enemy units (not `team`) within `splash` of the blast.
+  explode(x, z, weapon, y = null, unitHit = null) {
     const p = TERRAIN_DAMAGE[weapon];
     if (!p) throw new Error(`unknown weapon terrain profile: ${weapon}`);
     const { hf, surface, effects } = this.world;
@@ -54,10 +55,35 @@ export class Damage {
       const fall = buildings && rubble.length ? Math.max(...rubble.map(r => Math.hypot(r.x - x, r.z - z) + r.r)) : 0;
       this.world.nav.markDirty(x, z, Math.max(p.treeFall || 0, fall) + 2);
     }
-    const hit = { x, z, y: by, weapon, y0, y1: hf.heightAt(x, z), flooded, trees, pieces: rubble.length, ...result };
+    let unitsHit = 0;
+    if (unitHit && this.world.units) {
+      for (const u of [...this.world.units.list]) {
+        if (!u.alive || u.team === unitHit.team || u === unitHit.exclude) continue;
+        const d = Math.hypot(u.x - x, u.z - z) - u.radius;
+        if (d < unitHit.splash && Math.abs(u.y + u.height / 2 - by) < u.height + unitHit.splash) {
+          this.hitUnit(u, unitHit.dmg * (1 - 0.6 * Math.max(0, d) / unitHit.splash));
+          unitsHit++;
+        }
+      }
+    }
+    const hit = { x, z, y: by, weapon, y0, y1: hf.heightAt(x, z), flooded, trees, pieces: rubble.length, unitsHit, ...result };
     this.log.push(hit);
     if (this.log.length > 50) this.log.shift();
     return hit;
+  }
+
+  // Damage a unit. At 0 hp it is destroyed: a big explosion and a scorched patch where it fell.
+  hitUnit(u, amount) {
+    if (!u.alive) return false;
+    u.hp -= amount;
+    u.hitT = 0.15;
+    if (u.hp > 0) return false;
+    const { surface, effects, units } = this.world;
+    units?.kill(u);
+    surface.wear(u.x, u.z, 3 * u.t.scale, 0.6, 0.7);
+    effects?.explosion(u.x, u.y + u.height * 0.4, u.z, 1.1 * u.t.scale);
+    effects?.burn(u.x, u.y + 0.5, u.z, 0.9 * u.t.scale, 8 + Math.random() * 6);
+    return true;
   }
 
   // Per simulation step: fires burn and spread; burnt-out trees scorch the ground under them.
