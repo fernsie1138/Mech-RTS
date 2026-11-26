@@ -35,7 +35,7 @@ export class Commander {
     if (this.state.weapon !== 'move') return this.fireTap(cx, cy);
     const ray = this.rts.screenRay(cx, cy);
     const own = this.mechView.pick(ray, this.units, this.team);
-    const enemy = own ? null : this.mechView.pick(ray, this.units, 1 - this.team);
+    const enemy = own ? null : this.mechView.pick(ray, this.units, 1 - this.team, true);
     const now = performance.now();
     if (own) {
       if (this.lastTap.unit && this.lastTap.unit.type === own.type && now - this.lastTap.t < CAMERA.doubleTapMs) {

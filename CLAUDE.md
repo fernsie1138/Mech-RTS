@@ -73,9 +73,12 @@ src/
     los.js            line of sight (terrain and walls), cover (forest, rubble, walls)
     damage.js         single entry point for all damage to units and terrain
     effects.js        explosions, smoke, fire, sparks (pooled)
-  ai/enemy.js
-  ui/command.js     selection (tap, double tap, box drag) and orders
-  ui/hud.js, ui/input.js, ui/minimap.js
+  game/match.js       credits, income, HQ build queues, capture points, win/lose (no three.js)
+  ai/enemy.js         enemy AI: build mix, waves at capture points and the HQ, base defence (no three.js)
+  ui/camera.js        RTS camera and touch/mouse gestures
+  ui/command.js       selection (tap, double tap, box drag) and orders
+  ui/hud.js           match HUD: resources, build buttons, banners, start and end screens
+  ui/minimap.js       minimap from the live terrain, tap to jump
   maps/
     loader.js         loads map files (maps/, uploaded file, editor hand-off), decodes images
     imageimport.js    image import format (§7.1)
@@ -86,6 +89,8 @@ maps/                 map files (*.json), index.json listing them, and source im
 tools/                scripts that generate files (e.g. the sample map)
 tests/                headless test scripts (see §11)
 ```
+
+The game opens a match by default; `index.html?sandbox` is the combat sandbox (no AI, test tools showing), which most browser tests use.
 
 Keep files focused. **All damage**, to units or to the world, goes through `combat/damage.js`, so terrain destruction stays consistent.
 

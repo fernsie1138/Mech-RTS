@@ -72,3 +72,28 @@ export const COMBAT = {
   guardRadius: 30,           // idle units chase this far from where they were left
   wreckTime: 40,             // seconds a wreck stays before sinking away
 };
+
+// ---------------- match: economy, HQs, capture points, enemy AI (milestone 8) ----------------
+export const ECONOMY = {
+  startCredits: 400,
+  baseIncome: 6,             // credits per second
+  pointIncome: 3,            // + per capture point held
+  queueMax: 8,               // build queue length per HQ
+  unitCap: 40,               // mechs per side (alive + queued); 80 in all is the §10 budget
+};
+// The HQ: produces mechs, defends itself with a twin-cannon turret, and losing it loses the match.
+export const HQ_TYPE = { name: 'HQ', cls: 2, hp: 8000, range: 26, dmg: 26, rof: 0.7, proj: 'cannon', projSpeed: 60, splash: 1.5,
+  scale: 1, turn: 2.5, accuracy: 0.8, radius: 6.5, height: 12 };
+export const CAPTURE = {
+  radius: 8,                 // mechs inside this ring capture it
+  rate: 0.12,                // control per second per mech (up to 3 mechs)
+  maxCount: 3,
+  decay: 0.05,               // an empty point drifts back to its owner's side at this rate
+};
+export const AI = {
+  think: 1,                  // seconds between decisions
+  firstWave: 4,              // mechs in the first attack wave; each wave adds one, up to maxWave
+  maxWave: 14,
+  defendRadius: 42,          // enemies this close to its HQ make it defend
+  lateGame: 180,             // seconds: after this it builds more Assaults and Titans
+};

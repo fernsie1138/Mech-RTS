@@ -11,6 +11,7 @@ export const MOVE = {
   speeds: [9, 6, 3.6],          // world units per second for small / medium / large (Scout, Assault, Titan)
   costExponent: 0.6,            // speed x (1 / cell cost) ^ this
   arriveDist: 1.2,
+  crowdArrive: 4,               // stalled this close to the end of a path (spot taken): arrived
   waypointDist: 0.8,
   checkEvery: 0.5,              // seconds between path-validity / progress checks
   stuckTime: 2.0,               // no progress for this long: re-plan
@@ -59,6 +60,9 @@ export class Movers {
   }
 
   stop(m) { m.goal = null; m.path = null; m.state = 'idle'; }
+  // End of the path. doneGoal remembers which goal this was, so whoever gave the order can tell it is done
+  // (even if the unit stopped short because the spot was taken or out of reach).
+  _arrive(m) { m.lastReached = m.path ? m.path.reached : false; m.doneGoal = m.goal; m.goal = null; m.state = 'idle'; m.path = null; }
 
   _request(m) {
     if (!this.requests.includes(m)) this.requests.push(m);
@@ -73,7 +77,7 @@ export class Movers {
     m.path = p; m.path.tick = this.grid.tick; m.wp = 1;
     m.state = p.points.length > 1 ? 'moving' : 'idle';
     m.best = Infinity; m.stuckT = 0; m.check = 0;
-    if (m.state === 'idle' && !p.reached) m.goal = null;
+    if (m.state === 'idle' && !p.reached) { m.doneGoal = m.goal; m.goal = null; }
   }
 
   // Standing on impassable ground: head straight for the nearest passable cell.
@@ -117,7 +121,9 @@ export class Movers {
         const d = Math.hypot(pts[m.wp].x - m.x, pts[m.wp].z - m.z);
         if (d < m.best - 0.2) { m.best = d; m.stuckT = 0; }
         else if ((m.stuckT += MOVE.checkEvery) >= MOVE.stuckTime) {
-          if (++m.replans > MOVE.maxReplans) { this.stats.giveUps++; this.stop(m); continue; }
+          // Nearly there but not getting closer (another mech is standing on the spot): call it arrived.
+          if (m.wp === pts.length - 1 && d < MOVE.crowdArrive) { this._arrive(m); continue; }
+          if (++m.replans > MOVE.maxReplans) { this.stats.giveUps++; m.doneGoal = m.goal; this.stop(m); continue; }
           this.stats.replans++; this._request(m); continue;
         }
       }
@@ -132,8 +138,7 @@ export class Movers {
           budget -= d;
           if (last) {
             // At the goal, or as close as the ground allows if it can't be reached.
-            m.lastReached = m.path.reached;
-            m.goal = null; m.state = 'idle'; m.path = null;
+            this._arrive(m);
             break;
           }
           m.wp++; m.best = Infinity;
@@ -164,8 +169,13 @@ export class Movers {
       ax += -dz * side * wgt; az += dx * side * wgt;
     }
     if (!ax && !az) return [dx, dz];
-    const nx = dx + ax * 1.5, nz = dz + az * 1.5, l = Math.hypot(nx, nz) || 1;
-    return [nx / l, nz / l];
+    // Pass on the chosen side unless that runs into a wall or a cliff a little way ahead; then the other side.
+    const G = this.grid, look = m.radius + 1.2;
+    for (const sgn of [1, -1]) {
+      const nx = dx + sgn * ax * 1.5, nz = dz + sgn * az * 1.5, l = Math.hypot(nx, nz) || 1;
+      if (G.passable(m.cls, m.x + nx / l * look, m.z + nz / l * look)) return [nx / l, nz / l];
+    }
+    return [dx, dz];
   }
 
   // Move up to `dist` toward (tx, tz). Won't step into an impassable cell unless `force`. Returns false if blocked.

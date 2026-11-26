@@ -1,5 +1,17 @@
 # Changelog
 
+## v11 — Milestone 8: a complete match
+- The game now opens a **match**: destroy the enemy HQ (north) before it destroys yours. A start screen explains the controls; a Victory or Defeat screen shows the time and losses, with **Play again**.
+- **Economy:** credits (⚡) come in at +6/s, plus +3/s for each capture point you hold. Build Scouts (100), Assaults (220) and Titans (420) with the buttons on the left: tap to queue one (up to 8), press and hold to cancel one (refunded). They come out of your HQ and gather in front of it. Up to 40 mechs a side.
+- **Capture points:** stand mechs in the ring (more mechs, faster, up to 3). It turns blue when it's yours, red when it's the enemy's; contested points don't change. Banners tell you when you take or lose one.
+- **HQs:** have 8000 hit points and a twin-cannon roof turret that defends them. They block movement. Tap the enemy HQ to attack it. A destroyed HQ goes up in a chain of blasts and burns.
+- **Enemy AI:** builds a mix of mechs (heavier later on), sends growing waves at the capture points and every third wave at your HQ, and defends its base.
+- **Minimap** (bottom right): the live map, which darkens as it gets cratered and burnt, plus capture points, HQs, mechs and your view. Tap or drag on it to move the camera.
+- **HUD:** credits, income, points held, army size and match clock (top left). **Stop** button. Test tools (+Squad, +Enemy, fire buttons, Barrage, Reset) are now behind **Dev**. `index.html?sandbox` opens the old combat sandbox.
+- Fixed: a mech passing another could steer into a wall and jitter there; and a mech whose spot in a formation was taken kept trying to reach it. Both showed up as stuck mechs in long AI-vs-AI test matches.
+- Fixed: the Editor button is no longer hidden behind the start screen.
+- Tests: `tests/match-unit.mjs` (including a whole AI-vs-AI match on the sample map), `tests/match.mjs`.
+
 ## v10 — Milestone 7: mechs and combat
 - Mechs from the prototype, rebuilt on the new terrain: **Scout** (fast, machine gun), **Assault** (twin cannons, small splash), **Titan** (slow, arcing shells with a big splash). Walking legs, and a torso that turns on its own so mechs fire on the move. All mech parts are one instanced mesh; health bars show once a mech is hurt.
 - Every weapon damages the ground as it does to units: machine-gun fire scuffs it, cannons dig small craters, shells dig big ones, knock trees flat and set them alight. Misses land beside the target. Destroyed mechs explode and leave a burning wreck.

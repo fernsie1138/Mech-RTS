@@ -19,7 +19,7 @@ const tap = async (x, y) => { await page.waitForTimeout(400); await touch('touch
 const relax = () => page.evaluate(() => { const c = (window.__game || window.__editor).config.CAMERA; c.tapMaxTime = 1e5; c.strokeHoldMs = 1e9; });
 
 // ================= game =================
-await page.goto(server.url);
+await page.goto(server.url + '?sandbox');
 await ready('__game'); await relax();
 const g0 = await page.evaluate(() => {
   const g = window.__game, B = g.buildings;

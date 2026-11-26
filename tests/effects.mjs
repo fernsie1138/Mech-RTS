@@ -11,7 +11,7 @@ const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=sw
 const ctx = await browser.newContext({ ...devices['iPad Pro 11 landscape'] });
 const page = await ctx.newPage();
 const w = watchPage(page, server.url);
-await page.goto(server.url);
+await page.goto(server.url + '?sandbox');
 await page.waitForFunction(() => window.__game?.ready, null, { timeout: 30000 });
 
 // ---- one shell on open ground ----

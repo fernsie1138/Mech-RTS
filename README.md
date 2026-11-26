@@ -72,4 +72,12 @@ node tests/units-unit.mjs
 node tests/combat.mjs
 ```
 
+```bash
+node tests/match-unit.mjs
+```
+
+```bash
+node tests/match.mjs
+```
+
 Screenshots are written to `tests/out/` (not committed).
