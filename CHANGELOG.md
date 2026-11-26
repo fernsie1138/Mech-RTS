@@ -7,6 +7,7 @@
 - Titans fire over hills, but only at enemies their side can see: any friendly mech that spots an enemy (within 40) lets the Titans shell it. Shells land where the target was, so a running Scout can dodge them.
 - Titans flatten trees as they walk through forest.
 - Controls: tap a mech to select it, **double-tap** to select all of that type on screen, **one-finger drag** to box-select (two fingers move the camera). Tap the ground to send them; **A-Move** (default: stop to fight anything on the way) toggles to **Move** (ignore enemies). Tap an enemy to attack it (they chase it and shoot only that). **+Enemy** brings an enemy squad for testing. Idle mechs guard where they stand.
+- Pinch zoom now zooms around your fingers instead of the screen centre, so the ground stays under them.
 - Tests: `tests/units-unit.mjs`, `tests/combat.mjs`.
 
 ## v9 — Bigger explosions, fires and drifting smoke; rotate and move buildings
