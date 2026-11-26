@@ -3,11 +3,12 @@
 // the unit's state: walk cycle (hips and knees), body bob, independent torso yaw, hit flash. Wrecks are drawn
 // the same way, dark, tilted and sinking. Also: selection rings, health bars and projectile tracers.
 import * as THREE from 'three';
-import { TORSO_Y } from './units.js';
-import { COMBAT, UNIT_TYPES } from '../config.js';
+import { TORSO_Y, STRUCTURE_TYPES } from './units.js';
+import { COMBAT, UNIT_TYPES, BUILD } from '../config.js';
 
 const TEAM = [0x3d8fe0, 0xd9442e];
-const ROLE = { metal: 0x8a949c, dark: 0x2e3338, glass: 0x9fe8ff };
+const ROLE = { metal: 0x8a949c, dark: 0x2e3338, glass: 0x9fe8ff, hazard: 0xe8b02a };
+const SITE = { plan: 0xe8b02a, ok: 0x7cff9a, bad: 0xff5040 };
 
 // Part lists: [group, role, w, h, d, x, y, z]. Groups: body, hip0/1 (left/right), knee0/1, torso.
 function legs() {
@@ -34,11 +35,28 @@ const PARTS = {
     ['torso', 'team', 2.4, 1.4, 1.9, 0, 0.7, 0], ['torso', 'glass', 1.2, 0.4, 0.1, 0, 0.95, 0.96], ['torso', 'dark', 2.6, 0.3, 1.6, 0, 1.5, -0.1],
     ['torso', 'team', 0.8, 1.0, 1.4, 1.6, 0.6, 0.1], ['torso', 'dark', 0.5, 0.5, 2.8, 1.6, 0.55, 1.7], ['torso', 'dark', 0.7, 0.7, 0.4, 1.6, 0.55, 0.6],
     ['torso', 'team', 1.1, 0.9, 1.4, -1.5, 1.7, -0.1], ['torso', 'dark', 0.9, 0.7, 0.1, -1.5, 1.7, 0.62]],
+  // Builder: a squat cab with a work arm and shovel on the right, a toolbox and beacon on the back.
+  builder: [...legs(),
+    ['torso', 'team', 1.5, 0.95, 1.4, 0, 0.45, 0], ['torso', 'glass', 0.9, 0.3, 0.1, -0.15, 0.6, 0.71],
+    ['torso', 'hazard', 1.55, 0.18, 1.45, 0, 1.0, 0], ['torso', 'dark', 0.9, 0.55, 0.6, 0, 0.6, -0.9],
+    ['torso', 'hazard', 0.22, 0.22, 0.22, -0.45, 1.25, -0.4],
+    ['torso', 'hazard', 0.28, 0.28, 1.5, 0.95, 0.5, 0.6], ['torso', 'metal', 0.22, 0.6, 0.22, 0.95, 0.25, 1.35],
+    ['torso', 'dark', 0.7, 0.14, 0.55, 0.95, -0.05, 1.55]],
+  // Auto turret: base and pillar (root), turning head with twin guns (torso, at TORSO_Y).
+  turret: [
+    ['root', 'dark', 2.6, 0.5, 2.6, 0, 0.25, 0], ['root', 'metal', 1.3, 1.8, 1.3, 0, 1.4, 0], ['root', 'hazard', 1.4, 0.15, 1.4, 0, 2.3, 0],
+    ['torso', 'team', 1.7, 0.95, 1.7, 0, 0.45, 0], ['torso', 'glass', 0.7, 0.2, 0.1, 0, 0.75, 0.86],
+    ['torso', 'dark', 0.2, 0.2, 1.7, -0.3, 0.55, 1.1], ['torso', 'dark', 0.2, 0.2, 1.7, 0.3, 0.55, 1.1]],
 };
+const scaleOf = type => (UNIT_TYPES[type] || STRUCTURE_TYPES[type]).scale;
 const MAX_PARTS = 4000, MAX_UNITS = 200, MAX_TRACERS = 300;
 
 export class MechView {
-  constructor(scene) {
+  // heightAt: ground height (for construction sites). construction / preview are set by the game.
+  constructor(scene, heightAt = () => 0) {
+    this.heightAt = heightAt;
+    this.construction = null;
+    this.preview = null;
     this.group = new THREE.Group();
     this.group.name = 'mechs';
     scene.add(this.group);
@@ -63,7 +81,7 @@ export class MechView {
 
   // Pose one mech (or wreck) and write its parts from instance index n. Returns the next free index.
   _pose(n, type, team, s) {
-    const g = this._g, sc = UNIT_TYPES[type].scale;
+    const g = this._g, sc = scaleOf(type);
     // Root: position, legs yaw (+ wreck tilt), scale.
     this._e.set(s.tiltX || 0, s.yaw, s.tiltZ || 0, 'YXZ');
     g.root.compose(this._p.set(s.x, s.y - (s.sink || 0), s.z), this._q.setFromEuler(this._e), this._s.setScalar(sc));
@@ -94,11 +112,17 @@ export class MechView {
     for (const u of units.list) {
       n = this._pose(n, u.type, u.team, { x: u.x, y: u.y, z: u.z, yaw: u.yaw, torsoYaw: u.torsoYaw, phase: u.phase, amp: u.amp, flash: u.hitT });
     }
+    for (const h of units.structures || []) {
+      // Turrets rise out of the ground while they are being built.
+      if (h.type !== 'turret' || !h.alive) continue;
+      n = this._pose(n, 'turret', h.team, { x: h.x, y: h.y, z: h.z, yaw: h.yaw, torsoYaw: h.torsoYaw, phase: 0, amp: 0, flash: h.hitT, sink: (1 - h.built) * h.height });
+    }
+    n = this._sites(n, this.construction, this.preview);
     for (const w of units.wrecks) {
       // Wrecks topple over in the first second, then sink into the ground at the end of their time.
       const fall = Math.min(1, w.t / 0.8);
       n = this._pose(n, w.type, w.team, { x: w.x, y: w.y, z: w.z, yaw: w.yaw, torsoYaw: w.torsoYaw, phase: w.phase, amp: 0.3,
-        tiltX: 0.35 * fall, tiltZ: w.tilt * 1.1 * fall, wreck: true, sink: Math.max(0, w.t - COMBAT.wreckTime) * 1.5 });
+        tiltX: 0.35 * fall, tiltZ: w.tilt * 1.1 * fall, wreck: true, sink: (w.sink0 || 0) + Math.max(0, w.t - COMBAT.wreckTime) * 1.5 });
     }
     this.parts.count = n;
     this.parts.instanceMatrix.needsUpdate = true;
@@ -146,6 +170,37 @@ export class MechView {
     this.tracers.count = t;
     this.tracers.instanceMatrix.needsUpdate = true;
     if (this.tracers.instanceColor) this.tracers.instanceColor.needsUpdate = true;
+  }
+
+  // Construction sites (yellow): a wall rising as it is built, a pad for a turret not yet started, a marked line
+  // for trench still to dig. Plus the placement preview while a Builder order is being drawn (green / red).
+  _sites(n, construction, preview) {
+    const box = (x, y, z, rot, w, h, d, color) => {
+      if (n >= MAX_PARTS) return;
+      this._m.compose(this._p.set(x, y, z), this._q.setFromAxisAngle(this._y, rot), this._s.set(w, h, d));
+      this.parts.setMatrixAt(n, this._m);
+      this.parts.setColorAt(n, this._c.setHex(color));
+      n++;
+    };
+    const hf = this.heightAt;
+    const draw = (j, color, planned) => {
+      const y = hf(j.x, j.z);
+      if (j.kind === 'turret') { if (planned || !j.structure) box(j.x, y + 0.08, j.z, 0, 3, 0.16, 3, color); return; }
+      if (j.kind === 'wall') {
+        const h = planned ? 0.7 : Math.max(0.12, 2.6 * j.progress);
+        box(j.x, y + (planned ? 0.1 : h / 2), j.z, j.rot, j.len, h, planned ? 0.5 : 0.8, color);
+        if (!planned) for (const e of [-0.5, 0.5]) box(j.x + Math.cos(j.rot) * j.len * e, y + 1.4, j.z - Math.sin(j.rot) * j.len * e, j.rot, 0.15, 2.8, 0.15, ROLE.dark);
+        return;
+      }
+      // Trench: a marker line along what is still to dig.
+      const from = planned ? 0 : j.dug, L = j.len - from;
+      if (L < 0.3) return;
+      const dx = (j.bx - j.ax) / j.len, dz = (j.bz - j.az) / j.len, cx = j.ax + dx * (from + L / 2), cz = j.az + dz * (from + L / 2);
+      box(cx, hf(cx, cz) + 0.1, cz, j.rot, L, planned ? 0.5 : 0.3, planned ? 0.6 : 0.3, color);
+    };
+    if (construction) for (const j of construction.jobs) if (!j.done && j.team === 0) draw(j, SITE.plan, false);
+    if (preview) for (const p of preview) draw(p, p.ok ? SITE.ok : SITE.bad, true);
+    return n;
   }
 
   // Unit under a screen ray (closest to the ray within its body), or null.

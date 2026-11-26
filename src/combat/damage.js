@@ -88,7 +88,7 @@ export class Damage {
       return true;
     }
     surface.wear(u.x, u.z, 3 * u.t.scale, 0.6, 0.7);
-    effects?.explosion(u.x, u.y + u.height * 0.4, u.z, 1.1 * u.t.scale);
+    effects?.explosion(u.x, u.y + u.height * 0.4, u.z, (u.isStructure ? 1.4 : 1.1) * u.t.scale);
     effects?.burn(u.x, u.y + 0.5, u.z, 0.9 * u.t.scale, 8 + Math.random() * 6);
     return true;
   }

@@ -57,8 +57,11 @@ export const UNIT_TYPES = {
   scout:   { name: 'Scout',   cls: 0, cost: 100, build: 4,  hp: 140, range: 18, dmg: 9,   rof: 0.22, proj: 'mg',     projSpeed: 90, splash: 0,   scale: 0.8,  turn: 6, accuracy: 0.75 },
   assault: { name: 'Assault', cls: 1, cost: 220, build: 7,  hp: 360, range: 23, dmg: 28,  rof: 0.9,  proj: 'cannon', projSpeed: 60, splash: 1.5, scale: 1.15, turn: 4, accuracy: 0.8 },
   titan:   { name: 'Titan',   cls: 2, cost: 420, build: 12, hp: 950, range: 32, dmg: 110, rof: 2.6,  proj: 'shell',  projSpeed: 20, splash: 5,   scale: 1.6,  turn: 2, accuracy: 1, indirect: true },
+  // Unarmed: builds walls and turrets and digs trenches (see BUILD). Spots for Titans like any mech.
+  builder: { name: 'Builder', cls: 0, cost: 150, build: 6,  hp: 220, range: 0,  dmg: 0,   rof: 1,    proj: null,     projSpeed: 0,  splash: 0,   scale: 0.85, turn: 5, accuracy: 0, unarmed: true, speed: 0.7 },
 };
-export const UNIT_KEYS = ['scout', 'assault', 'titan'];
+export const UNIT_KEYS = ['scout', 'assault', 'titan', 'builder'];
+export const COMBAT_KEYS = ['scout', 'assault', 'titan'];
 
 export const COMBAT = {
   retarget: 0.35,            // seconds between target searches
@@ -71,6 +74,7 @@ export const COMBAT = {
   chaseRange: 12,            // attack-move / idle units go after enemies within range + this
   guardRadius: 30,           // idle units chase this far from where they were left
   wreckTime: 40,             // seconds a wreck stays before sinking away
+  trenchCover: 0.5,          // hit chance x (1 - this) for a mech standing in a trench
 };
 
 // ---------------- match: economy, HQs, capture points, enemy AI (milestone 8) ----------------
@@ -84,6 +88,23 @@ export const ECONOMY = {
 // The HQ: produces mechs, defends itself with a twin-cannon turret, and losing it loses the match.
 export const HQ_TYPE = { name: 'HQ', cls: 2, hp: 8000, range: 26, dmg: 26, rof: 0.7, proj: 'cannon', projSpeed: 60, splash: 1.5,
   scale: 1, turn: 2.5, accuracy: 0.8, radius: 6.5, height: 12 };
+// Auto turret, built by Builders: twin machine guns on a pivot. Shoots enemies in range by itself.
+export const TURRET_TYPE = { name: 'Turret', cls: 1, hp: 700, range: 22, dmg: 9, rof: 0.16, proj: 'mg', projSpeed: 90, splash: 0,
+  scale: 1, turn: 3, accuracy: 0.75, radius: 1.7, height: 3.4 };
+
+// What Builders make. cost: credits, paid when ordered. work: builder-seconds to finish one (two Builders take half).
+//   wall: a 10-unit stone wall (cover; blocks movement and line of sight; can be shot down).
+//   turret: an auto turret (TURRET_TYPE).
+//   trench: a 10-unit length of trench, ~1.4 deep, with a spoil bank on the side facing the enemy. Mechs in it
+//   are harder to hit and partly hidden behind the bank. Longer lines are split into 10-unit pieces.
+export const BUILD = {
+  wall:   { name: 'Wall',   cost: 60,  work: 8,  len: 10 },
+  turret: { name: 'Turret', cost: 180, work: 12 },
+  trench: { name: 'Trench', cost: 30,  work: 7,  len: 10, depth: 1.4, halfWidth: 1.7, bank: 0.7 },
+  reach: 3,                  // a Builder works from this close to the site
+};
+export const BUILD_KEYS = ['wall', 'turret', 'trench'];
+
 export const CAPTURE = {
   radius: 8,                 // mechs inside this ring capture it
   rate: 0.12,                // control per second per mech (up to 3 mechs)

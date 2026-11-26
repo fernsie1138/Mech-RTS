@@ -1,5 +1,16 @@
 # Changelog
 
+## v12 — Builders: walls, auto turrets and trenches
+- New unit: **Builder** (⚡150, built at the HQ). Unarmed, a little slower than a Scout, with a work arm and a yellow roof. It still spots enemies for your Titans.
+- Select a Builder and a **Builder** panel appears above the orders bar:
+  - **Wall** (⚡60 each): a 10-unit stone wall. It blocks movement and line of sight and gives cover, and it can be shot down to rubble like any wall.
+  - **Turret** (⚡180): an auto turret with twin machine guns (700 hp, range 22). It rises out of the ground as it is built, only shoots once finished, can be destroyed, and leaves a wreck.
+  - **Trench** (⚡30 per 10 units): about 1.4 deep, with the dug earth banked up on the side facing the enemy. Mechs in it are harder to hit (half the hit chance) and stand lower behind the bank. All mechs can still cross it.
+- Placing: pick one, then **tap** the ground to place one wall, turret or trench section (walls and trenches run across the screen), or **drag a line** to place a row. A green preview shows where it goes (red: can't build there, e.g. in water or on a building). You pay when you order.
+- The Builder walks over and works; two Builders on the same job work twice as fast. New orders queue up behind the current ones. Unfinished sites stay marked in yellow: if the Builder is sent elsewhere or destroyed, select a Builder and tap the site to carry on.
+- The enemy AI doesn't build yet.
+- Tests: `tests/builder-unit.mjs`, `tests/builder.mjs`.
+
 ## v11 — Milestone 8: a complete match
 - The game now opens a **match**: destroy the enemy HQ (north) before it destroys yours. A start screen explains the controls; a Victory or Defeat screen shows the time and losses, with **Play again**.
 - **Economy:** credits (⚡) come in at +6/s, plus +3/s for each capture point you hold. Build Scouts (100), Assaults (220) and Titans (420) with the buttons on the left: tap to queue one (up to 8), press and hold to cancel one (refunded). They come out of your HQ and gather in front of it. Up to 40 mechs a side.

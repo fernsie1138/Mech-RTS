@@ -13,7 +13,7 @@ export const SURFACE = { GRASS: 0, DIRT: 1, MUD: 2, ROAD: 3, RUBBLE: 4 };
 
 // Feature bits (from the map's feature layer). Trees, water and buildings are drawn from these in later
 // milestones; until then they tint the ground so imported maps show their layout.
-export const FEATURE = { WATER: 1, FOREST: 2, TREES: 4, BUILDING: 8 };
+export const FEATURE = { WATER: 1, FOREST: 2, TREES: 4, BUILDING: 8, TRENCH: 16 };   // TRENCH: dug by Builders in a match (cover)
 
 // Linear RGB-ish colours (0..1). Tuned by eye; stylised low-poly palette.
 const COL = {
