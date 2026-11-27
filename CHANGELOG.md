@@ -1,5 +1,11 @@
 # Changelog
 
+## v23 — Fast flat shockwaves, faster shells, smoke trails
+- **Shockwaves** now lie flat on the ground (they were tilted at random angles) and race outward far faster: about a sixth of a second (was nearly half a second), and a little wider.
+- **Assault Mech shells fly faster** (speed 32, was 20). A running Light Mech can still often dodge them, but less easily.
+- **Every round leaves a small smoke trail**: thin wisps behind machine-gun and autocannon fire, a bit more behind cannon rounds, and a longer trail behind Assault Mech shells. Trails drift away on the wind.
+- Tests: `tests/effects.mjs` checks the shockwave is flat and quick, and that rounds leave trails.
+
 ## v22 — Spotting, stealthier Light Mechs, turret range, slimmer health bars
 - **Light Mechs** now have a **75% detection factor**: enemies spot them only within three quarters of their sight range (a Heavy Mech, sight 36, sees them within 27).
 - **Trenches hide units too:** a unit in a trench has its detection factor x0.8 on top of its own (a Light Mech in a trench: 60%).

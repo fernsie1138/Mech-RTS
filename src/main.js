@@ -8,7 +8,7 @@ import * as config from './config.js';
 import { SIM } from './config.js';
 import { createView } from './view.js';
 import { loadMapUrl, loadMapStorage, proceduralMap, snapshot, restore, reloadFresh, clearFreshReload, TEST_KEY } from './maps/loader.js';
-import { Effects } from './combat/effects.js';
+import { Effects, SHOT_TRAIL } from './combat/effects.js';
 import { Damage } from './combat/damage.js';
 import { DebugOverlay } from './ui/debug.js';
 import { NavGrid, NAV_CLASSES } from './nav/navgrid.js';
@@ -230,6 +230,12 @@ function simStep(dt) {
   }
   movers.step(dt);
   units.step(dt);
+  // Smoke trails behind every round in flight.
+  for (const p of units.projectiles.list) {
+    const tr = SHOT_TRAIL[p.kind];
+    if (!tr) continue;
+    if ((p.trailT = (p.trailT ?? Math.random() * tr.every) - dt) <= 0) { p.trailT += tr.every; effects.shotTrail(p.x, p.y, p.z, p.kind); }
+  }
   construction.step(dt);
   if (fog.on) vision.update(dt);
   for (const e of construction.events) {

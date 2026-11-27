@@ -79,7 +79,7 @@ class Pool {
     const c0 = o.c0, c1 = o.c1 || o.c0;
     this.r0[i] = c0[0]; this.g0[i] = c0[1]; this.b0[i] = c0[2]; this.r1[i] = c1[0]; this.g1[i] = c1[1]; this.b1[i] = c1[2];
     this.a0[i] = o.a0 ?? 1; this.a1[i] = o.a1 ?? 0;
-    this.rot[i] = Math.random() * 6.28; this.spin[i] = o.spin ?? 0;
+    this.rot[i] = o.rot ?? Math.random() * 6.28; this.spin[i] = o.spin ?? 0;
     this.drag[i] = o.drag ?? 0; this.grav[i] = o.grav ?? 0; this.buoy[i] = o.buoy ?? 0; this.wind[i] = o.wind ?? 0;
     this.trail[i] = o.trail ?? 0; this.trailT[i] = 0; this.trailFor[i] = o.trailFor ?? 0.6;
     this.alive++;
@@ -134,6 +134,14 @@ class Pool {
   _hide(i) { this._m.makeScale(0, 0, 0); this.mesh.setMatrixAt(i, this._m); }
 }
 
+// Smoke trails behind rounds: every `every` seconds of flight, a puff of this size, life and opacity.
+export const SHOT_TRAIL = {
+  mg:         { every: 0.035, size: 0.14, life: 0.4,  alpha: 0.32 },
+  autocannon: { every: 0.03,  size: 0.2,  life: 0.55, alpha: 0.36 },
+  cannon:     { every: 0.025, size: 0.3,  life: 0.75, alpha: 0.4 },
+  shell:      { every: 0.03,  size: 0.5,  life: 1.3,  alpha: 0.42 },
+};
+
 const DIRT = [[0.36, 0.28, 0.2], [0.42, 0.34, 0.24], [0.3, 0.25, 0.2], [0.45, 0.43, 0.4]];
 
 export class Effects {
@@ -142,7 +150,7 @@ export class Effects {
     const ico0 = new THREE.IcosahedronGeometry(1, 0), ico1 = new THREE.IcosahedronGeometry(1, 1);
     this.smoke = new Pool(scene, ico1, new THREE.MeshLambertMaterial({ transparent: true, depthWrite: false, flatShading: true }), 1200);   // lower this if barrages are slow on the iPad
     // Debris smoke trails get their own pool, so a barrage's trails never push out the big smoke clouds.
-    this.trails = new Pool(scene, ico0.clone(), new THREE.MeshLambertMaterial({ transparent: true, depthWrite: false, flatShading: true }), 500);
+    this.trails = new Pool(scene, ico0.clone(), new THREE.MeshLambertMaterial({ transparent: true, depthWrite: false, flatShading: true }), 900);
     this.fire = new Pool(scene, ico0.clone(), new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }), 700);
     this.sparks = new Pool(scene, new THREE.BoxGeometry(0.12, 0.12, 0.5), new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }), 700);
     this.debris = new Pool(scene, new THREE.DodecahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ flatShading: true }), 700, { alpha: false, ground: true });
@@ -183,7 +191,8 @@ export class Effects {
         life: rand(0.45, 0.9) * (0.7 + 0.3 * size), s0: 0.3 * S, s1: rand(0.9, 1.4) * S,
         c0: [1, 0.78, 0.4], c1: [0.85, 0.22, 0.04], a0: 0.8, a1: 0, drag: 2.5, buoy: 4, spin: rand(-2, 2) });
     }
-    if (big) this.rings.emit({ x, y: y + 0.2, z, life: 0.45, s0: 0.5 * S, s1: 4.5 * S, c0: [1, 0.85, 0.55], c1: [0.7, 0.4, 0.2], a0: 0.85, a1: 0 });
+    // Shockwave: a flat ring racing out along the ground, gone in a blink.
+    if (big) this.rings.emit({ x, y: y + 0.2, z, rot: 0, life: 0.16, s0: 0.6 * S, s1: 5.5 * S, c0: [1, 0.9, 0.65], c1: [0.8, 0.5, 0.25], a0: 0.9, a1: 0 });
     // Sparks.
     for (let k = 0, N = n(4, 7); k < N; k++) {
       const a = rand(0, 6.28), up = rand(0.3, 1), sp = rand(8, 18) * Math.sqrt(size);
@@ -272,6 +281,13 @@ export class Effects {
         c0: [1, 0.9, 0.55], c1: [1, 0.5, 0.15], a0: 0.95, a1: 0 });
     }
     if (size >= 0.8) this.smokePuff(x, y, z, 0.5 * size, 0.3);
+  }
+
+  // A wisp of smoke behind a round in flight (sized by weapon: mg, autocannon, cannon, shell).
+  shotTrail(x, y, z, kind) {
+    const s = SHOT_TRAIL[kind] || SHOT_TRAIL.cannon;
+    this.trails.emit({ x: x + rand(-0.05, 0.05), y, z: z + rand(-0.05, 0.05), vx: rand(-0.15, 0.15), vy: rand(0.1, 0.4), vz: rand(-0.15, 0.15),
+      life: rand(s.life * 0.8, s.life * 1.2), s0: s.size * 0.5, s1: s.size * 1.6, c0: [0.42, 0.41, 0.39], c1: [0.62, 0.61, 0.59], a0: s.alpha, a1: 0, drag: 1.2, wind: 1.5, spin: rand(-1, 1) });
   }
 
   // Sparks where a round strikes armour.
