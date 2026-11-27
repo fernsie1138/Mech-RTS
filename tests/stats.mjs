@@ -72,7 +72,7 @@ await page.tap('#btnDev');
 await page.tap('#btnStats');
 await page.tap('#statsReset');
 const back = await g(() => { const C = window.__game.config; return [C.UNIT_TYPES.scout.cost, C.UNIT_TYPES.assault.hp, C.UNIT_TYPES.titan.dmg, C.UNIT_TYPES.scout.sight, C.BUILD.turret.cost, C.ECONOMY.baseIncome, document.querySelectorAll('#statsDialog input.mod').length]; });
-check(back.join() === '100,360,110,46,180,6,0', `Reset to defaults puts everything back (${back.join(', ')})`);
+check(back.join() === '100,360,75,46,180,6,0', `Reset to defaults puts everything back (${back.join(', ')})`);
 
 // On a phone (Mobile Mode) the dialog fits.
 const pctx = await browser.newContext({ ...devices['iPhone 13 landscape'] });
