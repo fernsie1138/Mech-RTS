@@ -57,7 +57,7 @@ export async function gunzip(bytes, what = 'map') {
 }
 
 // ---------- layers ----------
-async function encodeHeights(h, verts) {
+export async function encodeHeights(h, verts) {
   const q = new Int16Array(h.length);
   for (let j = 0; j < verts; j++) {
     let prev = 0;
@@ -71,7 +71,7 @@ async function encodeHeights(h, verts) {
   return { encoding: 'i16-delta-gzip-b64', scale: HEIGHT_SCALE, data: bytesToBase64(await gzip(new Uint8Array(q.buffer))) };
 }
 
-async function decodeHeights(layer, verts) {
+export async function decodeHeights(layer, verts) {
   if (layer.encoding !== 'i16-delta-gzip-b64') throw new Error(`unknown height encoding "${layer.encoding}"`);
   const bytes = await gunzip(b64(layer.data, 'height'), 'height');
   if (bytes.length !== verts * verts * 2) throw new Error(`height data has ${bytes.length / 2} samples, expected ${verts * verts}`);
@@ -89,12 +89,21 @@ async function decodeHeights(layer, verts) {
   return out;
 }
 
-async function encodeBytes(arr) { return { encoding: 'u8-gzip-b64', data: bytesToBase64(await gzip(arr)) }; }
-async function decodeBytes(layer, n, what) {
+export async function encodeBytes(arr) { return { encoding: 'u8-gzip-b64', data: bytesToBase64(await gzip(arr)) }; }
+export async function decodeBytes(layer, n, what) {
   if (layer.encoding !== 'u8-gzip-b64') throw new Error(`unknown ${what} encoding "${layer.encoding}"`);
   const bytes = await gunzip(b64(layer.data, what), what);
   if (bytes.length !== n) throw new Error(`${what} data has ${bytes.length} samples, expected ${n}`);
   return bytes;
+}
+
+// Float32 arrays, exact (saved games): raw bytes, gzipped. -Infinity etc. survive.
+export async function encodeF32(arr) { return { encoding: 'f32-gzip-b64', n: arr.length, data: bytesToBase64(await gzip(new Uint8Array(arr.buffer, arr.byteOffset, arr.length * 4))) }; }
+export async function decodeF32(layer, n, what) {
+  if (layer.encoding !== 'f32-gzip-b64') throw new Error(`unknown ${what} encoding "${layer.encoding}"`);
+  const bytes = await gunzip(b64(layer.data, what), what);
+  if (bytes.length !== n * 4) throw new Error(`${what} data has ${bytes.length / 4} values, expected ${n}`);
+  return new Float32Array(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.length));
 }
 
 // ---------- trees ----------

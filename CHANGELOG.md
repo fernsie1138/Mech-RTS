@@ -1,5 +1,18 @@
 # Changelog
 
+## v25 — Pause, save and load; rubble on the ground; longer fires
+- **Pause button** (top right, or the P key). It stops the battle and opens a menu with **Resume**, **Save game** and **Load game**.
+- **Save game** downloads the whole battle as one JSON file (about 0.5 MB). On the iPad, Safari offers to save it to Files (Downloads). The file holds:
+  - the ground as it is now (craters, wear, scorch, trenches, flooded craters) and every crater and rubble picture;
+  - the trees, and each building piece by piece (blast marks, holes, the rubble round it);
+  - every mech, turret, HQ and wreck, the Builders' unfinished jobs, credits, build queues, capture points, the enemy AI, the ground you have explored, and the camera.
+  - Not saved: fires and smoke burning at the moment, shells in flight, and each mech's exact route (moving mechs are sent to the same place again).
+- **Load game** (in the pause menu, or on the start screen) opens a saved file and puts the battle back, paused, so you can look before you carry on. Reset still goes back to the map as it was at the start of the match.
+- **Rubble heaps baked into the ground.** Your 12-heap picture was cut out (`tools/make-rubble.mjs`, giving `assets/rubble.png`; the overgrown green heap is left out). Heaps are stamped into the ground texture, at random, round the foot of damaged buildings as they are hit and where panels fall. They also gather round turrets and HQs when they are hit, and a ring of big heaps marks a destroyed HQ. Like craters, they stay for the rest of the match.
+- **Fires burn longer:** about twice as long for buildings (14–24 s), rubble (10–18 s) and mech wrecks (20–32 s), and an HQ burns for 90 s.
+- **Fire smoke lasts longer** (4–6.5 s per puff) and is drawn as **flat puffs that face the camera** (2 triangles each instead of 80), as is the low battle haze. The short smoke of explosions is still 3D.
+- Tests: new `tests/savegame.mjs` (pause, save, load back through the file picker and compare everything, play on, refuse a file that isn't a save, rubble pictures, flat smoke).
+
 ## v24 — Sci-fi buildings that break panel by panel
 - **New look for every building and the HQ.** There are no more pitched roofs and eaves. Each building is now a simple sci-fi structure with sloping armour walls, chamfered corners with trim ribs, buttress struts and flat sloped roof slabs. Panel seams and lines are painted on, with orange or teal lights, antennas and vents.
   - **Houses** are small habitats: an octagonal plan, a dark door with a light over it, and a raised roof cap.

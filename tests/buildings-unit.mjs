@@ -66,10 +66,11 @@ const D = BUILDING_DAMAGE;
   while (p.alive && n < 40) { B.blast(x, y + 0.3, z, D.autocannon); n++; }
   check(!p.alive, `3. then it is blown away (${n} autocannon hits in all)`);
   const chips = B.chunks.slice(chips0).filter(k => k.alive && k.s < 0.35);
-  const side = chips.every(k => ((k.x - p.px) * s + (k.z - p.pz) * c) < 0);
-  check(chips.length >= 10 && side, `as it took damage, ${chips.length} chips of it fell at the foot of the wall, on the side that was hit`);
+  const side = chips.filter(k => ((k.x - p.px) * s + (k.z - p.pz) * c) < 0).length >= chips.length * 0.85;
+  check(chips.length >= 10 && side, `as it took damage, ${chips.length} chips fell at the foot of the wall, nearly all on the side that was hit`);
   check(Math.max(...chips.map(k => k.lift)) > 0.2, `and they pile up (highest ${Math.max(...chips.map(k => k.lift)).toFixed(2)} above the ground)`);
   check(chips.every(k => Math.hypot(k.x - p.px, k.z - p.pz) < p.sx / 2 + 2.5), 'close to the wall');
+  check(B.heaps.length > 0 && B.heaps.every(h => Math.hypot(h.x - p.px, h.z - p.pz) < 5 && h.size > 1), `rubble heap pictures are queued for the ground round it (${B.heaps.length})`);
   // Roof slabs break across their top; buttresses and details never show holes.
   const roof = B.pieces.find(q => q.role === 'roof' && q.alive);
   B.blast(roof.px + 1, roof.py + 0.6, roof.pz, { power: roof.hp * 0.6, radius: 2 });

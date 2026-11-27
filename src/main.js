@@ -27,6 +27,8 @@ import { Vision } from './game/vision.js';
 import { StatsEditor } from './ui/stats.js';
 import { FogView } from './world/fogview.js';
 import { Decals } from './world/decals.js';
+import { captureSave, applySave, checkSave, saveMap, saveFileName, stashSave, takeStash } from './game/savegame.js';
+import { downloadJSON } from './maps/loader.js';
 
 // ---------- version label (warns if index.html and the JS are from different builds) ----------
 const htmlBuild = document.querySelector('meta[name="build"]')?.content;
@@ -47,11 +49,17 @@ function fatal(msg) {
 
 // ---------- which map ----------
 const params = new URLSearchParams(location.search);
-const mapParam = params.get('map') || 'sample';
+// ?resume: a saved game handed over by "Load game" (stashed in IndexedDB before the page reloaded).
+let resumeSave = null;
+if (params.has('resume')) {
+  try { const text = await takeStash(); if (text) resumeSave = checkSave(JSON.parse(text)); } catch (e) { console.warn('Saved game:', e.message); }
+}
+const mapParam = resumeSave ? resumeSave.mapId || 'sample' : params.get('map') || 'sample';
 const fromEditor = mapParam === '@test';
-const wantSandbox = params.has('sandbox');
+const wantSandbox = resumeSave ? resumeSave.sandbox : params.has('sandbox');
 
 async function loadChosenMap() {
+  if (resumeSave) return saveMap(resumeSave);
   if (mapParam === '@procedural') return proceduralMap();
   if (fromEditor) {
     const m = await loadMapStorage(TEST_KEY);
@@ -95,7 +103,7 @@ if (map.markers.playerHQ) { rts.target.set(map.markers.playerHQ.x, heightAt(map.
 const effects = new Effects(scene, (x, z) => hf.heightAt(x, z));
 const world = { hf, surface, get water() { return view.water; }, get forest() { return view.forest; }, get buildings() { return view.buildings; } };
 // Crater pictures baked into the ground, and in a match a limit on how deep craters can go.
-const decals = new Decals(renderer, `assets/craters.png?${VERSION}`);
+const decals = new Decals(renderer, `assets/craters.png?${VERSION}`, `assets/rubble.png?${VERSION}`);
 decals.patch(view.terrain.material);
 hf.setFloor(TERRAIN.maxDig);
 const damage = new Damage({ hf, surface, effects, decals,
@@ -160,12 +168,17 @@ function clearUnits() {
   selected.clear();
   construction.clear();
 }
+// A new match: HQs, economy, capture points and the enemy AI (no mechs yet).
+function newMatch() {
+  match = new Match(units, map.markers, { size: MAP_SIZE });
+  ai = new EnemyAI(match);
+  return match;
+}
 // Units at the start: a squad each side in a match (by the HQs), just yours in the sandbox.
 function startUnits() {
   clearUnits();
   if (!sandbox) {
-    match = new Match(units, map.markers, { size: MAP_SIZE });
-    ai = new EnemyAI(match);
+    newMatch();
     nav.flush();                                // the HQs block movement before anything spawns
     for (const T of match.teams) {
       const sq = spawnSquad(T.team, T.rally.x, T.rally.z);
@@ -415,7 +428,7 @@ const mobile = initMobileMode(document.getElementById('btnMobile'), on => {
   mobileFirst = false;
 });
 const minimap = new Minimap(document.getElementById('minimap'), { world, rts, units, size: MAP_SIZE, getMatch: () => match, selected, fog: { vision, on: () => fog.on } });
-if (!sandbox) hud.showStart();
+if (!sandbox && !resumeSave) hud.showStart();
 let patchT = Infinity;
 function updateFogView(dt) {
   if ((patchT += dt) > 1) { patchT = 0; fogView.patchScene(scene); }       // new materials (e.g. rebuilt buildings)
@@ -438,7 +451,48 @@ window.addEventListener('keydown', e => {
   if (e.key === '3') selectWeapon('shell');
   if (e.key === 'm') setMoveKind(commander.moveKind === 'amove' ? 'move' : 'amove');
   if (e.key === 'b') barrage(rts.target.x, rts.target.z, { seed: (state.steps % 9973) + 1 });
+  if (e.key === 'p' || e.key === 'Escape') setUserPause(!userPaused);
 });
+
+// ---------- pause, save and load ----------
+const pauseScreen = document.getElementById('pauseScreen'), pauseMsg = document.getElementById('pauseMsg');
+let userPaused = false;
+function setUserPause(on, msg = '') {
+  userPaused = on;
+  paused = on;
+  pauseScreen.style.display = on ? 'flex' : 'none';
+  pauseMsg.textContent = msg;
+  document.getElementById('btnPause').classList.toggle('on', on);
+}
+document.getElementById('btnPause').addEventListener('pointerup', () => setUserPause(!userPaused));
+document.getElementById('btnResume').addEventListener('pointerup', () => setUserPause(false));
+const saveParts = {
+  version: VERSION, mapId: mapParam, sandbox, map, pristine, view, units, construction, decals, vision, fogView, rts, state, nav, selected, fog,
+  get match() { return match; }, get ai() { return ai; }, newMatch, clearUnits, setFog,
+};
+async function saveGame() {
+  pauseMsg.textContent = 'Saving…';
+  try {
+    const save = await captureSave(saveParts);
+    downloadJSON(save, saveFileName(save));
+    pauseMsg.textContent = `Saved ${saveFileName(save)}. On the iPad it goes to Downloads in the Files app.`;
+    return save;
+  } catch (e) { pauseMsg.textContent = `Could not save: ${e.message}`; return null; }
+}
+document.getElementById('btnSaveGame').addEventListener('pointerup', saveGame);
+// Load: read the file, hand it to a fresh page load (?resume).
+async function loadGameFile(file, msgEl) {
+  try {
+    const text = await file.text();
+    checkSave(JSON.parse(text));
+    msgEl.textContent = 'Loading…';
+    await stashSave(text);
+    location.href = `${location.pathname}?resume=${Date.now().toString(36)}`;
+  } catch (e) { msgEl.textContent = e instanceof SyntaxError ? 'That file is not a Mech RTS saved game.' : e.message; }
+}
+for (const [id, msg] of [['fileLoadGame', pauseMsg], ['fileLoadStart', document.getElementById('startMsg')]]) {
+  document.getElementById(id).addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; if (f) loadGameFile(f, msg); });
+}
 
 // ---------- main loop ----------
 let paused = false;          // tests can pause the real-time loop and drive simStep() via __game.step()
@@ -473,6 +527,15 @@ function frame(now) {
 }
 requestAnimationFrame(frame);
 
+// A loaded game: put everything back, then wait (paused) for the player.
+if (resumeSave) {
+  try {
+    await applySave(saveParts, resumeSave);
+    game.started = true;
+    setUserPause(true, `Loaded the game saved ${new Date(resumeSave.savedAt).toLocaleString()}.`);
+  } catch (e) { fatal(`Could not load the saved game: ${e.message}`); }
+}
+
 // ---------- test hook (see CLAUDE.md §11) ----------
 window.__game = {
   version: VERSION,
@@ -485,6 +548,7 @@ window.__game = {
   get match() { return match; }, get ai() { return ai; }, sandbox, game, hud, minimap, construction, setPlacing, mobile,
   vision, fogView, fog, setFog, statsEditor: stats, decals,
   pause(on = true) { paused = on; },
+  setUserPause, get userPaused() { return userPaused; }, saveGame, captureSave: () => captureSave(saveParts), applySave: save => applySave(saveParts, save), resumeSave,
   // Advance the simulation by `seconds` in fixed steps, independent of real time.
   step(seconds) {
     const n = Math.round(seconds / SIM.stepSeconds);

@@ -63,7 +63,7 @@ src/
     shapes.js         unit shapes for building pieces and the HQ (sloped panel, roof slab, buttress, ...)
     construction.js   Builders' jobs: walls, auto turrets, trenches (no three.js)
     fogview.js        fog of war drawing: a fog texture every material samples
-    decals.js         crater pictures (assets/craters.png, made by tools/make-craters.mjs) baked into a ground texture
+    decals.js         crater and rubble pictures (assets/craters.png, assets/rubble.png; tools/make-craters.mjs, make-rubble.mjs) baked into a ground texture; every stamp logged for saves
     props.js          rocks, debris, wrecks
   nav/
     navgrid.js        walkability/cost grid, updated as terrain changes
@@ -80,6 +80,7 @@ src/
     effects.js        explosions, smoke, fire, sparks (pooled)
   game/match.js       credits, income, HQ build queues, capture points, win/lose (no three.js)
   game/vision.js      fog of war: who sees whom (line of sight), seen/explored ground grid (no three.js)
+  game/savegame.js    save the whole battle to a JSON file and load it back (Pause menu; loading reloads the page with ?resume)
   ai/enemy.js         enemy AI: build mix, waves at capture points and the HQ, base defence (no three.js)
   ui/camera.js        RTS camera and touch/mouse gestures
   ui/command.js       selection (tap, double tap, box drag) and orders
@@ -98,7 +99,7 @@ tools/                scripts that generate files (e.g. the sample map)
 tests/                headless test scripts (see §11)
 ```
 
-The game opens a match by default; `index.html?sandbox` is the combat sandbox (no AI, test tools showing), which most browser tests use.
+The game opens a match by default; `index.html?sandbox` is the combat sandbox (no AI, test tools showing), which most browser tests use. The Pause button (top right) opens Resume / Save game / Load game. A saved game is one JSON file (`game/savegame.js`); add any new piece of game state to it.
 
 Keep files focused. **All damage**, to units or to the world, goes through `combat/damage.js`, so terrain destruction stays consistent.
 
@@ -142,7 +143,7 @@ Keep files focused. **All damage**, to units or to the world, goes through `comb
 - Damage states: intact → damaged (holes, missing sections) → ruin → rubble pile.
 - Each piece has its own three stages: blast marks where hit → broken (below half strength: a jagged hole showing its framework) → blown away. Chips pile up at the foot of a wall as it is hit.
 - Look: simple sci-fi structures (sloped armour panels, chamfered corners, buttresses, flat sloped roofs; no pitched roofs). Shapes are in `world/shapes.js`.
-- Rubble stays in the world as **cover and an obstacle**, and updates the nav grid.
+- Rubble stays in the world as **cover and an obstacle**, and updates the nav grid. Rubble heap pictures are baked into the ground round damaged buildings.
 - Types to start with: houses, factory, bunker, walls, bridges. Bridges can be destroyed, which cuts the river crossing.
 
 ### 6.3 Roads

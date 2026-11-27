@@ -39,7 +39,7 @@ export class Damage {
       for (const r of rubble) {
         addRubble(hf, surface, r);
         effects?.dust(r.x, hf.heightAt(r.x, r.z), r.z, Math.min(3, r.r * 0.7));
-        if (effects && Math.random() < 0.3) effects.burn(r.x, hf.heightAt(r.x, r.z) + 0.3, r.z, 0.7, 4 + Math.random() * 4);   // smouldering rubble
+        if (effects && Math.random() < 0.3) effects.burn(r.x, hf.heightAt(r.x, r.z) + 0.3, r.z, 0.7, 10 + Math.random() * 8);   // smouldering rubble
       }
       // Hit buildings catch fire for a while and shed pieces in their colours.
       if (effects && weapon !== 'mg' && buildings.lastHit.length) {
@@ -47,11 +47,13 @@ export class Damage {
         for (const [, p] of pieces.slice(0, 6)) effects.rubble(p.px, p.py, p.pz, p.color, weapon === 'shell' ? 3 : 2, 1);
         const standing = pieces.filter(([, p]) => p.alive && p.role !== 'deck' && p.role !== 'pillar');
         for (const [i, p] of standing.sort(() => Math.random() - 0.5).slice(0, weapon === 'shell' ? 2 : 1)) {
-          effects.burn(p.px, p.py - p.sy * 0.2, p.pz, weapon === 'shell' ? 1.3 : 0.9, 6 + Math.random() * 6, () => buildings.pieces[i].alive);
+          effects.burn(p.px, p.py - p.sy * 0.2, p.pz, weapon === 'shell' ? 1.3 : 0.9, 14 + Math.random() * 10, () => buildings.pieces[i].alive);
         }
       }
     }
     if (buildings && onGround && p.depth > 0) buildings.clearChunks(x, z, p.radius * 1.1);
+    // Rubble heap pictures round damaged buildings, baked into the ground.
+    if (buildings?.heaps?.length) for (const h of buildings.heaps.splice(0)) this.world.decals?.rubble(h.x, h.z, h.size);
     if (water && onGround && p.depth > 0) {
       const r = hf.rect(x, z, p.radius * 1.5 + 4 * hf.spacing);
       flooded = water.flood(r.i0, r.j0, r.i1, r.j1);
@@ -89,19 +91,25 @@ export class Damage {
     if (!u.alive) return false;
     u.hp -= amount;
     u.hitT = 0.15;
+    // Hits knock bits off turrets and HQs: rubble heaps gather round their base.
+    if (u.isStructure && this.world.decals && Math.random() < Math.min(1, amount / u.maxHp * (u.isHQ ? 40 : 6))) {
+      const a = Math.random() * Math.PI * 2, r = u.radius * (0.9 + Math.random() * 0.4);
+      this.world.decals.rubble(u.x + Math.cos(a) * r, u.z + Math.sin(a) * r, (u.isHQ ? 2.5 : 1.4) + Math.random() * 1.5);
+    }
     if (u.hp > 0) return false;
     const { surface, effects, units } = this.world;
     units?.kill(u);
     if (u.isHQ) {
       // The HQ goes up in a chain of blasts and burns for a long time.
       surface.wear(u.x, u.z, 14, 1, 1);
+      for (let k = 0; k < 10; k++) { const a = k / 10 * Math.PI * 2 + Math.random() * 0.5, r = u.radius * (0.3 + Math.random() * 0.9); this.world.decals?.rubble(u.x + Math.cos(a) * r, u.z + Math.sin(a) * r, 4 + Math.random() * 4); }
       for (let k = 0; k < 5; k++) effects?.explosion(u.x + (Math.random() - 0.5) * 8, u.y + 2 + Math.random() * 6, u.z + (Math.random() - 0.5) * 8, 2.2);
-      effects?.burn(u.x, u.y + 3, u.z, 3, 60, null, true);
+      effects?.burn(u.x, u.y + 3, u.z, 3, 90, null, true);
       return true;
     }
     surface.wear(u.x, u.z, 3 * u.t.scale, 0.6, 0.7);
     effects?.mechDeath(u.x, u.y + u.height * 0.45, u.z, (u.isStructure ? 1.2 : 1) * u.t.scale, u.team);
-    effects?.burn(u.x, u.y + 0.5, u.z, 0.9 * u.t.scale, 8 + Math.random() * 6, null, true);   // black smoke
+    effects?.burn(u.x, u.y + 0.5, u.z, 0.9 * u.t.scale, 20 + Math.random() * 12, null, true);   // black smoke
     return true;
   }
 
@@ -113,7 +121,7 @@ export class Damage {
     if (effects) for (const i of forest.burning) {
       if (Math.random() > dt * 2.5) continue;
       const t = forest.trees[i];
-      effects.smokePuff(t.x, hf.heightAt(t.x, t.z) + (t.state === 0 ? 3.5 : 1) * t.s, t.z, 1.1 * t.s);
+      effects.plume(t.x, hf.heightAt(t.x, t.z) + (t.state === 0 ? 3.5 : 1) * t.s, t.z, 1.1 * t.s);
     }
     for (const i of forest.update(dt)) {
       const t = forest.trees[i];

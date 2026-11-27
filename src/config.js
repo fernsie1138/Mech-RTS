@@ -17,6 +17,8 @@ export const DECALS = {
   scale: 3.4,                         // picture size = crater radius x this (the bowl fills about 60% of it)
   opacity: 0.95,
   minDepth: 0.2,                      // weapons that dig at least this deep leave a crater picture (not MG)
+  rubbleOpacity: 0.92,                // rubble heap pictures round damaged buildings
+  rubbleChance: 0.35,                 // per chip of a building that falls: chance of a small heap picture there
 };
 
 // How each weapon damages the ground. radius/depth in world units.
