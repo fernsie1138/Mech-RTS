@@ -11,7 +11,7 @@
 - **The auto turret now uses your model** (`assets/turret.gltf`): the tower stands still, and the head and both barrels turn to aim. Shots come out of the barrels. It still rises out of the ground while a Builder builds it.
 - Like the Medium Mech, the models have no textures. Team colours, panel seams and grime are painted in code: the Heavy's body and thighs and the turret's head are in team colour, the rest in greys.
 - The new `units/modelview.js` draws any glTF model with named parts, so later models can be added the same way.
-- **Fixed: mechs could get stuck in a flooded crater.** A mech crawling out of a steep, flooded crater could be pushed back in by another mech pressing against it, again and again. Now, when two moving mechs bump, the one coming up from behind gives way, and a mech on much harder ground is barely pushed. (The simulated AI-vs-AI match found this.)
+- **Fixed: mechs could get stuck in a flooded crater.** A mech crawling out of a steep, flooded crater could be pushed back in by another mech pressing against it, again and again. Now a mech on much harder ground is barely pushed by others, so it can crawl out. (The simulated AI-vs-AI match found this.)
 - Tests: new `tests/models.mjs` checks that both models load and are drawn, their sizes, that the legs move when walking, that shots leave from the barrels with the torso or head turned, and that wrecks use the model.
 
 ## v26 — Battle Value replaces the unit cap

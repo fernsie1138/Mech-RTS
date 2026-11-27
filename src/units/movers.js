@@ -213,14 +213,8 @@ export class Movers {
       const d = Math.sqrt(d2) || 0.01, push = (min - d) / 2, ux = d2 ? dx / d : 1, uz = d2 ? dz / d : 0;
       // Moving units shove idle ones more than the other way round.
       let wa = A.state === 'moving' && B.state !== 'moving' ? 0.3 : B.state === 'moving' && A.state !== 'moving' ? 1.7 : 1;
-      // Both moving: the one coming up from behind (heading into the other) gives way, so it can't keep shoving the
-      // one in front back (a mech crawling out of a flooded crater would never get out).
-      if (wa === 1 && A.state === 'moving') {
-        const aInto = Math.sin(A.heading) * ux + Math.cos(A.heading) * uz > 0.3, bInto = -(Math.sin(B.heading) * ux + Math.cos(B.heading) * uz) > 0.3;
-        if (aInto && !bInto) wa = 1.8; else if (bInto && !aInto) wa = 0.2;
-      }
       // One on much harder ground (deep mud, a flooded crater wall) is barely pushed: it can hardly move, and being
-      // shoved back would undo what little progress it makes.
+      // shoved back by a mech pressing against it would undo what little progress it makes, so it would never get out.
       if (wa === 1) {
         const ca = G.costAt(A.cls, A.x, A.z), cb = G.costAt(B.cls, B.x, B.z);
         if (ca > cb * 2) wa = 0.2; else if (cb > ca * 2) wa = 1.8;
