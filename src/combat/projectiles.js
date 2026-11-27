@@ -1,7 +1,8 @@
 // Projectiles (CLAUDE.md §9). Pure: no three.js.
 //   Direct fire (mg, cannon): flies straight. A shot that will hit homes onto its target; a miss flies at a point
 //   beside it. If the line runs into the ground or a standing wall on the way, it bursts there instead.
-//   Shells (Titans): an arc to a fixed aim point (where the target was), so fast units can dodge them.
+//   Shells and missiles (Assault Mechs): an arc to a fixed aim point (where the target was), so fast units can dodge
+//   them. Missiles fly a flatter arc than shells.
 // On impact, onImpact(p, x, y, z, unitHit) is called: the owner applies damage through combat/damage.js.
 
 export class Projectiles {
@@ -14,7 +15,7 @@ export class Projectiles {
   // o: { kind, team, dmg, splash, from: {x,y,z}, to: {x,y,z}, speed, target (unit or null), willHit, shooter }
   fire(o) {
     const d = Math.hypot(o.to.x - o.from.x, o.to.y - o.from.y, o.to.z - o.from.z);
-    const p = { ...o, x: o.from.x, y: o.from.y, z: o.from.z, t: 0, dur: Math.max(0.05, d / o.speed), arc: o.kind === 'shell' ? d * 0.3 : 0, alive: true };
+    const p = { ...o, x: o.from.x, y: o.from.y, z: o.from.z, t: 0, dur: Math.max(0.05, d / o.speed), arc: o.kind === 'shell' ? d * 0.3 : o.kind === 'missile' ? d * 0.16 : 0, alive: true };
     this.list.push(p);
     return p;
   }
@@ -22,7 +23,7 @@ export class Projectiles {
   step(dt) {
     const { hf, buildings } = this.world;
     for (const p of this.list) {
-      if (p.kind === 'shell') {
+      if (p.kind === 'shell' || p.kind === 'missile') {
         p.t += dt;
         const k = Math.min(1, p.t / p.dur);
         p.px = p.x; p.py = p.y; p.pz = p.z;

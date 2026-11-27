@@ -16,7 +16,7 @@ const ROWS = [
   ['Build time (s)', 'build', 'seconds to build (a turret: Builder-seconds)'],
   ['Speed', 'speed', 'world units per second on open ground'],
   ['Strength (hp)', 'hp', 'hit points'],
-  ['Damage', 'dmg', 'damage per hit (Assault, Heavy and Medium Mechs also splash)'],
+  ['Damage', 'dmg', 'damage per hit (Assault Mech: per salvo of missiles; Assault, Heavy and Medium Mechs also splash)'],
   ['Fire every (s)', 'rof', 'seconds between shots'],
   ['Range', 'range', 'how far it shoots'],
   ['Sight', 'sight', 'how far it sees (with a clear line of sight)'],

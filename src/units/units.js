@@ -177,6 +177,7 @@ export class Units {
       if (!u.alive) continue;
       const m = u.mover;
       u.x = m.x; u.z = m.z; u.y = m.y;
+      if (u.salvo) this._salvoStep(u, dt);          // a missile salvo still launching
       // Targeting.
       if (u.attackTarget && !u.attackTarget.alive) { u.attackTarget = null; if (u.order === 'attack') { this.stop([u]); u.hold = false; } }   // target down: guard here (take on whatever else is close)
       if ((u.retargetT -= dt) <= 0) { u.retargetT = COMBAT.retarget; this._findTargets(u); if (u.t.unarmed) u.target = u.near = null; }
@@ -266,7 +267,26 @@ export class Units {
     return Math.max(0.03, Math.min(0.98, e.defend ? p * COMBAT.defendHit : p));
   }
 
+  // Fire at e. A unit with a salvo (the Assault Mech's missiles) starts a stream of `salvo` missiles, salvoGap
+  // seconds apart, from its barrels in turn; together they do its damage.
   _fire(u, e) {
+    if (u.t.salvo > 1) { u.salvo = { left: u.t.salvo, t: 0, target: e, x: e.x, z: e.z }; this._salvoStep(u, 0); return; }
+    this._shoot(u, e, u.t.dmg);
+  }
+  _salvoStep(u, dt) {
+    const s = u.salvo;
+    s.t -= dt;
+    while (s.left > 0 && s.t <= 0) {
+      s.t += u.t.salvoGap;
+      s.left--;
+      // The target may have died or slipped out of sight: the rest of the salvo goes where it was.
+      const e = s.target.alive ? s.target : { x: s.x, z: s.z, alive: false };
+      if (s.target.alive) { s.x = e.x; s.z = e.z; }
+      this._shoot(u, e, u.t.dmg / u.t.salvo);
+    }
+    if (s.left <= 0) u.salvo = null;
+  }
+  _shoot(u, e, dmg) {
     const from = this.muzzle(u), t = u.t;
     this.stats.shots++;
     let to, willHit = false;
@@ -285,7 +305,7 @@ export class Units {
         to = { x, y: this.world.hf.heightAt(x, z), z };
       }
     }
-    const p = this.projectiles.fire({ kind: t.proj, team: u.team, dmg: t.dmg, splash: t.splash, from, to, speed: t.projSpeed, target: e, willHit, shooter: u });
+    const p = this.projectiles.fire({ kind: t.proj, team: u.team, dmg, splash: t.splash, from, to, speed: t.projSpeed, target: e.alive === false ? null : e, willHit, shooter: u });
     this.events.push({ type: 'fire', kind: t.proj, x: from.x, y: from.y, z: from.z, unit: u, p });
   }
 

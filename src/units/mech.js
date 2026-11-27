@@ -200,12 +200,12 @@ export class MechView {
     for (const p of units.projectiles.list) {
       if (t >= MAX_TRACERS || p.px === undefined || !this.inView(p.x, p.z)) continue;
       const dx = p.x - p.px, dy = p.y - p.py, dz = p.z - p.pz, len = Math.hypot(dx, dy, dz) || 0.01;
-      const w = p.kind === 'mg' ? 0.1 : p.kind === 'autocannon' ? 0.17 : p.kind === 'cannon' ? 0.25 : 0.55;
-      const l = p.kind === 'shell' ? 0.8 : Math.max(len, p.kind === 'mg' || p.kind === 'autocannon' ? 1.6 : 1.1);
+      const w = p.kind === 'mg' ? 0.1 : p.kind === 'autocannon' ? 0.17 : p.kind === 'cannon' ? 0.25 : p.kind === 'missile' ? 0.22 : 0.55;
+      const l = p.kind === 'shell' ? 0.8 : p.kind === 'missile' ? 0.9 : Math.max(len, p.kind === 'mg' || p.kind === 'autocannon' ? 1.6 : 1.1);
       this._q.setFromUnitVectors(this._p.set(0, 0, 1), this._s.set(dx / len, dy / len, dz / len));
       this._m.compose(this._p.set(p.x - dx / 2, p.y - dy / 2, p.z - dz / 2), this._q, this._s.set(w, w, l));
       this.tracers.setMatrixAt(t, this._m);
-      this.tracers.setColorAt(t, this._c.setHex(p.kind === 'mg' ? 0xfff08a : p.kind === 'autocannon' ? 0xffd060 : p.kind === 'cannon' ? 0xffa040 : 0xff7a2a));
+      this.tracers.setColorAt(t, this._c.setHex(p.kind === 'mg' ? 0xfff08a : p.kind === 'autocannon' ? 0xffd060 : p.kind === 'cannon' ? 0xffa040 : p.kind === 'missile' ? 0xffe0a0 : 0xff7a2a));
       t++;
     }
     this.tracers.count = t;

@@ -1,5 +1,11 @@
 # Changelog
 
+## v29 — Repair fix; Assault Mech missiles
+- **Fixed: an error when ordering a Builder to repair.** With Repair on, a finger that stayed down a moment or drifted a little while tapping the mech was taken as dragging out a wall line, and the game stopped with an error. Now it counts as a tap on the mech, and the Builder goes to repair it. (Reproduced in a headless test before fixing, and covered by `tests/builder.mjs` from now on.)
+- **The Assault Mech fires a stream of small missiles.** Each salvo is 6 missiles, launched 0.12 s apart from its four arm-cannon barrels in turn. They fly in a low arc with thick little smoke trails and burst where they land, each digging a small crater. Fast mechs can still dodge them.
+- **Assault Mech damage 75 a salvo** (was 110 a shell), shared between the 6 missiles. **Splash radius 3** (was 5) on each missile.
+- Tests: `tests/units-unit.mjs` checks the salvo: 6 missiles, launched one after another, together carrying 75 damage, each with splash 3, from different barrels, landing on the target.
+
 ## v28 — Light and Assault Mech models, a bigger Heavy, manual repair
 - **The Light Mech uses your model** (`assets/light-mech.gltf`). It is the same size as before (2.9 tall). Its backward-bending legs walk, the body and gun turn to aim, and shots come out of the gun. Its shins are in team colour.
 - **The Assault Mech uses your model** (`assets/assault-mech.gltf`). It is the same size as before (5.8 tall). It walks, its torso, shoulders and arm cannons turn to aim, and shells come from the four cannon barrels, in turn.

@@ -31,6 +31,7 @@ export const TERRAIN_DAMAGE = {
   autocannon: { radius: 1.0, depth: 0.1, rim: 0.2, erode: 0.05, wear: 0.6, scorch: 0.2, wearRadius: 1.5, fxSize: 0.6, treeFall: 1.2, ignite: 0.06 },
   cannon: { radius: 1.8, depth: 0.3,  rim: 0.3, erode: 0.25, wear: 1.2,  scorch: 0.3,  wearRadius: 1.8, fxSize: 1.2,  treeFall: 3,   ignite: 0.15 },
   shell:  { radius: 3.6, depth: 0.8,  rim: 0.3, erode: 0.6,  wear: 1.6,  scorch: 0.45, wearRadius: 1.8, fxSize: 2.6,  treeFall: 6.5, ignite: 0.4 },
+  missile: { radius: 1.6, depth: 0.25, rim: 0.25, erode: 0.15, wear: 0.9, scorch: 0.35, wearRadius: 1.6, fxSize: 0.9, treeFall: 2.5, ignite: 0.2 },   // the Assault Mech's missiles (several per salvo)
 };
 
 export const RENDER = {
@@ -74,7 +75,7 @@ export const UNIT_TYPES = {
   // Medium Mech (David's model, units/mediummech.js): between the Light and Heavy. Autocannon, digitigrade legs.
   medium:  { name: 'Medium Mech', short: 'Medium', cls: 1, detect: 100, bv: 2, cost: 160, build: 5.5, hp: 250, range: 21, sight: 40, dmg: 15, rof: 0.45, proj: 'autocannon', projSpeed: 75, splash: 0.6, scale: 1, turn: 5, accuracy: 0.78, speed: 1.25 },
   assault: { name: 'Heavy Mech', short: 'Heavy', cls: 1, detect: 100, bv: 4, cost: 220, build: 7,  hp: 360, range: 23, sight: 36,  dmg: 28,  rof: 0.9,  proj: 'cannon', projSpeed: 60, splash: 1.5, scale: 1.84, turn: 4, accuracy: 0.8 },
-  titan:   { name: 'Assault Mech', short: 'Assault', cls: 2, detect: 100, bv: 6, cost: 420, build: 12, hp: 950, range: 32, sight: 34,  dmg: 110, rof: 2.6,  proj: 'shell',  projSpeed: 32, splash: 5,   scale: 1.6,  turn: 2, accuracy: 1, indirect: true },
+  titan:   { name: 'Assault Mech', short: 'Assault', cls: 2, detect: 100, bv: 6, cost: 420, build: 12, hp: 950, range: 32, sight: 34,  dmg: 75,  rof: 2.6,  proj: 'missile', projSpeed: 38, splash: 3, scale: 1.6,  turn: 2, accuracy: 1, indirect: true, salvo: 6, salvoGap: 0.12 },   // dmg: per salvo of `salvo` missiles
   // Unarmed: builds walls and turrets and digs trenches (see BUILD). Spots for Titans like any mech.
   builder: { name: 'Builder', short: 'Builder', cls: 0, detect: 100, bv: 3, cost: 150, build: 6,  hp: 220, range: 0, sight: 30,  dmg: 0,   rof: 1,    proj: null,     projSpeed: 0,  splash: 0,   scale: 0.85, turn: 5, accuracy: 0, unarmed: true, speed: 0.7, repair: 25 },   // repair: hp per second it mends
 };
