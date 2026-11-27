@@ -135,6 +135,15 @@ const rr = await page.evaluate(id => { const G = window.__game, t = G.units.list
 check(rr.ord === 'repair' && rr.hp === rr.max, `Repair, then a tap on a damaged Titan: the Builder goes and mends it (${rep.hp0.toFixed(0)} -> ${rr.hp.toFixed(0)} hp)`);
 await g(() => window.__game.render());
 await page.screenshot({ path: join(out, 'builder-repair.png') });
+// The same with a finger that drifts while pressing (a drag, not a tap): still a repair order, no error (v29 fix).
+const tp3 = await page.evaluate(id => { const G = window.__game, t = G.units.list.find(u => u.id === id), b = G.units.list.find(u => u.type === 'builder'); t.hp = t.maxHp * 0.5; G.units.stop([b]); G.commander.setSelection([b]); G.render(); return G.commander.screen(t); }, rep.id);
+await page.tap('#btnRepair');
+await touch('touchStart', tp3.x, tp3.y);
+for (let k = 1; k <= 5; k++) { await touch('touchMove', tp3.x + k * 6, tp3.y + k * 3); await page.waitForTimeout(30); }
+await touch('touchEnd');
+await page.waitForTimeout(200);
+const rd = await page.evaluate(id => { const G = window.__game, b = G.units.list.find(u => u.type === 'builder'); return { ord: b.order, tgt: b.repairTarget?.id === id, placing: G.commander.placing }; }, rep.id);
+check(rd.ord === 'repair' && rd.tgt && !rd.placing, `Repair, then a press that drifts (a drag) on the Titan: still a repair order (${rd.ord})`);
 check(w.errors.length === 0, `no console/page errors${w.errors.length ? ':\n   ' + w.errors.join('\n   ') : ''}`);
 await browser.close();
 await server.close();

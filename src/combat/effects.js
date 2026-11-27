@@ -177,6 +177,7 @@ export const SHOT_TRAIL = {
   autocannon: { every: 0.03,  size: 0.2,  life: 0.55, alpha: 0.36 },
   cannon:     { every: 0.025, size: 0.3,  life: 0.75, alpha: 0.4 },
   shell:      { every: 0.03,  size: 0.5,  life: 1.3,  alpha: 0.42 },
+  missile:    { every: 0.018, size: 0.28, life: 1.1,  alpha: 0.5 },     // a thick little rocket trail
 };
 
 const DIRT = [[0.36, 0.28, 0.2], [0.42, 0.34, 0.24], [0.3, 0.25, 0.2], [0.45, 0.43, 0.4]];

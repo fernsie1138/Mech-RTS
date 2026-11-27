@@ -25,6 +25,7 @@ export const BUILDING_DAMAGE = {
   autocannon: { power: 30, radius: 2 },
   cannon: { power: 80, radius: 3.5 },
   shell: { power: 170, radius: 6 },
+  missile: { power: 40, radius: 3 },
 };
 
 // Sci-fi palette: pale armour panels, darker trim, roof plates, orange / teal accents.

@@ -149,7 +149,9 @@ export class Commander {
 
   boxStart(cx, cy) {
     if (this.state.weapon !== 'move') return;
-    if (this.placing && this.construction) {
+    // Repair mode: a press that lasts a moment or drifts a little (easy with a finger) is still a tap on the mech.
+    if (this.placing === 'repair') { this.repairPress = { cx, cy }; return; }
+    if (this.placing && this.construction && BUILD[this.placing]) {
       const a = this.view.pickGround(cx, cy);
       if (a) { this.line = { a }; this.mechView.preview = this._plan(a, null, cx, cy); }
       return;
@@ -167,6 +169,7 @@ export class Commander {
     this.box.x1 = cx; this.box.y1 = cy; this._drawBox();
   }
   boxEnd(cx, cy) {
+    if (this.repairPress) { const p = this.repairPress; this.repairPress = null; this.tap(p.cx, p.cy); return; }
     if (this.line) {
       const { a, b } = this.line;
       this.line = null;
