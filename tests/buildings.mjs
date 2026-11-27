@@ -29,7 +29,7 @@ const g0 = await page.evaluate(() => {
   return { n: B.list.length, pieces: B.pieces.length, calls: stats.calls, counts: B.counts(), house: B.list.indexOf(house), meshes: g.view.buildingView.meshes.map(m => m.count), ground: g.heightAt(house.def.x, house.def.z) };
 });
 check(g0.n === 12 && g0.counts.intact === 12, `sample map has ${g0.n} intact buildings (${g0.pieces} pieces)`);
-check(g0.meshes[0] + g0.meshes[1] === g0.pieces, `all pieces drawn by ${g0.meshes.length} instanced meshes (${g0.meshes.join(' + ')})`);
+check(g0.meshes.reduce((a, b) => a + b, 0) === g0.pieces && g0.meshes.length <= 6, `all pieces drawn by ${g0.meshes.length} instanced meshes, one per shape (${g0.meshes.join(' + ')})`);
 await page.screenshot({ path: join(out, 'buildings-town.png') });
 
 // Tap on the house wall with Shell selected: the blast happens on the building (not the ground behind it).
