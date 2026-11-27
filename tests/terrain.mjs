@@ -135,8 +135,9 @@ await page.evaluate(() => window.__game.render());
 await page.screenshot({ path: join(out, 'terrain-barrage-after.png') });
 const fin = await page.evaluate(() => window.__game.hf.h.every(Number.isFinite) && window.__game.surface.damage.every(Number.isFinite));
 check(fin, 'heights and damage map are finite after the barrage');
+await page.evaluate(() => window.__game.step(20.0));         // smouldering rubble burns up to 18 s
 const left = await page.evaluate(() => { const E = window.__game.effects; return { other: E.activeCount() - E.haze.alive, haze: E.haze.alive }; });
-check(left.other === 0, `all explosion effects (smoke lasts ~10 s) finished and returned to the pool (only ${left.haze} faint battle-haze puffs linger, as intended)`);
+check(left.other === 0, `all explosion effects and fires finished and returned to the pool (only ${left.haze} faint battle-haze puffs linger, as intended)`);
 
 const dmg = await page.evaluate(() => { let s = 0; for (const v of window.__game.surface.damage) s += v; return s; });
 await page.tap('#btnReset');

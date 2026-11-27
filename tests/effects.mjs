@@ -105,10 +105,10 @@ const fire = await page.evaluate(() => {
   const n0 = E.burners.length;
   g.step(4); const n4 = E.burners.length;
   g.rts.target.set(b.def.x, 0, b.def.z); g.rts.distance = 40; g.rts.update(0); g.view.update(0.1); g.render();
-  g.step(10); const n14 = E.burners.length;
+  g.step(22); const n14 = E.burners.length;
   return { n0, n4, n14 };
 });
-check(fire.n0 > 0 && fire.n4 > 0 && fire.n14 === 0, `a hit house catches fire (${fire.n0} fires), still burning at 4 s (${fire.n4}), out by 14 s`);
+check(fire.n0 > 0 && fire.n4 > 0 && fire.n14 === 0, `a hit house catches fire (${fire.n0} fires), still burning at 4 s (${fire.n4}), out by 26 s`);
 const early = await page.evaluate(() => {
   const g = window.__game, E = g.effects, B = g.buildings, b = B.list.filter(b => b.def.type === 'house')[1];
   g.damage.explode(b.def.x + 4, b.def.z, 'shell', b.y + 2.5);
