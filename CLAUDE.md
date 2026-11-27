@@ -222,6 +222,7 @@ The single-file prototype v1 (`prototype/index.html`) contains a working version
 - **Spotting:** a unit may fire at any enemy in weapon range that its side has spotted (another unit can spot for it); direct fire still needs its own clear line of fire.
 - **Defend** stance: selected mechs crouch and hold; harder to hit (×0.55) and less hurt by splash, stacking with trench cover.
 - **Economy:** base income plus capture points that add income. The HQ produces units from a queue.
+- **Battle Value (BV)** instead of a unit cap (`bv` per type in config.js): Turret 1, Light 1, Medium 2, Builder 3, Heavy 4, Assault 6. A side's mechs (alive and queued) and turrets may total `ECONOMY.bvStart` (30) + `bvPerPoint` (5) per capture point held.
 - **Orders:** move (default: a tap on the ground; mechs always obey it, shoot on the way, then hold their ground without chasing), attack-move (the A-Move toggle: stop to fight anything met), and attack a specific target (a tap on the enemy's body). Touch: tap to select, double-tap to select all of a type, one-finger drag to box-select, two-finger pan, pinch zoom, minimap tap to jump.
 - **Enemy AI:** builds a unit mix, sends growing waves at capture points and the HQ, and defends its base.
 - Weapons damage terrain as well as units, so every weapon type needs a terrain-damage profile.

@@ -20,7 +20,7 @@ import { Match } from './game/match.js';
 import { EnemyAI } from './ai/enemy.js';
 import { Hud } from './ui/hud.js';
 import { Minimap } from './ui/minimap.js';
-import { MAP_SIZE, BUILD, BUILD_KEYS, TERRAIN } from './config.js';
+import { MAP_SIZE, BUILD, BUILD_KEYS, TERRAIN, TURRET_TYPE } from './config.js';
 import { Construction } from './world/construction.js';
 import { initMobileMode } from './ui/mobile.js';
 import { Vision } from './game/vision.js';
@@ -125,7 +125,14 @@ const mechView = new MechView(scene, heightAt);
 mechView.loadModels().catch(e => console.warn('Medium Mech model did not load:', e.message));
 // Builders' construction: walls, turrets, trenches. Paid from the match's credits (free in the sandbox).
 const construction = new Construction(world, {
-  pay: (team, cost) => { if (!match) return true; const T = match.teams[team]; if (T.credits < cost) return false; T.credits -= cost; return true; },
+  pay: (team, cost, kind) => {
+    if (!match) return true;
+    const T = match.teams[team];
+    if (kind === 'turret' && match.bvLeft(team) < TURRET_TYPE.bv) return 'bv';
+    if (T.credits < cost) return false;
+    T.credits -= cost;
+    return true;
+  },
   onBuilding: () => view.buildingView.setBuildings(view.buildings),
   enemyDir: team => { const m = map.markers; return m.playerHQ && m.enemyHQ ? Math.sign((team === 0 ? m.enemyHQ.z - m.playerHQ.z : m.playerHQ.z - m.enemyHQ.z)) || -1 : (team === 0 ? -1 : 1); },
 });
@@ -171,6 +178,8 @@ function clearUnits() {
 // A new match: HQs, economy, capture points and the enemy AI (no mechs yet).
 function newMatch() {
   match = new Match(units, map.markers, { size: MAP_SIZE });
+  // Turrets ordered but not started yet count against the Battle Value limit too.
+  match.pendingBV = team => construction.jobs.filter(j => j.kind === 'turret' && j.team === team && !j.done && !j.structure).length * TURRET_TYPE.bv;
   ai = new EnemyAI(match);
   return match;
 }
@@ -357,7 +366,7 @@ commander.onPlaced = (r, kind) => {
   setPlacing(null);
   commander.onPending(null);
   if (kind === 'repair') { hud.banner(r.repair ? `Repairing ${r.repair.t.name}` : 'Tap one of your mechs to repair it', '#e8b02a', 1.5); return; }
-  if (r.refused === 'poor') hud.refused('poor');
+  if (r.refused === 'poor' || r.refused === 'bv') hud.refused(r.refused);
   else if (r.refused === 'site' && !r.jobs.length) hud.banner("Can't build there", '#ffd25a', 1.8);
   else if (r.jobs.length) hud.banner(`${r.jobs.length > 1 ? r.jobs.length + ' ' : ''}${BUILD[kind].name}${r.jobs.length > 1 ? (kind === 'trench' ? ' sections' : 's') : ''} ordered`, '#e8b02a', 1.5);
 };

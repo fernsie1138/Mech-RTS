@@ -1,5 +1,14 @@
 # Changelog
 
+## v26 — Battle Value replaces the unit cap
+- **Battle Value (BV)** replaces the old limit of 40 mechs a side. Every unit has a BV, and bigger, stronger units cost more of it: Turret 1, Light Mech 1, Medium Mech 2, Builder 3, Heavy Mech 4, Assault Mech 6.
+- **Each side may field 30 BV at the start, plus 5 for each capture point it holds.** Mechs alive and in the build queue count, and so do turrets (standing, being built, or ordered). So nobody can build only Assault Mechs.
+- **Losing a capture point lowers the limit but takes nothing away.** You just can't build more until you are back under it.
+- The top bar shows **BV used / limit** (red when full). Each build button shows its BV, and is dimmed with its BV in red when it won't fit. Building over the limit shows "Battle Value limit (used/limit): take capture points to raise it". Ordering a turret over the limit is refused the same way.
+- The enemy AI keeps to the same limit: when its pick doesn't fit, it builds something smaller.
+- **Dev → Stats** has a Battle Value row for every unit and the turret, plus "Battle Value at the start" and "+ BV per capture point" (these replace "Mechs per side").
+- Tests: `tests/match-unit.mjs` checks the limit, queued mechs and turrets counting, capture points raising it, and an AI-vs-AI match never going over it. `tests/builder-unit.mjs` checks that a turret over the limit is refused.
+
 ## v25 — Pause, save and load; rubble on the ground; longer fires
 - **Pause button** (top right, or the P key). It stops the battle and opens a menu with **Resume**, **Save game** and **Load game**.
 - **Save game** downloads the whole battle as one JSON file (about 0.5 MB). On the iPad, Safari offers to save it to Files (Downloads). The file holds:
