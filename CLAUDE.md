@@ -59,7 +59,8 @@ src/
     trees.js          instanced tree rendering
     markers.js        HQ and capture-point markers
     buildings.js      modular destructible buildings, bridges and rubble (no three.js)
-    buildingview.js   instanced building rendering
+    buildingview.js   instanced building rendering (blast marks, holes and framework in its shader)
+    shapes.js         unit shapes for building pieces and the HQ (sloped panel, roof slab, buttress, ...)
     construction.js   Builders' jobs: walls, auto turrets, trenches (no three.js)
     fogview.js        fog of war drawing: a fog texture every material samples
     decals.js         crater pictures (assets/craters.png, made by tools/make-craters.mjs) baked into a ground texture
@@ -139,6 +140,8 @@ Keep files focused. **All damage**, to units or to the world, goes through `comb
 ### 6.2 Buildings
 - Built from **modular pieces** (walls, floors, roofs) so they break apart in stages, not all at once.
 - Damage states: intact → damaged (holes, missing sections) → ruin → rubble pile.
+- Each piece has its own three stages: blast marks where hit → broken (below half strength: a jagged hole showing its framework) → blown away. Chips pile up at the foot of a wall as it is hit.
+- Look: simple sci-fi structures (sloped armour panels, chamfered corners, buttresses, flat sloped roofs; no pitched roofs). Shapes are in `world/shapes.js`.
 - Rubble stays in the world as **cover and an obstacle**, and updates the nav grid.
 - Types to start with: houses, factory, bunker, walls, bridges. Bridges can be destroyed, which cuts the river crossing.
 

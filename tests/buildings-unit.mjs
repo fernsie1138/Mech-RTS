@@ -20,12 +20,15 @@ const D = BUILDING_DAMAGE;
   const B = new Buildings([{ type: 'house', x: 10, z: 20, rot: 0 }], hf);
   const b = B.list[0], ps = () => B.piecesOf(b);
   check(Math.abs(b.y - 2) < 1e-6 && b.state === 'intact', `house sits on the ground (base ${b.y}) and starts intact`);
-  check(ps().length === 30 && ps().filter(p => p.role === 'roof').length === 1, `house is built from ${ps().length} pieces (floor, 28 wall tiles in 2 rows, roof)`);
+  const walls = ps().filter(p => p.role === 'wall');
+  check(walls.length === 28 && ps().filter(p => p.role === 'roof').length === 2 && ps().filter(p => p.role === 'strut').length === 4,
+    `house is built from ${ps().length} pieces (floor, 28 wall panels in 2 rows round a chamfered plan, roof slab and cap, buttresses, antenna, vent, light)`);
+  check(walls.every(p => p.kind === 'batter') && new Set(walls.map(p => Math.round(p.rot * 100))).size === 8, 'its walls are sloped panels facing 8 ways (chamfered corners)');
   // Knock out one lower wall tile on the south side: the tile above it falls too.
   const lower = ps().findIndex(p => p.role === 'wall' && p.py < 4 && p.pz < 18);
   const upper = ps().findIndex(p => p.supports.includes(b.first + lower));
   B.destroy(b.first + lower);
-  check(!ps()[upper].alive && ps().filter(p => !p.alive).length === 2 && b.state === 'damaged', 'destroying a lower wall tile brings down the tile above it (a hole), house is "damaged"');
+  check(!ps()[upper].alive && ps().filter(p => !p.alive && p.role === 'wall').length === 2 && b.state === 'damaged', 'destroying a lower wall tile brings down the tile above it (a hole), house is "damaged"');
   check(B.changed.size >= 2 && B.falling.length >= 2, 'destroyed pieces are reported to the renderer and fall');
   // One cannon hit on a wall: some damage, not a collapse.
   const before = ps().filter(p => p.alive).length;
@@ -41,6 +44,36 @@ const D = BUILDING_DAMAGE;
   for (let n = 0; n < 12 && b.state !== 'rubble'; n++) { B.blast(10 + (n % 3 - 1) * 3, 3, 20 + (n % 2 ? 2 : -2), D.shell); states.push(b.state); }
   check(states.includes('ruin') && b.state === 'rubble', `sustained shelling: ${[...new Set(states)].join(' -> ')}`);
   check(ps().every(p => !p.alive), 'a rubble pile has no standing pieces');
+}
+
+// ---------- each panel: blast marks -> broken (hole, framework) -> blown away; rubble piles up ----------
+{
+  const { hf } = make();
+  const B = new Buildings([{ type: 'house', x: 0, z: 0, rot: 0.4 }], hf);
+  // A lower wall panel on the south side, hit from outside.
+  const i = B.pieces.findIndex(p => p.role === 'wall' && p.kind === 'batter' && p.py < 1.5 && p.pz < -2.5 && Math.abs(p.px) < 1.5);
+  const p = B.pieces[i], c = Math.cos(p.rot), s = Math.sin(p.rot);
+  const out = (d) => [p.px - s * d, p.py, p.pz - c * d];     // d units out from the panel, on its outside
+  const [x, y, z] = out(1.2);
+  B.blast(x, y, z, D.autocannon);
+  check(p.alive && p.marks.length === 1 && !p.brk, `1. a hit leaves a blast mark (${p.marks.map(m => m.map(v => v.toFixed(2)).join(', '))}), the panel still whole (${p.hp.toFixed(0)}/${p.maxHp} hp)`);
+  check(p.marks[0][2] < -p.sz / 2 + 0.01, 'the mark is on the outside face, where it was hit');
+  const chips0 = B.chunks.length;
+  let n = 0;
+  while (p.alive && !p.brk && n < 20) { B.blast(x + (n % 3 - 1) * 0.6, y + 0.3, z, D.autocannon); n++; }
+  check(p.alive && p.brk && p.hp < p.maxHp * BUILDING.brokenFrac && B.brokenChanged, `2. below half strength it is broken: a jagged hole (radius ${p.brk && p.brk[2].toFixed(2)}) showing its framework`);
+  check(p.marks.length >= 2 && p.marks.length <= 4, `more hits, more marks (${p.marks.length}, at most 4 per panel)`);
+  while (p.alive && n < 40) { B.blast(x, y + 0.3, z, D.autocannon); n++; }
+  check(!p.alive, `3. then it is blown away (${n} autocannon hits in all)`);
+  const chips = B.chunks.slice(chips0).filter(k => k.alive && k.s < 0.35);
+  const side = chips.every(k => ((k.x - p.px) * s + (k.z - p.pz) * c) < 0);
+  check(chips.length >= 10 && side, `as it took damage, ${chips.length} chips of it fell at the foot of the wall, on the side that was hit`);
+  check(Math.max(...chips.map(k => k.lift)) > 0.2, `and they pile up (highest ${Math.max(...chips.map(k => k.lift)).toFixed(2)} above the ground)`);
+  check(chips.every(k => Math.hypot(k.x - p.px, k.z - p.pz) < p.sx / 2 + 2.5), 'close to the wall');
+  // Roof slabs break across their top; buttresses and details never show holes.
+  const roof = B.pieces.find(q => q.role === 'roof' && q.alive);
+  B.blast(roof.px + 1, roof.py + 0.6, roof.pz, { power: roof.hp * 0.6, radius: 2 });
+  check(roof.brk && roof.brk[3] < 0, 'a roof slab can be broken too (holed from above)');
 }
 
 // ---------- roof rests on the top row of walls ----------

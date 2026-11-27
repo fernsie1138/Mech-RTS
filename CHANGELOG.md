@@ -1,5 +1,20 @@
 # Changelog
 
+## v24 — Sci-fi buildings that break panel by panel
+- **New look for every building and the HQ.** There are no more pitched roofs and eaves. Each building is now a simple sci-fi structure with sloping armour walls, chamfered corners with trim ribs, buttress struts and flat sloped roof slabs. Panel seams and lines are painted on, with orange or teal lights, antennas and vents.
+  - **Houses** are small habitats: an octagonal plan, a dark door with a light over it, and a raised roof cap.
+  - **The factory** is a hangar: buttresses along both long walls, a big door, sloped roof halves round a lit ridge, and two exhaust stacks.
+  - **The bunker** is an octagonal pillbox with a periscope.
+  - **Builder walls** are sloped plinths topped with armour panels.
+  - **The command centre (HQ)** is an octagonal fortress on a skirt, with buttresses and a tapered command tower carrying the gun turret, plus an antenna and a dish. Its armour is grey with bands in the team's colour.
+- **Every wall panel, roof slab and stack is damaged on its own, in three stages:**
+  1. **Blast marks:** sooty scorches appear where each hit lands (up to 4 per panel).
+  2. **Half destroyed:** below half strength the panel gets a jagged hole with charred edges. You can see its girder framework and the dark inside of the building through it, and the hole shows in the panel's shadow too.
+  3. **Blown away:** the panel is knocked off and tumbles down, as before.
+- **Rubble builds up at the foot of the walls** as they take damage. Chips of the panel that was hit fall on the side it was hit from and pile higher where many land. Craters still clear them away.
+- Bunker walls are a little weaker (420 hp, was 600), so a bunker takes about as many shells to flatten as before (about 19).
+- Tests: `tests/buildings-unit.mjs` checks the new house layout and each panel's three stages (marks, hole, gone), and that chips pile up on the side that was hit.
+
 ## v23 — Fast flat shockwaves, faster shells, smoke trails
 - **Shockwaves** now lie flat on the ground (they were tilted at random angles) and race outward far faster: about a sixth of a second (was nearly half a second), and a little wider.
 - **Assault Mech shells fly faster** (speed 32, was 20). A running Light Mech can still often dodge them, but less easily.

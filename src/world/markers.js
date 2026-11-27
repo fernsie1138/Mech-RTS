@@ -2,6 +2,7 @@
 // In a match the game drives them: the HQ turret turns, a destroyed HQ is a blackened ruin, and capture flags and
 // rings take the colour of the side that controls them (setHQ / setCapture).
 import * as THREE from 'three';
+import { SHAPES } from './shapes.js';
 
 const CAP_NEUTRAL = new THREE.Color(0xffd23a), CAP_TEAM = [new THREE.Color(0x3d8bff), new THREE.Color(0xe0453a)];
 
@@ -12,24 +13,45 @@ export class MarkerView {
     scene.add(this.group);
     this.items = [];
     this.time = 0;
-    const hqGeo = new THREE.CylinderGeometry(5, 6, 6, 8).translate(0, 3, 0);
-    const towerGeo = new THREE.BoxGeometry(2.5, 8, 2.5).translate(0, 8, 0);
+    // Command centre: an octagonal, battered base on a skirt, buttresses round it, a stepped deck, a tapered
+    // command tower with the gun turret on top, an antenna mast and a dish. Grey armour with team-coloured bands.
+    const oct = (rt, rb, h, y) => new THREE.CylinderGeometry(rt, rb, h, 8).rotateY(Math.PI / 8).translate(0, y + h / 2, 0);
+    const parts = {
+      skirt: oct(6.4, 7.0, 1.2, 0), body: oct(5.0, 6.0, 4.2, 1.2), band: oct(5.05, 5.25, 0.5, 4.4), deck: oct(3.9, 5.0, 1.0, 5.4),
+      tower: new THREE.CylinderGeometry(1.7, 2.5, 5.2, 6).translate(0, 9.0, 0), crown: new THREE.CylinderGeometry(2.3, 1.7, 0.9, 6).translate(0, 12.05, 0),
+      ring: new THREE.CylinderGeometry(2.55, 2.55, 0.4, 6).translate(0, 8.0, 0),
+    };
+    const strutGeo = SHAPES.wedge();
+    const mastGeo = new THREE.BoxGeometry(0.22, 5, 0.22).translate(0, 2.5, 0);
+    const dishGeo = new THREE.ConeGeometry(1.3, 0.5, 10, 1, true).rotateX(Math.PI);
     const turretGeo = new THREE.BoxGeometry(2.4, 1.3, 2.4), barrelGeo = new THREE.BoxGeometry(0.35, 0.35, 2.6).translate(0, 0, 1.6);
     const darkMat = new THREE.MeshLambertMaterial({ color: 0x2a2f35 });
     this.hq = (color) => {
       const g = new THREE.Group();
-      const mat = new THREE.MeshLambertMaterial({ color });
-      const a = new THREE.Mesh(hqGeo, mat), b = new THREE.Mesh(towerGeo, mat);
-      a.castShadow = b.castShadow = a.receiveShadow = true;
+      const mat = new THREE.MeshLambertMaterial({ color, flatShading: true });              // team colour
+      const armour = new THREE.MeshLambertMaterial({ color: 0xa9b1b8, flatShading: true });
+      const trim = new THREE.MeshLambertMaterial({ color: 0x59626b, flatShading: true });
+      const add = (geo, m, setup) => { const o = new THREE.Mesh(geo, m); o.castShadow = o.receiveShadow = true; setup?.(o); g.add(o); return o; };
+      add(parts.skirt, trim); add(parts.body, armour); add(parts.band, mat); add(parts.deck, trim); add(parts.ring, mat);
+      const tower = new THREE.Group();
+      tower.add(...[add(parts.tower, armour), add(parts.crown, mat)]);
+      g.add(tower);
+      for (let k = 0; k < 8; k++) {           // buttresses on the corners of the base, sloping out
+        const a = (k + 0.5) / 8 * Math.PI * 2;
+        add(strutGeo, trim, o => { o.scale.set(0.9, 4.2, 1.8); o.position.set(Math.sin(a) * 6.35, 2.1, Math.cos(a) * 6.35); o.rotation.y = a + Math.PI; });
+      }
+      add(mastGeo, darkMat, o => o.position.set(3.2, 6.4, -1.5));
+      add(dishGeo, armour, o => { o.position.set(-2.8, 7.4, 2.2); o.rotation.set(-0.6, 0.8, 0); });
+      add(new THREE.CylinderGeometry(0.15, 0.25, 1.2, 6), darkMat, o => o.position.set(-2.8, 6.8, 2.2));
       // Roof turret (turns toward what the HQ is shooting at).
       const turret = new THREE.Group();
       turret.position.y = 12.6;
-      const tb = new THREE.Mesh(turretGeo, mat), b0 = new THREE.Mesh(barrelGeo, darkMat), b1 = new THREE.Mesh(barrelGeo, darkMat);
+      const tb = new THREE.Mesh(turretGeo, trim), b0 = new THREE.Mesh(barrelGeo, darkMat), b1 = new THREE.Mesh(barrelGeo, darkMat);
       b0.position.set(-0.4, 0.1, 0); b1.position.set(0.4, 0.1, 0);
       tb.castShadow = true;
       turret.add(tb, b0, b1);
-      g.add(a, b, turret);
-      g.userData = { turret, tower: b, mat, color: new THREE.Color(color) };
+      g.add(turret);
+      g.userData = { turret, tower, mats: [mat, armour, trim], colors: [new THREE.Color(color), armour.color.clone(), trim.color.clone()] };
       return g;
     };
     const poleGeo = new THREE.CylinderGeometry(0.15, 0.15, 6, 6).translate(0, 3, 0);
@@ -76,12 +98,12 @@ export class MarkerView {
     u.turret.rotation.y = yaw;
     if (!alive && !u.dead) {
       u.dead = true;
-      u.mat.color.copy(u.color).multiplyScalar(0.18);
-      u.tower.scale.y = 0.35; u.tower.position.y = -3; u.tower.rotation.z = 0.25;
+      u.mats.forEach((m, k) => m.color.copy(u.colors[k]).multiplyScalar(0.18));
+      u.tower.scale.y = 0.45; u.tower.position.y = 1.5; u.tower.rotation.z = 0.25;
       u.turret.visible = false;
     } else if (alive && u.dead) {
       u.dead = false;
-      u.mat.color.copy(u.color);
+      u.mats.forEach((m, k) => m.color.copy(u.colors[k]));
       u.tower.scale.y = 1; u.tower.position.y = 0; u.tower.rotation.z = 0;
       u.turret.visible = true;
     }

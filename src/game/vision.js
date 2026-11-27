@@ -52,7 +52,7 @@ export class Vision {
     const g = this.bTop, n = this.bn, h = MAP_SIZE / 2;
     g.fill(-Infinity);
     for (const p of B.pieces) {
-      if (!p.alive || p.role === 'floor' || p.role === 'deck' || p.role === 'pillar') continue;
+      if (!p.alive || p.detail || p.role === 'floor' || p.role === 'deck' || p.role === 'pillar') continue;
       const r = Math.hypot(p.sx, p.sz) / 2, top = p.py + p.sy / 2;
       const i0 = Math.max(0, Math.floor(p.px - r + h)), i1 = Math.min(n - 1, Math.floor(p.px + r + h));
       const j0 = Math.max(0, Math.floor(p.pz - r + h)), j1 = Math.min(n - 1, Math.floor(p.pz + r + h));
