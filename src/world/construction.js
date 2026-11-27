@@ -77,7 +77,8 @@ export class Construction {
   }
 
   // Order Builders to build a planned line. Pays for as many pieces as can be afforded.
-  // Returns { jobs, refused: 'poor' | 'site' | null }.
+  // Returns { jobs, refused: 'poor' | 'bv' | 'site' | null }. pay(team, cost, kind) returns true, false (too poor)
+  // or a reason ('bv': over the Battle Value limit).
   order(builders, plan) {
     builders = builders.filter(u => u.alive && u.jobs);
     if (!builders.length) return { jobs: [], refused: null };
@@ -85,7 +86,8 @@ export class Construction {
     let refused = null;
     for (const p of plan) {
       if (!p.ok) { refused = refused || 'site'; continue; }
-      if (!this.pay(team, BUILD[p.kind].cost)) { refused = 'poor'; break; }
+      const paid = this.pay(team, BUILD[p.kind].cost, p.kind);
+      if (paid !== true) { refused = paid || 'poor'; break; }
       const j = { id: nextJob++, ...p, team, progress: 0, done: false, structure: null, dug: 0 };
       if (j.kind === 'trench') this._trenchRef(j);
       this.jobs.push(j);

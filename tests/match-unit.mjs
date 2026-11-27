@@ -14,7 +14,7 @@ import { Damage } from '../src/combat/damage.js';
 import { Match } from '../src/game/match.js';
 import { EnemyAI } from '../src/ai/enemy.js';
 import { deserializeMap } from '../src/maps/format.js';
-import { TERRAIN, MAP_SIZE, ECONOMY, UNIT_TYPES, CAPTURE } from '../src/config.js';
+import { TERRAIN, MAP_SIZE, ECONOMY, UNIT_TYPES, CAPTURE, TURRET_TYPE } from '../src/config.js';
 import { checker } from './harness.mjs';
 
 const { check, done } = checker();
@@ -68,9 +68,22 @@ const finite = w => w.units.list.every(u => Number.isFinite(u.x + u.y + u.z + u.
   m.teams[0].credits = 1e6;
   let n = 0; while (m.enqueue(0, 'scout') === true) n++;
   check(n === ECONOMY.queueMax && m.enqueue(0, 'scout') === 'full', `the build queue holds ${ECONOMY.queueMax}`);
-  for (let k = 0; k < 40; k++) w.units.spawn('scout', 0, -60 + (k % 10) * 6, 60 + Math.floor(k / 10) * 5);
+  // Battle Value: a side's mechs (alive and queued) and turrets add up to at most 30, +5 per capture point.
   m.teams[0].queue.length = 0;
-  check(m.enqueue(0, 'scout') === 'cap', `no more than ${ECONOMY.unitCap} mechs a side`);
+  check(m.bvCap(0) === 30 && m.bvUsed(0) === UNIT_TYPES.scout.bv, `Battle Value: limit ${m.bvCap(0)} at the start; one Light Mech uses ${m.bvUsed(0)}`);
+  check([['scout', 1], ['medium', 2], ['builder', 3], ['assault', 4], ['titan', 6]].every(([k, v]) => UNIT_TYPES[k].bv === v) && TURRET_TYPE.bv === 1, 'BV: Light 1, Medium 2, Builder 3, Heavy 4, Assault 6, Turret 1');
+  for (let k = 0; k < 4; k++) w.units.spawn('titan', 0, -60 + k * 8, 60);           // 24
+  check(m.enqueue(0, 'medium') === true && m.bvUsed(0) === 27, `queued mechs count too (${m.bvUsed(0)} used)`);
+  check(m.enqueue(0, 'assault') === 'bv' && m.enqueue(0, 'titan') === 'bv', 'a Heavy (4) or Assault (6) over the limit is refused');
+  check(m.enqueue(0, 'scout') === true && m.enqueue(0, 'medium') === true && m.bvUsed(0) === 30 && m.enqueue(0, 'scout') === 'bv', 'small mechs fill it up exactly to 30, then nothing more');
+  w.units.addStructure('turret', 0, 40, 40);
+  check(m.bvUsed(0) === 31 && m.bvLeft(0) === -1, 'turrets count (1 each)');
+  m.points[0].owner = 0; m.points[1].owner = 0;
+  check(m.bvCap(0) === 40 && m.enqueue(0, 'assault') === true && m.enqueue(0, 'titan') === 'bv', `holding 2 capture points raises the limit to ${m.bvCap(0)}: room for a Heavy, not then an Assault`);
+  const nUnits = w.units.list.length;
+  m.points[0].owner = null;
+  check(m.bvCap(0) === 35 && w.units.list.length === nUnits && m.enqueue(0, 'scout') === 'bv', 'losing a point lowers the limit; nothing is taken away, but nothing more can be built');
+  check(m.bvUsed(1) === 0 && m.enqueue(1, 'titan') === true, 'each side has its own limit');
 }
 
 // ---------- capture points ----------
@@ -138,11 +151,12 @@ const finite = w => w.units.list.every(u => Number.isFinite(u.x + u.y + u.z + u.
   w.ai0.waveSize = 5;                      // a little different from its opponent, so it isn't a perfect mirror
   const last = new Map();
   const stuckInfo = [];
-  let stuck = 0, nan = false, maxUnits = 0, ms = 0, steps = 0;
+  let stuck = 0, nan = false, maxUnits = 0, maxBV = 0, ms = 0, steps = 0;
   const t0 = performance.now();
   const t = w.run(25 * 60, t => {
     steps++;
     maxUnits = Math.max(maxUnits, w.units.list.length);
+    maxBV = Math.max(maxBV, m.bvUsed(0), m.bvUsed(1));
     if (steps % 600 !== 0) return;          // every 10 s
     if (!finite(w)) nan = true;
     for (const u of w.units.list) {
@@ -157,7 +171,8 @@ const finite = w => w.units.list.every(u => Number.isFinite(u.x + u.y + u.z + u.
   check(!nan && finite(w), 'no NaN positions in the whole match');
   check(stuck === 0, `no mech got stuck (${stuck})${stuckInfo.length ? ':\n   ' + stuckInfo.join('\n   ') : ''}`);
   check(m.teams.every(T => T.built > 10) && m.teams.every(T => T.lost > 3), `both sides build and lose mechs (built ${m.teams.map(T => T.built).join(' / ')}, lost ${m.teams.map(T => T.lost).join(' / ')})`);
-  check(maxUnits <= 2 * ECONOMY.unitCap, `never more than ${2 * ECONOMY.unitCap} mechs on the map (peak ${maxUnits})`);
+  const bvMax = ECONOMY.bvStart + ECONOMY.bvPerPoint * m.points.length;
+  check(maxBV <= bvMax, `neither side ever goes over the Battle Value limit (peak ${maxBV}, the most it could be ${bvMax}; ${maxUnits} mechs on the map at most)`);
   let dug = 0; for (const v of w.hf.h) if (v < -0.5) dug++;
   check(dug > 2000, `the battle cratered the map (${dug} samples dug)`);
   check(ms < 5, `average simulation step over the match: ${ms.toFixed(2)} ms here`);

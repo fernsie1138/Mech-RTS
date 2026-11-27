@@ -9,12 +9,12 @@
 <meta name="apple-mobile-web-app-title" content="Mech RTS">
 <meta name="theme-color" content="#0b1015">
 <!-- Must match VERSION in src/version.js. If they differ, the HUD warns that Safari served stale code. -->
-<meta name="build" content="v25">
+<meta name="build" content="v26">
 <title>Mech RTS</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" type="image/png" href="icons/icon-180.png">
-<link rel="stylesheet" href="style.css?v=25">
+<link rel="stylesheet" href="style.css?v=26">
 <style>
   #topright { position:fixed; top:calc(env(safe-area-inset-top) + 10px); right:calc(env(safe-area-inset-right) + 12px);
               display:flex; gap:8px; z-index:35; }
@@ -43,6 +43,8 @@
   .card .q { position:absolute; right:10px; top:8px; font-size:15px; color:#9dffb0; }
   .card .pb { position:absolute; left:0; bottom:0; height:4px; width:0; background:#7cff9a; }
   .card.poor .cost { color:#ff8a70; } .card.poor { opacity:.72; }
+  .card .bv { position:absolute; right:10px; bottom:8px; font-size:12px; color:#9ec9ff; font-weight:600; } .card.nobv .bv { color:#ff8a70; } .card.nobv { opacity:.72; }
+  #army.full { color:#ff8a70; }
   #banner { position:fixed; top:calc(env(safe-area-inset-top) + 56px); left:50%; transform:translateX(-50%);
             font-size:20px; font-weight:700; text-shadow:0 2px 6px #000; pointer-events:none; opacity:0; transition:opacity .4s; white-space:nowrap; }
   #minimap { position:fixed; right:calc(env(safe-area-inset-right) + 12px); bottom:calc(env(safe-area-inset-bottom) + 24px);
@@ -99,7 +101,7 @@
   body.mobile #build { top:calc(env(safe-area-inset-top) + 42px); left:calc(env(safe-area-inset-left) + 6px); gap:5px; }
   body.mobile .card { width:76px; height:35px; padding:0 8px; }
   body.mobile .card .nm { font-size:12px; } body.mobile .card .cost { font-size:11px; }
-  body.mobile .card .q { font-size:12px; right:6px; top:4px; } body.mobile .card .pb { height:3px; }
+  body.mobile .card .q { font-size:12px; right:6px; top:4px; } body.mobile .card .bv { font-size:10px; right:5px; bottom:4px; } body.mobile .card .pb { height:3px; }
   body.mobile #fire { bottom:calc(env(safe-area-inset-bottom) + 6px); gap:4px; padding:4px; flex-wrap:wrap; justify-content:center;
                       max-width:calc(100vw - 260px); border-radius:8px; }
   body.mobile #fire .lbl, body.mobile #fire .sep { display:none !important; }
@@ -139,55 +141,55 @@
 <script type="importmap">
 {
   "imports": {
-    "three": "./lib/three.module.js?v=25",
-    "./editor/editor.js": "./editor/editor.js?v=25",
-    "./editor/history.js": "./editor/history.js?v=25",
-    "./editor/tools/features.js": "./editor/tools/features.js?v=25",
-    "./editor/tools/markers.js": "./editor/tools/markers.js?v=25",
-    "./editor/tools/terrain.js": "./editor/tools/terrain.js?v=25",
-    "./src/ai/enemy.js": "./src/ai/enemy.js?v=25",
-    "./src/combat/damage.js": "./src/combat/damage.js?v=25",
-    "./src/combat/effects.js": "./src/combat/effects.js?v=25",
-    "./src/combat/los.js": "./src/combat/los.js?v=25",
-    "./src/combat/projectiles.js": "./src/combat/projectiles.js?v=25",
-    "./src/config.js": "./src/config.js?v=25",
-    "./src/game/match.js": "./src/game/match.js?v=25",
-    "./src/game/savegame.js": "./src/game/savegame.js?v=25",
-    "./src/game/vision.js": "./src/game/vision.js?v=25",
-    "./src/main.js": "./src/main.js?v=25",
-    "./src/maps/format.js": "./src/maps/format.js?v=25",
-    "./src/maps/imageimport.js": "./src/maps/imageimport.js?v=25",
-    "./src/maps/loader.js": "./src/maps/loader.js?v=25",
-    "./src/nav/navgrid.js": "./src/nav/navgrid.js?v=25",
-    "./src/nav/pathfinding.js": "./src/nav/pathfinding.js?v=25",
-    "./src/terrain/chunks.js": "./src/terrain/chunks.js?v=25",
-    "./src/terrain/heightfield.js": "./src/terrain/heightfield.js?v=25",
-    "./src/terrain/surface.js": "./src/terrain/surface.js?v=25",
-    "./src/terrain/testmap.js": "./src/terrain/testmap.js?v=25",
-    "./src/terrain/water.js": "./src/terrain/water.js?v=25",
-    "./src/terrain/watermesh.js": "./src/terrain/watermesh.js?v=25",
-    "./src/ui/camera.js": "./src/ui/camera.js?v=25",
-    "./src/ui/command.js": "./src/ui/command.js?v=25",
-    "./src/ui/debug.js": "./src/ui/debug.js?v=25",
-    "./src/ui/hud.js": "./src/ui/hud.js?v=25",
-    "./src/ui/minimap.js": "./src/ui/minimap.js?v=25",
-    "./src/ui/mobile.js": "./src/ui/mobile.js?v=25",
-    "./src/ui/stats.js": "./src/ui/stats.js?v=25",
-    "./src/units/mech.js": "./src/units/mech.js?v=25",
-    "./src/units/mediummech.js": "./src/units/mediummech.js?v=25",
-    "./src/units/movers.js": "./src/units/movers.js?v=25",
-    "./src/units/units.js": "./src/units/units.js?v=25",
-    "./src/version.js": "./src/version.js?v=25",
-    "./src/view.js": "./src/view.js?v=25",
-    "./src/world/buildings.js": "./src/world/buildings.js?v=25",
-    "./src/world/buildingview.js": "./src/world/buildingview.js?v=25",
-    "./src/world/construction.js": "./src/world/construction.js?v=25",
-    "./src/world/decals.js": "./src/world/decals.js?v=25",
-    "./src/world/fogview.js": "./src/world/fogview.js?v=25",
-    "./src/world/forest.js": "./src/world/forest.js?v=25",
-    "./src/world/markers.js": "./src/world/markers.js?v=25",
-    "./src/world/shapes.js": "./src/world/shapes.js?v=25",
-    "./src/world/trees.js": "./src/world/trees.js?v=25"
+    "three": "./lib/three.module.js?v=26",
+    "./editor/editor.js": "./editor/editor.js?v=26",
+    "./editor/history.js": "./editor/history.js?v=26",
+    "./editor/tools/features.js": "./editor/tools/features.js?v=26",
+    "./editor/tools/markers.js": "./editor/tools/markers.js?v=26",
+    "./editor/tools/terrain.js": "./editor/tools/terrain.js?v=26",
+    "./src/ai/enemy.js": "./src/ai/enemy.js?v=26",
+    "./src/combat/damage.js": "./src/combat/damage.js?v=26",
+    "./src/combat/effects.js": "./src/combat/effects.js?v=26",
+    "./src/combat/los.js": "./src/combat/los.js?v=26",
+    "./src/combat/projectiles.js": "./src/combat/projectiles.js?v=26",
+    "./src/config.js": "./src/config.js?v=26",
+    "./src/game/match.js": "./src/game/match.js?v=26",
+    "./src/game/savegame.js": "./src/game/savegame.js?v=26",
+    "./src/game/vision.js": "./src/game/vision.js?v=26",
+    "./src/main.js": "./src/main.js?v=26",
+    "./src/maps/format.js": "./src/maps/format.js?v=26",
+    "./src/maps/imageimport.js": "./src/maps/imageimport.js?v=26",
+    "./src/maps/loader.js": "./src/maps/loader.js?v=26",
+    "./src/nav/navgrid.js": "./src/nav/navgrid.js?v=26",
+    "./src/nav/pathfinding.js": "./src/nav/pathfinding.js?v=26",
+    "./src/terrain/chunks.js": "./src/terrain/chunks.js?v=26",
+    "./src/terrain/heightfield.js": "./src/terrain/heightfield.js?v=26",
+    "./src/terrain/surface.js": "./src/terrain/surface.js?v=26",
+    "./src/terrain/testmap.js": "./src/terrain/testmap.js?v=26",
+    "./src/terrain/water.js": "./src/terrain/water.js?v=26",
+    "./src/terrain/watermesh.js": "./src/terrain/watermesh.js?v=26",
+    "./src/ui/camera.js": "./src/ui/camera.js?v=26",
+    "./src/ui/command.js": "./src/ui/command.js?v=26",
+    "./src/ui/debug.js": "./src/ui/debug.js?v=26",
+    "./src/ui/hud.js": "./src/ui/hud.js?v=26",
+    "./src/ui/minimap.js": "./src/ui/minimap.js?v=26",
+    "./src/ui/mobile.js": "./src/ui/mobile.js?v=26",
+    "./src/ui/stats.js": "./src/ui/stats.js?v=26",
+    "./src/units/mech.js": "./src/units/mech.js?v=26",
+    "./src/units/mediummech.js": "./src/units/mediummech.js?v=26",
+    "./src/units/movers.js": "./src/units/movers.js?v=26",
+    "./src/units/units.js": "./src/units/units.js?v=26",
+    "./src/version.js": "./src/version.js?v=26",
+    "./src/view.js": "./src/view.js?v=26",
+    "./src/world/buildings.js": "./src/world/buildings.js?v=26",
+    "./src/world/buildingview.js": "./src/world/buildingview.js?v=26",
+    "./src/world/construction.js": "./src/world/construction.js?v=26",
+    "./src/world/decals.js": "./src/world/decals.js?v=26",
+    "./src/world/fogview.js": "./src/world/fogview.js?v=26",
+    "./src/world/forest.js": "./src/world/forest.js?v=26",
+    "./src/world/markers.js": "./src/world/markers.js?v=26",
+    "./src/world/shapes.js": "./src/world/shapes.js?v=26",
+    "./src/world/trees.js": "./src/world/trees.js?v=26"
   }
 }
 </script>
@@ -274,10 +276,10 @@
 <div id="selinfo" class="panel"></div>
 <div id="boxsel"></div>
 </div>
-<div id="ver">v25</div>
+<div id="ver">v26</div>
 <div id="loading">Loading map…</div>
 <div id="fatal"></div>
-<script src="src/ui/page.js?v=25"></script>
-<script type="module" src="src/main.js?v=25"></script>
+<script src="src/ui/page.js?v=26"></script>
+<script type="module" src="src/main.js?v=26"></script>
 </body>
 </html>

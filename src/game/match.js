@@ -5,7 +5,10 @@
 // one at a time (paid when queued) and sends them to a rally point in front of it. A capture point has a control
 // value from -1 (enemy) to +1 (player): mechs of one side alone in the ring push it their way; when it reaches
 // +-1 that side owns it, and it is neutral again once control crosses 0. Destroying the other HQ wins.
-import { ECONOMY, CAPTURE, UNIT_TYPES } from '../config.js';
+// Battle Value (BV): every mech and turret has one (bigger ones more). A side's mechs alive and queued, and its
+// turrets (standing, being built, or ordered), may add up to bvStart + bvPerPoint x capture points held. Losing a
+// point lowers the limit but takes nothing away: the side just can't build more until it is under the limit.
+import { ECONOMY, CAPTURE, UNIT_TYPES, TURRET_TYPE } from '../config.js';
 
 export class Match {
   // units: Units   markers: { playerHQ, enemyHQ, capturePoints }
@@ -33,13 +36,25 @@ export class Match {
   income(team) { return ECONOMY.baseIncome + ECONOMY.pointIncome * this.points.filter(p => p.owner === team).length; }
   held(team) { return this.points.filter(p => p.owner === team).length; }
   army(team) { return this.units.list.filter(u => u.alive && u.team === team).length + this.teams[team].queue.length; }
+  // Battle Value: the limit, what is used, and what is left.
+  bvCap(team) { return ECONOMY.bvStart + ECONOMY.bvPerPoint * this.held(team); }
+  bvUsed(team) {
+    let n = this.pendingBV(team);
+    for (const u of this.units.list) if (u.alive && u.team === team) n += u.t.bv || 0;
+    for (const s of this.units.structures) if (s.alive && s.team === team && !s.isHQ) n += s.t.bv || 0;
+    for (const k of this.teams[team].queue) n += UNIT_TYPES[k].bv || 0;
+    return n;
+  }
+  bvLeft(team) { return this.bvCap(team) - this.bvUsed(team); }
+  // BV of things ordered but not yet on the map (turret jobs not started). Set by the game (main.js).
+  pendingBV() { return 0; }
 
-  // Queue a mech. Returns true, or the reason it can't: 'poor', 'full' (queue), 'cap' (unit limit), 'over'.
+  // Queue a mech. Returns true, or the reason it can't: 'poor', 'full' (queue), 'bv' (Battle Value limit), 'over'.
   enqueue(team, type) {
     const T = this.teams[team], cost = UNIT_TYPES[type].cost;
     if (this.over || !T.hq.alive) return 'over';
     if (T.queue.length >= ECONOMY.queueMax) return 'full';
-    if (this.army(team) >= ECONOMY.unitCap) return 'cap';
+    if (this.bvLeft(team) < (UNIT_TYPES[type].bv || 0)) return 'bv';
     if (T.credits < cost) return 'poor';
     T.credits -= cost;
     T.queue.push(type);

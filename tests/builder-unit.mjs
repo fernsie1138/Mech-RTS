@@ -74,6 +74,11 @@ const finite = w => w.units.list.every(u => Number.isFinite(u.x + u.y + u.z + u.
   const poor = world({ credits: 130 }), pb = poor.units.spawn('builder', 0, 0, 20);
   const r2 = poor.con.order([pb], poor.con.plan('wall', -20, 0, 20, 0));
   check(r2.jobs.length === 2 && r2.refused === 'poor', 'with too few credits only what can be paid for is ordered');
+  // Over the Battle Value limit (the match's pay hook says 'bv'): the turret is refused, and why.
+  const full = world(), fb = full.units.spawn('builder', 0, 0, 20);
+  full.con.pay = (team, cost, kind) => (kind === 'turret' ? 'bv' : true);
+  const r3 = full.con.order([fb], full.con.plan('turret', 0, 0));
+  check(r3.jobs.length === 0 && r3.refused === 'bv' && full.con.order([fb], full.con.plan('wall', -5, 5, 5, 5)).jobs.length === 1, 'a turret over the Battle Value limit is refused ("bv"); walls (no BV) still go ahead');
   const blocked = world();
   blocked.units.addStructure('turret', 0, 0, 0);
   check(!blocked.con.plan('turret', 0.5, 0.5)[0].ok && !blocked.con.plan('wall', -5, 0, 5, 0)[0].ok && blocked.con.plan('wall', -5, 20, 5, 20)[0].ok, "can't build on top of a turret (but can next to it)");

@@ -27,7 +27,10 @@ export class EnemyAI {
     if (T.queue.length < 2) {
       const r = rng(), late = m.time > AI.lateGame;
       const pick = late ? (r < 0.2 ? 'scout' : r < 0.42 ? 'medium' : r < 0.72 ? 'assault' : 'titan') : (r < 0.38 ? 'scout' : r < 0.62 ? 'medium' : r < 0.87 ? 'assault' : 'titan');
-      if (m.enqueue(this.team, pick) === 'poor' && rng() < 0.25) m.enqueue(this.team, 'scout');
+      const res = m.enqueue(this.team, pick);
+      // At the Battle Value limit: something smaller, if it fits.
+      if (res === 'bv') { for (const k of ['medium', 'scout']) if (k !== pick && m.enqueue(this.team, k) === true) break; }
+      else if (res === 'poor' && rng() < 0.25) m.enqueue(this.team, 'scout');
     }
 
     const mine = this.units.list.filter(u => u.alive && u.team === this.team);

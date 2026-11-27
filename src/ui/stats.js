@@ -12,6 +12,7 @@ const COLS = [...UNIT_KEYS, 'turret', 'hq'];
 // Builder's turret job (BUILD.turret.cost / work).
 const ROWS = [
   ['Cost (⚡)', 'cost', 'credits to build one'],
+  ['Battle Value', 'bv', 'counts against the side\'s Battle Value limit (bigger units more)'],
   ['Build time (s)', 'build', 'seconds to build (a turret: Builder-seconds)'],
   ['Speed', 'speed', 'world units per second on open ground'],
   ['Strength (hp)', 'hp', 'hit points'],
@@ -42,7 +43,7 @@ function fields() {
     } else if ((key === 'cost' || key === 'build') && k === 'turret') {
       const bk = key === 'cost' ? 'cost' : 'work';
       get = () => BUILD.turret[bk]; set = v => { BUILD.turret[bk] = v; };
-    } else if ((key === 'cost' || key === 'build') && k === 'hq') continue;
+    } else if ((key === 'cost' || key === 'build' || key === 'bv') && k === 'hq') continue;
     else if (!ARMED(k) && ['dmg', 'rof', 'range', 'accuracy', 'splash', 'projSpeed'].includes(key)) continue;
     else if (t[key] === undefined) continue;
     else { get = () => t[key]; set = v => { t[key] = v; }; }
@@ -52,7 +53,7 @@ function fields() {
     f.push({ id: `build.${j}.cost`, k: j, key: 'cost', label: 'Cost (⚡)', get: () => BUILD[j].cost, set: v => { BUILD[j].cost = v; } });
     f.push({ id: `build.${j}.work`, k: j, key: 'work', label: 'Build time (s)', get: () => BUILD[j].work, set: v => { BUILD[j].work = v; } });
   }
-  for (const [key, label] of [['startCredits', 'Starting credits'], ['baseIncome', 'Income per second'], ['pointIncome', '+ per capture point'], ['unitCap', 'Mechs per side'], ['queueMax', 'Build queue length']]) {
+  for (const [key, label] of [['startCredits', 'Starting credits'], ['baseIncome', 'Income per second'], ['pointIncome', '+ per capture point'], ['bvStart', 'Battle Value at the start'], ['bvPerPoint', '+ BV per capture point'], ['queueMax', 'Build queue length']]) {
     f.push({ id: `economy.${key}`, k: 'economy', key, label, get: () => ECONOMY[key], set: v => { ECONOMY[key] = v; } });
   }
   return f;

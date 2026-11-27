@@ -1,6 +1,6 @@
 // Match HUD (CLAUDE.md §9): credits and income, capture points held, build buttons with queue counts and
 // progress, banners for events, and the start and end screens. The DOM lives in index.html.
-import { UNIT_TYPES, UNIT_KEYS, ECONOMY } from '../config.js';
+import { UNIT_TYPES, UNIT_KEYS } from '../config.js';
 
 const HOLD_MS = 500;                // press and hold a build button this long to cancel one
 const $ = id => document.getElementById(id);
@@ -17,7 +17,7 @@ export class Hud {
       const t = UNIT_TYPES[k], c = document.createElement('div');
       c.className = 'card btn';
       c.dataset.type = k;
-      c.innerHTML = `<div class="nm">${t.short || t.name}</div><div class="cost">⚡${t.cost}</div><div class="q"></div><div class="pb"></div>`;
+      c.innerHTML = `<div class="nm">${t.short || t.name}</div><div class="cost">⚡${t.cost}</div><div class="bv">BV ${t.bv}</div><div class="q"></div><div class="pb"></div>`;
       this.el.build.appendChild(c);
       this.cards[k] = c;
       // Tap: build one. Press and hold: take one off the queue (refund).
@@ -39,7 +39,9 @@ export class Hud {
   }
 
   // Prices on the build buttons (after the stats are changed in Dev).
-  refreshCosts() { for (const k of UNIT_KEYS) this.cards[k].querySelector('.cost').textContent = `⚡${UNIT_TYPES[k].cost}`; }
+  refreshCosts() {
+    for (const k of UNIT_KEYS) { this.cards[k].querySelector('.cost').textContent = `⚡${UNIT_TYPES[k].cost}`; this.cards[k].querySelector('.bv').textContent = `BV ${UNIT_TYPES[k].bv}`; }
+  }
 
   show(on) {
     for (const e of [this.el.res, this.el.build]) e.style.display = on ? '' : 'none';
@@ -54,8 +56,10 @@ export class Hud {
 
   // Why a build was refused, as a banner.
   refused(reason) {
-    const msg = { poor: 'Not enough power', full: 'Build queue full', cap: `Unit limit (${ECONOMY.unitCap})`, over: 'The match is over' }[reason];
-    if (msg) this.banner(msg, '#ffd25a', 1.8);
+    const m = this.getMatch();
+    const msg = { poor: 'Not enough power', full: 'Build queue full', over: 'The match is over',
+      bv: m ? `Battle Value limit (${m.bvUsed(0)}/${m.bvCap(0)}): take capture points to raise it` : 'Battle Value limit' }[reason];
+    if (msg) this.banner(msg, '#ffd25a', reason === 'bv' ? 2.5 : 1.8);
   }
 
   end(won, m) {
@@ -82,12 +86,15 @@ export class Hud {
     this.el.credits.textContent = `⚡ ${Math.floor(T.credits)}`;
     this.el.income.textContent = `+${m.income(0)}/s`;
     this.el.points.textContent = `⚑ ${m.held(0)}/${m.points.length}`;
-    this.el.army.textContent = `▲ ${m.army(0)}/${ECONOMY.unitCap}`;
+    const used = m.bvUsed(0), cap = m.bvCap(0);
+    this.el.army.textContent = `BV ${used}/${cap}`;
+    this.el.army.classList.toggle('full', used >= cap);
     this.el.clock.textContent = fmtTime(m.time);
     for (const k of UNIT_KEYS) {
       const c = this.cards[k], n = T.queue.filter(q => q === k).length;
       c.querySelector('.q').textContent = n ? `×${n}` : '';
       c.classList.toggle('poor', T.credits < UNIT_TYPES[k].cost);
+      c.classList.toggle('nobv', used + (UNIT_TYPES[k].bv || 0) > cap);
     }
   }
 }
