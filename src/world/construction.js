@@ -13,8 +13,8 @@
 // Kinds are a table (BUILD), so new things to build (e.g. factories) slot in the same way.
 //
 // Repair: a Builder ordered to repair a friendly mech, turret or HQ walks over and mends it (UNIT_TYPES.builder.repair
-// hp per second; several Builders add up) until it is whole. An idle Builder does this by itself for damaged
-// friendly units within BUILD.repairAuto. Repairs are free.
+// hp per second; several Builders add up) until it is whole. Builders only repair when ordered to (the player
+// picks what to mend). Repairs are free.
 import { BUILD, MAP_SIZE } from '../config.js';
 import { FEATURE } from '../terrain/surface.js';
 import { flattenFootprint } from './buildings.js';
@@ -128,11 +128,6 @@ export class Construction {
       if (u.order !== 'build') {
         if (u.jobs.length) u.jobs = [];
         u.working = false;
-        if (u.order === 'idle' && (u.repairLook = (u.repairLook || 0) - dt) <= 0) {
-          u.repairLook = 0.5;
-          const t = this._damagedNear(u, BUILD.repairAuto);
-          if (t) { u.order = 'repair'; u.repairTarget = t; u.repairAuto = true; u.workT = 0; }
-        }
         continue;
       }
       while (u.jobs.length && u.jobs[0].done) u.jobs.shift();
@@ -161,30 +156,20 @@ export class Construction {
   repair(builders, target) {
     for (const u of builders) {
       if (!u.alive || !u.jobs || u === target || u.team !== target.team) continue;
-      u.order = 'repair'; u.repairTarget = target; u.repairAuto = false; u.goal = null; u.attackTarget = null; u.workT = 0; u.defend = false;
+      u.order = 'repair'; u.repairTarget = target; u.goal = null; u.attackTarget = null; u.workT = 0; u.defend = false;
       u.jobs = [];
     }
   }
 
-  // The most damaged friendly unit or structure within r of a Builder (not itself), or null.
-  _damagedNear(u, r) {
-    let best = null, bf = 0.999;
-    for (const lst of [this.units.list, this.units.structures]) for (const o of lst) {
-      if (o === u || !o.alive || o.team !== u.team || (o.built !== undefined && o.built < 1)) continue;
-      const f = o.hp / o.maxHp;
-      if (f < bf && Math.hypot(o.x - u.x, o.z - u.z) - o.radius < r) { bf = f; best = o; }
-    }
-    return best;
-  }
+
 
   _repair(u, dt) {
     const t = u.repairTarget, units = this.units;
     u.working = false;
     if (!t || !t.alive || t.hp >= t.maxHp) {
-      // Done (or it was destroyed). An automatic repair goes back to guarding; an ordered one holds there.
+      // Done (or it was destroyed): it holds there.
       u.repairTarget = null;
       units.stop([u]);
-      if (u.repairAuto) u.hold = false;
       return;
     }
     const d = Math.hypot(t.x - u.x, t.z - u.z) - t.radius - u.radius;
@@ -194,7 +179,6 @@ export class Construction {
         const a = Math.atan2(u.x - t.x, u.z - t.z), r = t.radius + u.radius + 0.8;
         units.movers.order([u.mover], t.x + Math.sin(a) * r, t.z + Math.cos(a) * r);
       }
-      if (u.repairAuto && d > BUILD.repairAuto * 1.5) { u.repairTarget = null; units.stop([u]); u.hold = false; }
       return;
     }
     if (u.mover.state !== 'idle') units.movers.stop(u.mover);

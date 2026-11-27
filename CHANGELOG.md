@@ -1,5 +1,12 @@
 # Changelog
 
+## v28 — Light and Assault Mech models, a bigger Heavy, manual repair
+- **The Light Mech uses your model** (`assets/light-mech.gltf`). It is the same size as before (2.9 tall). Its backward-bending legs walk, the body and gun turn to aim, and shots come out of the gun. Its shins are in team colour.
+- **The Assault Mech uses your model** (`assets/assault-mech.gltf`). It is the same size as before (5.8 tall). It walks, its torso, shoulders and arm cannons turn to aim, and shells come from the four cannon barrels, in turn.
+- **The Heavy Mech is 60% bigger**: 6.6 tall (was 4.1), now the tallest mech. Its guns and health bar moved with it. Its footprint for moving round obstacles is unchanged, so it still fits through the same gaps.
+- **Builders no longer repair by themselves.** Select Builders, tap Repair, then the damaged mech, turret or HQ. The start screen help says so.
+- Tests: `tests/models.mjs` now checks all four models: their size (the Heavy 60% bigger, the others as before), feet on the ground, shots from the guns with the torso turned, and legs moving. `tests/repair-unit.mjs` checks that idle Builders don't repair anything by themselves, but do when ordered.
+
 ## v27 — Your Heavy Mech and turret models
 - **The Heavy Mech now uses your model** (`assets/heavy-mech.gltf`): body, rocket pod, both arms, hips, thighs, calves and feet.
   - It is the same size as before (4.1 tall).

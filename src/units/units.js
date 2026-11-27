@@ -26,9 +26,9 @@ const turnToward = (cur, target, step) => { const d = wrap(target - cur); return
 
 // Muzzles in the mech's torso frame (x right, y up from the torso pivot, z forward), from the prototype models.
 export const MUZZLES = {
-  scout: [[-0.98, 0.35, 1.5], [0.98, 0.35, 1.5]],
+  scout: [[0, 0.98, 1.64]],                                      // the gun on top of David's model (assets/light-mech.gltf)
   assault: [[-0.91, -0.12, 0.12], [0.91, -0.12, 0.12]],        // the forearm guns of David's model (assets/heavy-mech.gltf)
-  titan: [[1.6, 0.55, 3.15], [-1.5, 1.7, 0.75]],
+  titan: [[1.71, -0.12, 0.58], [-1.71, -0.12, 0.58], [1.71, 0.48, 0.58], [-1.71, 0.48, 0.58]],   // the arm cannons (assets/assault-mech.gltf)
   hq: [[-0.4, 10.3, 2.9], [0.4, 10.3, 2.9]],          // the HQ's roof turret
   turret: [[0.22, 0.62, 1.55], [-0.22, 0.62, 1.55]],          // the two barrels of David's model (assets/turret.gltf)
   builder: [[0.85, 0.4, 1.6]],

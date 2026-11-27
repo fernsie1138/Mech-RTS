@@ -73,7 +73,7 @@ src/
     units.js          mechs: orders, targeting, facing, firing, wrecks (no three.js; stats in config.js)
     mech.js           instanced mech models, walk animation, selection rings, health bars, tracers
     mediummech.js     the Medium Mech's model (assets/medium-mech.gltf): instanced parts, digitigrade walk, painted look
-    modelview.js      glTF models with named parts (Heavy Mech: assets/heavy-mech.gltf; turret: assets/turret.gltf): instanced parts, walk, torso turn
+    modelview.js      glTF models with named parts (Light, Heavy and Assault Mechs, turret: assets/*.gltf): instanced parts, walk, torso turn
   combat/
     projectiles.js    bullets, cannon rounds and arcing shells (no three.js)
     los.js            line of sight (terrain and walls), cover (forest, rubble, walls)
@@ -213,12 +213,12 @@ A separate page (`editor.html`), designed for **touch on iPad**:
 The single-file prototype v1 (`prototype/index.html`) contains a working version of the parts below. Reuse its ideas, but rebuild them on the new terrain.
 
 - **Mech classes** (shown names; internal keys in brackets, kept so saved stats and tests still work)
-  - **Light Mech** [scout]: fast, machine gun.
+  - **Light Mech** [scout]: fast, machine gun. David's model (`assets/light-mech.gltf`, `units/modelview.js`).
   - **Medium Mech** [medium]: between Light and Heavy; autocannon. David's model (`assets/medium-mech.gltf`, drawn by `units/mediummech.js`): digitigrade legs, walk and crouch animated in code, colours and panel lines painted in the shader.
-  - **Heavy Mech** [assault]: twin cannons (forearm guns). David's model (`assets/heavy-mech.gltf`, drawn by `units/modelview.js`).
-  - **Assault Mech** [titan]: slow, arcing splash shells (indirect fire) that can miss fast targets.
+  - **Heavy Mech** [assault]: twin cannons (forearm guns), scale 1.84 (the tallest). David's model (`assets/heavy-mech.gltf`, drawn by `units/modelview.js`).
+  - **Assault Mech** [titan]: slow, arcing splash shells (indirect fire) that can miss fast targets. David's model (`assets/assault-mech.gltf`, `units/modelview.js`).
 - Mechs have animated walking legs and a **torso that turns independently** of the legs, so they can fire while moving.
-- **Builder:** unarmed; builds walls and auto turrets, digs trenches (cover) and repairs friendly mechs, turrets and the HQ (on order, or by itself when idle and one is close). Walls and trenches are planned first (tap or drag), can be turned in 15° steps, then built. Later: buildings that produce other units (new kinds go in `BUILD` in config.js and `world/construction.js`).
+- **Builder:** unarmed; builds walls and auto turrets, digs trenches (cover) and repairs friendly mechs, turrets and the HQ (only when ordered: the player picks the target). Walls and trenches are planned first (tap or drag), can be turned in 15° steps, then built. Later: buildings that produce other units (new kinds go in `BUILD` in config.js and `world/construction.js`).
 - **Detection factor** (`detect`, % per unit type; Light Mech 75, others 100): an enemy spots a unit only within its own sight × that factor (and with a clear line of sight); fog of war still clears as normal. In a trench it is ×0.8, and never below 40% in total.
 - **Spotting:** a unit may fire at any enemy in weapon range that its side has spotted (another unit can spot for it); direct fire still needs its own clear line of fire.
 - **Defend** stance: selected mechs crouch and hold; harder to hit (×0.55) and less hurt by splash, stacking with trench cover.

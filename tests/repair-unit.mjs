@@ -56,22 +56,22 @@ function world() {
   const w = world(), U = w.units;
   const b = U.spawn('builder', 0, 0, 0), a = U.spawn('assault', 0, 6, 0);
   a.hp = a.maxHp * 0.3;
+  w.run(8);
+  check(a.hp === a.maxHp * 0.3 && b.order === 'idle', 'an idle Builder does not repair a damaged mech by itself, even right next to it');
+  w.con.repair([b], a);
   const t = w.run(30, () => a.hp >= a.maxHp);
   const need = a.maxHp * 0.7 / UNIT_TYPES.builder.repair;
-  check(a.hp === a.maxHp, `an idle Builder repairs a damaged mech next to it by itself (${t.toFixed(1)} s; ${need.toFixed(1)} s of work)`);
+  check(a.hp === a.maxHp, `ordered to, it repairs it (${t.toFixed(1)} s; ${need.toFixed(1)} s of work)`);
   w.run(1);
   check(b.order === 'idle' && !b.repairTarget, 'then it stops');
-  // Not out of range: a damaged mech far away is left alone...
   const far = U.spawn('titan', 0, 60, 0); far.hp = far.maxHp * 0.5;
-  w.run(5);
-  check(far.hp === far.maxHp * 0.5 && Math.hypot(b.x, b.z) < 5, `a damaged mech ${60} away isn't repaired by itself`);
-  // ...unless ordered.
   w.con.repair([b], far);
   const t2 = w.run(60, () => far.hp >= far.maxHp);
   check(far.hp === far.maxHp && Math.hypot(b.x - far.x, b.z - far.z) < 6, `ordered to, the Builder walks over and repairs it (${t2.toFixed(0)} s)`);
   // Two Builders repair twice as fast.
   const b2 = U.spawn('builder', 0, 57, 3);
   far.hp = far.maxHp * 0.2;
+  w.con.repair([b, b2], far);
   const t3 = w.run(60, () => far.hp >= far.maxHp);
   const one = far.maxHp * 0.8 / UNIT_TYPES.builder.repair;
   check(t3 < one * 0.65, `two Builders repair faster than one (${t3.toFixed(1)} s vs ${one.toFixed(1)} s)`);
@@ -85,10 +85,13 @@ function world() {
   check(b.repairTarget !== foe, "they won't repair enemies");
   b.hp = 50; U.stop([b]);
   w.run(3);
-  check(b.hp === 50, 'a Builder alone does not repair itself');
+  check(b.hp === 50, 'a Builder does not repair itself');
   const helper = U.spawn('builder', 0, b.x + 4, b.z);
+  w.run(3);
+  check(b.hp === 50, 'nor does another Builder nearby, unless ordered to');
+  w.con.repair([helper], b);
   w.run(10, () => b.hp >= b.maxHp);
-  check(helper.hp === helper.maxHp && b.hp === b.maxHp, 'but another Builder nearby will');
+  check(b.hp === b.maxHp, 'ordered to, another Builder repairs it');
   // A move order takes it off the repair.
   const c = U.spawn('assault', 0, 0, 40); c.hp = 10;
   w.con.repair([b], c);
@@ -96,7 +99,6 @@ function world() {
   U.order([b], 'move', -40, -40);
   w.run(2);
   check(b.order === 'move' && !b.working, 'a move order ends a repair');
-  check(BUILD.repairAuto > 0, 'auto-repair distance set');
 }
 
 done();

@@ -65,8 +65,8 @@ export class MechView {
     this.inView = () => true;
     this.group = new THREE.Group();
     this.medium = new MediumMechView(this.group);     // Medium Mechs use David's model (loaded by the game: loadModels)
-    // Heavy Mechs and turrets too (until their models are loaded they are drawn from boxes).
-    this.models = { assault: new ModelView(this.group, MODELS.heavy), turret: new ModelView(this.group, MODELS.turret, 120) };
+    // Light, Heavy and Assault Mechs and turrets too (until their models are loaded they are drawn from boxes).
+    this.models = { scout: new ModelView(this.group, MODELS.light), assault: new ModelView(this.group, MODELS.heavy), titan: new ModelView(this.group, MODELS.assault), turret: new ModelView(this.group, MODELS.turret, 120) };
     this.group.name = 'mechs';
     scene.add(this.group);
     this.parts = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshLambertMaterial({ flatShading: true }), MAX_PARTS);
