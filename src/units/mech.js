@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { TORSO_Y, STRUCTURE_TYPES } from './units.js';
 import { MediumMechView } from './mediummech.js';
+import { ModelView, MODELS } from './modelview.js';
 import { COMBAT, UNIT_TYPES, BUILD } from '../config.js';
 
 const TEAM = [0x3d8fe0, 0xd9442e];
@@ -64,6 +65,8 @@ export class MechView {
     this.inView = () => true;
     this.group = new THREE.Group();
     this.medium = new MediumMechView(this.group);     // Medium Mechs use David's model (loaded by the game: loadModels)
+    // Heavy Mechs and turrets too (until their models are loaded they are drawn from boxes).
+    this.models = { assault: new ModelView(this.group, MODELS.heavy), turret: new ModelView(this.group, MODELS.turret, 120) };
     this.group.name = 'mechs';
     scene.add(this.group);
     this.parts = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshLambertMaterial({ flatShading: true }), MAX_PARTS);
@@ -119,33 +122,43 @@ export class MechView {
   }
 
   // Load the models that aren't boxes (the Medium Mech). Until then those mechs aren't drawn.
-  loadModels(base = '') { return this.medium.load(`${base}assets/medium-mech.gltf`); }
+  loadModels(base = '') {
+    return Promise.all([this.medium.load(`${base}assets/medium-mech.gltf`), ...Object.values(this.models).map(m => m.load(base))]);
+  }
+  // The model view drawing a type, if its model is loaded.
+  _model(type) { const m = this.models[type]; return m && m.ready ? m : null; }
 
   update(units, selected, camera) {
     let n = 0;
     this.medium.begin();
+    for (const m of Object.values(this.models)) m.begin();
     for (const u of units.list) {
       if (!this.shown(u)) continue;
       if (u.type === 'medium') { this.medium.pose(u.team, { x: u.x, y: u.y, z: u.z, yaw: u.yaw, torsoYaw: u.torsoYaw, phase: u.phase, amp: u.amp, flash: u.hitT, crouch: u.crouch }); continue; }
+      const mv = this._model(u.type);
+      if (mv) { mv.pose(u.team, { x: u.x, y: u.y, z: u.z, yaw: u.yaw, torsoYaw: u.torsoYaw, phase: u.phase, amp: u.amp, flash: u.hitT, crouch: u.crouch }); continue; }
       n = this._pose(n, u.type, u.team, { x: u.x, y: u.y, z: u.z, yaw: u.yaw, torsoYaw: u.torsoYaw, phase: u.phase, amp: u.amp, flash: u.hitT, crouch: u.crouch });
     }
     for (const h of units.structures || []) {
       // Turrets rise out of the ground while they are being built.
       if (h.type !== 'turret' || !h.alive || !this.shown(h)) continue;
-      n = this._pose(n, 'turret', h.team, { x: h.x, y: h.y, z: h.z, yaw: h.yaw, torsoYaw: h.torsoYaw, phase: 0, amp: 0, flash: h.hitT, sink: (1 - h.built) * h.height });
+      const ts = { x: h.x, y: h.y, z: h.z, yaw: h.yaw, torsoYaw: h.torsoYaw, phase: 0, amp: 0, flash: h.hitT, sink: (1 - h.built) * h.height };
+      if (this._model('turret')) this.models.turret.pose(h.team, ts); else n = this._pose(n, 'turret', h.team, ts);
     }
     n = this._sites(n, this.construction, this.preview);
     for (const w of units.wrecks) {
       if (!this.inView(w.x, w.z, true)) continue;
       // Wrecks topple over in the first second, then sink into the ground at the end of their time.
       const fall = Math.min(1, w.t / 0.8);
-      if (w.type === 'medium') this.medium.pose(w.team, { x: w.x, y: w.y, z: w.z, yaw: w.yaw, torsoYaw: w.torsoYaw, phase: w.phase, amp: 0.3,
-        tiltX: 0.35 * fall, tiltZ: w.tilt * 1.1 * fall, wreck: true, sink: (w.sink0 || 0) + Math.max(0, w.t - COMBAT.wreckTime) * 1.5 });
-      else n = this._pose(n, w.type, w.team, { x: w.x, y: w.y, z: w.z, yaw: w.yaw, torsoYaw: w.torsoYaw, phase: w.phase, amp: 0.3,
-        tiltX: 0.35 * fall, tiltZ: w.tilt * 1.1 * fall, wreck: true, sink: (w.sink0 || 0) + Math.max(0, w.t - COMBAT.wreckTime) * 1.5 });
+      const ws = { x: w.x, y: w.y, z: w.z, yaw: w.yaw, torsoYaw: w.torsoYaw, phase: w.phase, amp: 0.3,
+        tiltX: 0.35 * fall, tiltZ: w.tilt * 1.1 * fall, wreck: true, sink: (w.sink0 || 0) + Math.max(0, w.t - COMBAT.wreckTime) * 1.5 };
+      if (w.type === 'medium') this.medium.pose(w.team, ws);
+      else if (this._model(w.type)) this.models[w.type].pose(w.team, ws);
+      else n = this._pose(n, w.type, w.team, ws);
     }
     this.parts.count = n;
     this.medium.end();
+    for (const m of Object.values(this.models)) m.end();
     this.parts.instanceMatrix.needsUpdate = true;
     if (this.parts.instanceColor) this.parts.instanceColor.needsUpdate = true;
 

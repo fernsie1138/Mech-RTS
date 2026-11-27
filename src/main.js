@@ -122,7 +122,7 @@ const units = new Units(world, movers, damage, 7);
 let costsReady = false;           // the HUD and Builder panel exist (set further down)
 const stats = new StatsEditor({ units, onChange: () => refreshCosts() });
 const mechView = new MechView(scene, heightAt);
-mechView.loadModels().catch(e => console.warn('Medium Mech model did not load:', e.message));
+mechView.loadModels().catch(e => console.warn('A unit model did not load:', e.message));
 // Builders' construction: walls, turrets, trenches. Paid from the match's credits (free in the sandbox).
 const construction = new Construction(world, {
   pay: (team, cost, kind) => {
