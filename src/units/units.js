@@ -120,7 +120,9 @@ export class Units {
   // ---------- helpers ----------
   eye(u) { return u.y + u.height * COMBAT.eyeHeight; }
   centre(u) { return u.y + u.height * 0.55; }
-  inRange(u, e, range = u.t.range) { return Math.hypot(e.x - u.x, e.z - u.z) - e.radius <= range; }
+  // In range: no further than its range, and no closer than its minimum range (the Assault Mech's missiles).
+  inRange(u, e, range = u.t.range) { const d = Math.hypot(e.x - u.x, e.z - u.z) - e.radius; return d <= range && d >= (u.t.minRange || 0); }
+  tooClose(u, e) { return Math.hypot(e.x - u.x, e.z - u.z) - e.radius < (u.t.minRange || 0); }
   canSeeDirect(u, e) { return lineOfSight(this.world, u.x, this.eye(u), u.z, e.x, this.centre(e), e.z).clear; }
   // Can u shoot e now? Direct fire needs its own line of sight; indirect needs anyone on its side to see e.
   // Can u fire at e now? Its side must have spotted e (detection factor), and direct fire needs a clear line.
@@ -154,11 +156,12 @@ export class Units {
       if (sees) e.seenBy[u.team] = this.time + 1.0;       // spotted: its whole side knows where it is for a moment
       // Fire at it if in range and this side has spotted it (by this unit or another one spotting for it).
       // Shells go over obstacles; direct fire still needs a clear line from this unit.
-      if (d <= u.t.range && d < bd) {
+      const close = d < (u.t.minRange || 0);             // inside its minimum range: can't fire at it, and no use chasing it
+      if (d <= u.t.range && !close && d < bd) {
         const spotted = sees || e.seenBy[u.team] > this.time;
         if (spotted && (sees || u.t.indirect || this.canSeeDirect(u, e))) { bd = d; best = e; }
       }
-      if (d <= reach && d < nd && (sees || e.seenBy[u.team] > this.time)) { nd = d; near = e; }
+      if (d <= reach && !close && d < nd && (sees || e.seenBy[u.team] > this.time)) { nd = d; near = e; }
     }
     u.target = best; u.near = near;
   }
@@ -189,7 +192,15 @@ export class Units {
       // Movement decisions.
       if (u.order === 'attack' && u.attackTarget) {
         if (target === u.attackTarget) { if (m.state !== 'idle') this.movers.stop(m); }
-        else if ((u.chaseT -= dt) <= 0) { u.chaseT = 1; this._goTo(u, u.attackTarget.x, u.attackTarget.z); }
+        else if ((u.chaseT -= dt) <= 0) {
+          u.chaseT = 1;
+          const e = u.attackTarget;
+          if (this.tooClose(u, e)) {
+            // Too close to fire at: back off to just beyond the minimum range, then fire.
+            const dx = u.x - e.x, dz = u.z - e.z, l = Math.hypot(dx, dz) || 1, r = u.t.minRange + e.radius + 2;
+            this._goTo(u, e.x + dx / l * r, e.z + dz / l * r);
+          } else this._goTo(u, e.x, e.z);
+        }
       } else if (u.order === 'amove' || u.order === 'idle') {
         const home = u.order === 'amove' ? u.goal : u.guard;
         if (target) { if (m.state !== 'idle') this.movers.stop(m); }

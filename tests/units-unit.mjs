@@ -11,7 +11,7 @@ import { Movers } from '../src/units/movers.js';
 import { Units } from '../src/units/units.js';
 import { Damage } from '../src/combat/damage.js';
 import { lineOfSight, coverAt } from '../src/combat/los.js';
-import { TERRAIN, MAP_SIZE , COMBAT} from '../src/config.js';
+import { TERRAIN, MAP_SIZE, COMBAT, UNIT_TYPES } from '../src/config.js';
 import { checker } from './harness.mjs';
 
 const { check, done } = checker();
@@ -228,15 +228,39 @@ const finite = w => w.units.list.every(u => Number.isFinite(u.x + u.y + u.z + u.
     for (const p of U.projectiles.list) if (!seen.includes(p)) { p.launchT = t; seen.push(p); }
   }
   const spread = seen.length ? seen[seen.length - 1].launchT - seen[0].launchT : 0;
-  check(T.dmg === 75 && T.splash === 3 && T.proj === 'missile', `Assault Mech: damage ${T.dmg} a salvo, splash ${T.splash}, missiles`);
+  check(T.dmg === 75 && T.splash === 4 && T.proj === 'missile', `Assault Mech: damage ${T.dmg} a salvo, splash ${T.splash}, missiles`);
   check(seen.length === T.salvo && seen.every(p => p.kind === 'missile'), `a salvo is a stream of ${seen.length} missiles`);
   check(Math.abs(spread - (T.salvo - 1) * T.salvoGap) < 0.05, `launched one after another over ${spread.toFixed(2)} s`);
-  check(Math.abs(seen.reduce((s, p) => s + p.dmg, 0) - T.dmg) < 1e-6 && seen.every(p => p.splash === 3), `together they carry its ${T.dmg} damage, each with a splash of 3`);
+  check(Math.abs(seen.reduce((s, p) => s + p.dmg, 0) - T.dmg) < 1e-6 && seen.every(p => p.splash === T.splash), `together they carry its ${T.dmg} damage, each with a splash of ${T.splash}`);
   check(new Set(seen.map(p => `${p.from.x.toFixed(2)},${p.from.y.toFixed(2)}`)).size >= 3, 'from its barrels in turn');
   const hp0 = e.hp;
   w.run(4);
   check(e.hp < hp0 && U.projectiles.list.length === 0, `they land on the target (${(hp0 - e.hp).toFixed(0)} damage)`);
   check(finite(w), 'no NaN');
+}
+
+// ---------- the Assault Mech's minimum range ----------
+{
+  const w = world(), U = w.units, T = UNIT_TYPES.titan;
+  check(T.minRange === 10 && T.splash === 4, `Assault Mech: minimum range ${T.minRange}, splash ${T.splash}`);
+  const a = U.spawn('titan', 0, 0, 20), near = U.spawn('scout', 1, 0, 14);         // 6 away (5 to its edge)
+  near.t = { ...near.t, range: 0.1 }; near.hp = near.maxHp = 1e6;
+  U.stop([a, near]);
+  w.run(6);
+  check(U.stats.shots === 0, `it won't fire at an enemy ${(Math.hypot(near.x - a.x, near.z - a.z) - near.radius).toFixed(1)} away, inside its minimum range (${U.stats.shots} shots)`);
+  check(Math.hypot(a.x, a.z - 20) < 1, "and doesn't walk up to it either");
+  // Ordered to attack it: it backs off past the minimum range, then fires.
+  U.attack([a], near);
+  w.run(15, () => U.stats.shots > 0);
+  const d = Math.hypot(near.x - a.x, near.z - a.z) - near.radius;
+  check(U.stats.shots > 0 && d >= T.minRange, `ordered to attack it, it backs off to ${d.toFixed(1)} away, then fires (${U.stats.shots} shots)`);
+  // Something just beyond the minimum range is fair game.
+  const w2 = world(), U2 = w2.units, a2 = U2.spawn('titan', 0, 0, 20), far = U2.spawn('scout', 1, 0, 6);
+  far.t = { ...far.t, range: 0.1 }; far.hp = far.maxHp = 1e6; U2.stop([a2, far]);
+  w2.run(4);
+  check(U2.stats.shots > 0, `an enemy ${(Math.hypot(far.x - a2.x, far.z - a2.z) - far.radius).toFixed(1)} away (beyond the minimum range): it fires`);
+  // Other mechs have none.
+  check(['scout', 'medium', 'assault'].every(k => UNIT_TYPES[k].minRange === 0), 'other mechs have no minimum range');
 }
 
 done();
