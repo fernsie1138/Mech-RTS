@@ -162,7 +162,7 @@ const finite = w => w.units.list.every(u => Number.isFinite(u.x + u.y + u.z + u.
     for (const u of w.units.list) {
       const prev = last.get(u);
       // Stuck: told to go somewhere, nothing to shoot, and hasn't moved 1 unit in 30 s.
-      if (prev && u.order !== 'idle' && !u.target && u.mover.state !== 'idle' && Math.hypot(u.x - prev.x, u.z - prev.z) < 1) { if (++prev.n === 3) { stuck++; stuckInfo.push(`${u.type} team ${u.team} at (${u.x.toFixed(1)}, ${u.z.toFixed(1)}) order ${u.order} goal (${u.goal?.x.toFixed(1)}, ${u.goal?.z.toFixed(1)}) mover ${u.mover.state} path ${u.mover.path?.length} t ${(t / 60).toFixed(1)}`); } }
+      if (prev && u.order !== 'idle' && !u.target && u.mover.state !== 'idle' && Math.hypot(u.x - prev.x, u.z - prev.z) < 1) { if (++prev.n === 3) { stuck++; stuckInfo.push(`${u.type} team ${u.team} at (${u.x.toFixed(1)}, ${u.z.toFixed(1)}) order ${u.order} goal (${u.goal?.x.toFixed(1)}, ${u.goal?.z.toFixed(1)}) mover ${u.mover.state} path ${u.mover.path?.points.length} t ${(t / 60).toFixed(1)}`); } }
       else last.set(u, { x: u.x, z: u.z, n: 0 });
     }
   }, () => !!m.over);
