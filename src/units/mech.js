@@ -56,6 +56,7 @@ export class MechView {
   // heightAt: ground height (for construction sites). construction / preview are set by the game.
   constructor(scene, heightAt = () => 0) {
     this.heightAt = heightAt;
+    this._up = new THREE.Vector3();
     this.construction = null;
     this.preview = null;
     // Fog of war: which enemy mechs/structures to draw, and whether a spot is in view (wrecks, tracers).
@@ -159,14 +160,19 @@ export class MechView {
         this.rings.setMatrixAt(r++, this._m);
       }
       if (b < MAX_UNITS) {                                   // every unit you can see has its bar
-        // Bigger when the camera is further away, so they stay readable zoomed out.
-        const y = u.y + u.height + 0.8, k = Math.min(2.6, Math.max(1, camera.position.distanceTo(this._p.set(u.x, y, u.z)) / 55));
-        const wdt = Math.max(1.8, u.radius * 1.8) * k, frac = Math.max(0, u.hp / u.maxHp);
-        this._m.compose(this._p.set(u.x, y, u.z), camQ, this._s.set(wdt + 0.24 * k, 0.6 * k, 1));
+        // A slim bar floating just above the mech on screen (lifted along the camera's up direction, so it
+        // never covers the body), growing a little when the camera is further away so it stays readable.
+        const k = Math.min(2, Math.max(1, camera.position.distanceTo(this._p.set(u.x, u.y + u.height, u.z)) / 60));
+        const wdt = Math.max(1.2, u.radius * 1.25) * k, frac = Math.max(0, u.hp / u.maxHp);
+        // Placed just outside a sphere round the whole mech (its height and its width), straight up on screen.
+        const up = this._up.set(0, 1, 0).applyQuaternion(camQ);
+        const R = Math.max(u.height * 0.55, u.radius * 1.5) + 0.45 * k, mid = u.y + u.height * 0.5;
+        const cx = u.x + up.x * R, cy = mid + up.y * R, cz = u.z + up.z * R;
+        this._m.compose(this._p.set(cx, cy, cz), camQ, this._s.set(wdt + 0.16 * k, 0.34 * k, 1));
         this.barBg.setMatrixAt(b, this._m);
         // Foreground bar shrinks from the right: shift its centre left along the camera's right vector.
-        this._p.set(-(1 - frac) * wdt / 2, 0, 0).applyQuaternion(camQ).add(this._s.set(u.x, y, u.z));
-        this._m.compose(this._p, camQ, this._s.set(Math.max(0.001, wdt * frac), 0.4 * k, 1));
+        this._p.set(-(1 - frac) * wdt / 2, 0, 0).applyQuaternion(camQ).add(this._s.set(cx, cy, cz));
+        this._m.compose(this._p, camQ, this._s.set(Math.max(0.001, wdt * frac), 0.2 * k, 1));
         this.barFg.setMatrixAt(b, this._m);
         this.barFg.setColorAt(b, this._c.setHex(frac > 0.6 ? 0x3dff5a : frac > 0.3 ? 0xffe62e : 0xff2e2e));
         b++;

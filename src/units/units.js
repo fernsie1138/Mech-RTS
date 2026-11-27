@@ -16,12 +16,11 @@ import { UNIT_TYPES, COMBAT, HQ_TYPE, TURRET_TYPE } from '../config.js';
 export const STRUCTURE_TYPES = { hq: HQ_TYPE, turret: TURRET_TYPE };
 import { NAV_CLASSES } from '../nav/navgrid.js';
 import { lineOfSight, coverAt } from '../combat/los.js';
+import { FEATURE } from '../terrain/surface.js';
 import { Projectiles } from '../combat/projectiles.js';
 
 // The mover already finished a path to this goal (arrived, or stopped as close as it could get).
 const doneWith = (m, g) => m.state === 'idle' && m.doneGoal && Math.hypot(m.doneGoal.x - g.x, m.doneGoal.z - g.z) < 0.5;
-// Detection factor of a unit or structure, 0..1 (UNIT_TYPES[..].detect is a percentage).
-const detectOf = e => (e.t.detect ?? 100) / 100;
 const wrap = a => { while (a > Math.PI) a -= Math.PI * 2; while (a < -Math.PI) a += Math.PI * 2; return a; };
 const turnToward = (cur, target, step) => { const d = wrap(target - cur); return Math.abs(d) <= step ? target : cur + Math.sign(d) * step; };
 
@@ -132,6 +131,15 @@ export class Units {
     return spotted && this.canSeeDirect(u, e);
   }
 
+  // Detection factor of a unit or structure, 0..1: its own (UNIT_TYPES[..].detect, a percentage), x0.8 in a trench,
+  // never below COMBAT.minDetect.
+  detectOf(e) {
+    let f = (e.t.detect ?? 100) / 100;
+    const { hf, surface } = this.world;
+    if (surface && (surface.features[hf.index(Math.round(hf.gx(e.x)), Math.round(hf.gz(e.z)))] & FEATURE.TRENCH)) f *= COMBAT.trenchDetect;
+    return Math.max(COMBAT.minDetect, f);
+  }
+
   _findTargets(u) {
     // Nearest shootable enemy in range, and nearest visible enemy within chase distance.
     let best = null, bd = Infinity, near = null, nd = Infinity;
@@ -142,9 +150,14 @@ export class Units {
       const sight = u.t.sight || COMBAT.sightRange;
       if (d > Math.max(reach, sight)) continue;
       // Spotted only within sight x the target's detection factor (stealthy units must be closer to be seen).
-      const sees = d <= sight * detectOf(e) && this.canSeeDirect(u, e);
-      if (sees) e.seenBy[u.team] = this.time + 1.0;       // spotted: friendly Titans may shell it for a while
-      if (d <= u.t.range && d < bd && (sees || (u.t.indirect && e.seenBy[u.team] > this.time))) { bd = d; best = e; }
+      const sees = d <= sight * this.detectOf(e) && this.canSeeDirect(u, e);
+      if (sees) e.seenBy[u.team] = this.time + 1.0;       // spotted: its whole side knows where it is for a moment
+      // Fire at it if in range and this side has spotted it (by this unit or another one spotting for it).
+      // Shells go over obstacles; direct fire still needs a clear line from this unit.
+      if (d <= u.t.range && d < bd) {
+        const spotted = sees || e.seenBy[u.team] > this.time;
+        if (spotted && (sees || u.t.indirect || this.canSeeDirect(u, e))) { bd = d; best = e; }
+      }
       if (d <= reach && d < nd && (sees || e.seenBy[u.team] > this.time)) { nd = d; near = e; }
     }
     u.target = best; u.near = near;

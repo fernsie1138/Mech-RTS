@@ -73,6 +73,49 @@ const still = (w, ...us) => { for (const u of us) { u.t = { ...u.t, range: 0.1 }
   check(U.stats.shots >= shots0, 'and can then be fired on');
 }
 
+// ---------- detection: Light Mechs 75%, trenches x0.8, never below 40%; spotters ----------
+{
+  const T = (await import('../src/config.js'));
+  check(T.UNIT_TYPES.scout.detect === 75 && T.TURRET_TYPE.range === 35, 'Light Mechs have a 75% detection factor; turrets range 35');
+  const w = world(), U = w.units, a = U.spawn('assault', 1, 0, 40), l = U.spawn('scout', 0, -18, 40 - 24), l2 = U.spawn('scout', 0, 15, 40 - 20);   // 30 and 25 away
+  still(w, a, l, l2); w.run(1);
+  // Heavy Mech sight 36 x 75% = 27: a Light Mech 30 away is hidden, one 25 away (well, ~25.9) is seen.
+  check(!w.vision.sees(1, l) && w.vision.sees(1, l2), `a Heavy Mech (sight 36) spots a Light Mech (75%) within 27 but not at 30`);
+  // Trench: x0.8 on top (75% -> 60%); floor 40%.
+  const tw = world(), b = tw.units.spawn('builder', 0, 0, 12), r = tw.con ? null : null;
+  const { Construction } = await import('../src/world/construction.js');
+  const con = new Construction(tw), jobs = con.order([b], con.plan('trench', -10, 0, 10, 0)).jobs;
+  for (let t = 0; t < 80 && !jobs.every(j => j.done); t += 1 / 60) { tw.nav.update(); tw.movers.step(1 / 60); tw.units.step(1 / 60); con.step(1 / 60); }
+  const inT = tw.units.spawn('scout', 0, 0, 0.2), open = tw.units.spawn('scout', 0, 30, 0);
+  check(Math.abs(tw.units.detectOf(inT) - 0.6) < 1e-9 && tw.units.detectOf(open) === 0.75, `a Light Mech in a trench is 60% (75% x 0.8); in the open 75%`);
+  inT.t = { ...inT.t, detect: 45 };
+  check(Math.abs(tw.units.detectOf(inT) - 0.4) < 1e-9, 'no unit goes below 40% (45% x 0.8 = 36% -> 40%)');
+}
+// ---------- firing on a spotter's say-so ----------
+{
+  const w = world(), U = w.units;
+  // A Heavy Mech (sight 36, range 23) and a stealthy target 22 away at 50%: the Heavy can't see it (needs 18)...
+  const h = U.spawn('assault', 0, 0, 22), e = U.spawn('scout', 1, 0, 0);
+  e.t = { ...e.t, detect: 50, range: 0.1 }; e.hp = e.maxHp = 1e6;
+  still(w, e); w.units.stop([h]); w.run(2);
+  check(!w.vision.sees(0, e) && U.stats.shots === 0, 'a Heavy Mech holds fire at a stealthy mech in range that nobody on its side can see');
+  // ...a Light Mech spots it (sight 46 x 50% = 23 from 20 away): now the Heavy fires, though it still can't see it itself.
+  const sp = U.spawn('scout', 0, 20, 0); still(w, sp); sp.t = { ...sp.t, range: 0.1 };
+  w.run(3);
+  check(w.vision.sees(0, e) && U.stats.shots > 0 && h.target === e, `with a Light Mech spotting for it, the Heavy fires at it (${U.stats.shots} shots)`);
+  // Line of sight still blocks direct fire: put a wall between them.
+  const w2 = world(() => 0, { buildings: [{ type: 'wall', x: 0, z: 11, rot: 0 }, { type: 'wall', x: 10, z: 11, rot: 0 }, { type: 'wall', x: -10, z: 11, rot: 0 }] });
+  const h2 = w2.units.spawn('assault', 0, 0, 22), e2 = w2.units.spawn('scout', 1, 0, 2), s2 = w2.units.spawn('scout', 0, 20, 2);
+  e2.t = { ...e2.t, range: 0.1 }; e2.hp = e2.maxHp = 1e6; s2.t = { ...s2.t, range: 0.1 };
+  still(w2, e2, s2); w2.units.stop([h2]); w2.run(3);
+  check(w2.vision.sees(0, e2) && h2.target !== e2, 'but not through a wall: spotted, yet the Heavy has no clear line, so it holds fire');
+  // A turret fires out to 35 when something spots for it (its own sight is 30).
+  const w3 = world(), tur = w3.units.addStructure('turret', 0, 0, 34), tg = w3.units.spawn('assault', 1, 0, 0), sc = w3.units.spawn('scout', 0, 20, 10);
+  tg.t = { ...tg.t, range: 0.1 }; tg.hp = tg.maxHp = 1e6; sc.t = { ...sc.t, range: 0.1 };
+  still(w3, tg, sc); w3.run(3);
+  check(tur.target === tg && w3.units.stats.shots > 0, 'a turret hits a spotted enemy 32 away (range 35, past its own sight)');
+}
+
 // ---------- walls block sight; trees don't ----------
 {
   const w = world(() => 0, { buildings: [{ type: 'wall', x: 0, z: 0, rot: 0 }, { type: 'wall', x: 10, z: 0, rot: 0 }, { type: 'wall', x: -10, z: 0, rot: 0 }] });
