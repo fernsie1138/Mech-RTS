@@ -255,7 +255,9 @@ export class MechView {
       c.set(u.x, u.y + u.height * 0.55, u.z);
       ray.closestPointToPoint(c, p);
       const d = p.distanceTo(c);
-      if (d < Math.max(u.radius, u.height * (slack < 0.5 ? 0.4 : 0.5)) + slack && d < bd) { bd = d; best = u; }
+      // A sphere round the mech (tall mechs are slim: not much more than their height x 0.4, or a tall Heavy Mech
+      // would catch taps meant for the small mech beside it).
+      if (d < Math.max(u.radius, u.height * (slack < 0.5 ? 0.35 : 0.4)) + slack && d < bd) { bd = d; best = u; }
     }
     return best;
   }

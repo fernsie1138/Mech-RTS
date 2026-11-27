@@ -105,10 +105,13 @@ const still = (w, ...us) => { for (const u of us) { u.t = { ...u.t, range: 0.1 }
   check(w.vision.sees(0, e) && U.stats.shots > 0 && h.target === e, `with a Light Mech spotting for it, the Heavy fires at it (${U.stats.shots} shots)`);
   // Line of sight still blocks direct fire: put a wall between them.
   const w2 = world(() => 0, { buildings: [{ type: 'wall', x: 0, z: 11, rot: 0 }, { type: 'wall', x: 10, z: 11, rot: 0 }, { type: 'wall', x: -10, z: 11, rot: 0 }] });
-  const h2 = w2.units.spawn('assault', 0, 0, 22), e2 = w2.units.spawn('scout', 1, 0, 2), s2 = w2.units.spawn('scout', 0, 20, 2);
+  const h2 = w2.units.spawn('medium', 0, 0, 22), e2 = w2.units.spawn('scout', 1, 0, 2), s2 = w2.units.spawn('scout', 0, 20, 2);
   e2.t = { ...e2.t, range: 0.1 }; e2.hp = e2.maxHp = 1e6; s2.t = { ...s2.t, range: 0.1 };
   still(w2, e2, s2); w2.units.stop([h2]); w2.run(3);
-  check(w2.vision.sees(0, e2) && h2.target !== e2, 'but not through a wall: spotted, yet the Heavy has no clear line, so it holds fire');
+  check(w2.vision.sees(0, e2) && h2.target !== e2, 'but not through a wall: spotted, yet a Medium Mech has no clear line, so it holds fire');
+  // A Heavy Mech (6.6 tall) fires over the same wall: its guns are above the wall's top.
+  const h3 = w2.units.spawn('assault', 0, 4, 22); w2.units.stop([h3]); w2.run(3);
+  check(h3.target === e2, 'a Heavy Mech, much taller, can fire over the wall');
   // A turret fires out to 35 when something spots for it (its own sight is 30).
   const w3 = world(), tur = w3.units.addStructure('turret', 0, 0, 34), tg = w3.units.spawn('assault', 1, 0, 0), sc = w3.units.spawn('scout', 0, 20, 10);
   tg.t = { ...tg.t, range: 0.1 }; tg.hp = tg.maxHp = 1e6; sc.t = { ...sc.t, range: 0.1 };
