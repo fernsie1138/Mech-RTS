@@ -257,6 +257,7 @@ export class Buildings {
     this.falling = [];            // pieces just destroyed: { i, vx, vy, vz, spin } (the renderer animates them)
     this.chunks = [];             // rubble chunks lying on the ground: { x, z, s, color, rot, alive }
     this.chunksChanged = false;
+    this.heaps = [];                // rubble heap pictures to stamp on the ground: { x, z, size } (taken by damage.js)
     this.piles = new Map();         // rubble chips per 0.8-unit cell (they stack up)
     this.brokenChanged = false;     // a piece became broken or one that was broken fell (renderer: framework)
     this._seed = 12345;
@@ -351,6 +352,11 @@ export class Buildings {
     }
     if (this.chunks.length > 5000) this.chunks = this.chunks.filter(c => c.alive).slice(-4000);
     this.chunksChanged = true;
+    // Now and then a rubble heap picture on the ground there too (damage.js stamps them into the ground texture).
+    if (this._rand() < Math.min(1, n * 0.3)) {
+      const along = (this._rand() - 0.5) * p.sx, out = side * (p.sz / 2 + 0.4 + this._rand() * 1.2);
+      this.heaps.push({ x: p.px + along * c + out * s, z: p.pz - along * s + out * c, size: 1.4 + this._rand() * 1.6 });
+    }
   }
 
   _rand() { this._seed = (this._seed * 16807) % 2147483647; return this._seed / 2147483647; }
@@ -409,6 +415,7 @@ export class Buildings {
       }
       const vol = p.sx * p.sy * p.sz * BUILDING.rubbleBulk;
       const r = Math.max(p.sx, p.sz) * 0.6 + 1.2;
+      if (!p.detail) this.heaps.push({ x: p.px, z: p.pz, size: r * (1.3 + hash(p.pz, p.px) * 0.8) });
       out.push({ x: p.px, z: p.pz, r, h: vol / (Math.PI * r * r * MOUND_SHAPE) });
       // A few loose chunks in the piece's colour, so the heap reads as rubble.
       const n = Math.max(1, Math.min(6, Math.round(vol * 1.2)));

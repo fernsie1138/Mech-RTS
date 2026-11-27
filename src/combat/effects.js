@@ -23,6 +23,7 @@ export const EFFECTS = {
   hazeAlpha: 0.09,                   // ... so faint that mechs beyond it stay visible; layers build up a light haze
   blackSmoke: 0.04,                  // colour of smoke from burning mechs and wrecks (near black)
   blackAlpha: 0.48,                  // ... thicker than grey smoke, so it reads as black
+  plumeLife: [4, 6.5],               // seconds a puff of smoke from a fire or wreck lasts (flat puffs)
 };
 
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -39,12 +40,48 @@ function withInstanceAlpha(mat) {
   return mat;
 }
 
+// Flat smoke puffs (long-lasting smoke): a quad turned to face the camera, with a soft round puff picture.
+// Two triangles each instead of a solid, so hundreds of slow puffs cost little.
+function withBillboard(mat) {
+  mat.onBeforeCompile = sh => {
+    sh.vertexShader = 'attribute float iAlpha;\nvarying float vIAlpha;\n' + sh.vertexShader
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\n  vIAlpha = iAlpha;')
+      .replace('#include <project_vertex>', `#include <project_vertex>
+        {
+          vec4 bc = modelViewMatrix * instanceMatrix * vec4( 0.0, 0.0, 0.0, 1.0 );
+          float bs = length( instanceMatrix[ 0 ].xyz ), ba = atan( instanceMatrix[ 0 ].y, instanceMatrix[ 0 ].x );
+          vec2 bq = vec2( position.x * cos( ba ) - position.y * sin( ba ), position.x * sin( ba ) + position.y * cos( ba ) );
+          mvPosition = vec4( bc.xyz + vec3( bq * bs, 0.0 ), 1.0 );
+          gl_Position = projectionMatrix * mvPosition;
+        }`);
+    sh.fragmentShader = 'varying float vIAlpha;\n' +
+      sh.fragmentShader.replace('#include <dithering_fragment>', '#include <dithering_fragment>\n  gl_FragColor.a *= vIAlpha;');
+  };
+  mat.customProgramCacheKey = () => 'billboard';
+  return mat;
+}
+let puffTex = null;
+function puffTexture() {
+  if (puffTex || typeof document === 'undefined') return puffTex;
+  const N = 64, c = document.createElement('canvas');
+  c.width = c.height = N;
+  const k = c.getContext('2d');
+  // A soft blob made of a few overlapping soft circles, so puffs aren't perfect discs.
+  for (const [x, y, r, a] of [[32, 32, 31, 0.95], [23, 28, 17, 0.5], [41, 26, 16, 0.45], [29, 41, 16, 0.45], [42, 40, 13, 0.4]]) {
+    const g = k.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, `rgba(255,255,255,${a})`); g.addColorStop(0.55, `rgba(255,255,255,${a * 0.7})`); g.addColorStop(1, 'rgba(255,255,255,0)');
+    k.fillStyle = g; k.fillRect(0, 0, N, N);
+  }
+  puffTex = new THREE.CanvasTexture(c);
+  return puffTex;
+}
+
 // A pool of particles drawn with one InstancedMesh.
 class Pool {
-  constructor(scene, geo, mat, max, { alpha = true, ground = false } = {}) {
+  constructor(scene, geo, mat, max, { alpha = true, ground = false, billboard = false } = {}) {
     this.max = max;
     this.ground = ground;
-    this.mesh = new THREE.InstancedMesh(geo, alpha ? withInstanceAlpha(mat) : mat, max);
+    this.mesh = new THREE.InstancedMesh(geo, billboard ? withBillboard(mat) : alpha ? withInstanceAlpha(mat) : mat, max);
     this.mesh.frustumCulled = false;
     this.mesh.count = 0;
     this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -159,15 +196,19 @@ export class Effects {
     this.debris.mesh.castShadow = true;
     // Battle haze: few, large, very faint, long-lived puffs that hang low and drift (their own pool, so the
     // short-lived smoke never pushes them out).
-    this.haze = new Pool(scene, ico1.clone(), new THREE.MeshLambertMaterial({ transparent: true, depthWrite: false, flatShading: true }), 240);
+    // Long-lasting smoke (battle haze, and the smoke from fires and wrecks) is drawn as flat puffs facing the camera.
+    const flat = () => new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, map: puffTexture() });
+    this.haze = new Pool(scene, new THREE.PlaneGeometry(2, 2), flat(), 240, { billboard: true });
     this.haze.mesh.renderOrder = 2;
-    this.pools = [this.smoke, this.trails, this.fire, this.sparks, this.debris, this.rings, this.haze];
+    this.plumes = new Pool(scene, new THREE.PlaneGeometry(2, 2), flat(), 1600, { billboard: true });
+    this.plumes.mesh.renderOrder = 3;
+    this.pools = [this.smoke, this.trails, this.fire, this.sparks, this.debris, this.rings, this.haze, this.plumes];
     // One flash light, moved to the latest big explosion (a fixed light count: no shader recompiles).
     this.light = new THREE.PointLight(0xffb060, 0, 45, 1.4);
     scene.add(this.light);
     this.lightT = 0;
     this.burners = [];             // active fire spots: { x, y, z, size, t, dur, fAcc, sAcc, alive }
-    this.maxBurners = 60;
+    this.maxBurners = 90;
     this.delayed = [];             // { t, fn }: effects that go off a moment later (secondary blasts)
   }
 
@@ -307,6 +348,17 @@ export class Effects {
       life: rand(2, 3.2) * (black ? 1.3 : 1), s0: 0.35 * size, s1: rand(1.3, 1.8) * size, c0: [dark, dark, dark], c1, a0: black ? EFFECTS.blackAlpha : EFFECTS.residualAlpha, a1: 0, drag: 0.4, buoy: 0.5, wind: 3, spin: rand(-0.5, 0.5) });
   }
 
+  // Smoke from a fire, a burning wreck or a tree: a flat puff that rises, spreads and drifts off for several
+  // seconds. black: thick black smoke (burning mechs and wrecks) instead of grey.
+  plume(x, y, z, size = 1, dark = 0.18, black = false) {
+    const c1 = black ? [0.1, 0.1, 0.1] : [0.5, 0.49, 0.47];
+    if (black) dark = EFFECTS.blackSmoke;
+    const [l0, l1] = EFFECTS.plumeLife;
+    this.plumes.emit({ x: x + rand(-0.3, 0.3) * size, y, z: z + rand(-0.3, 0.3) * size, vx: rand(-0.3, 0.3), vy: rand(1.2, 2.2), vz: rand(-0.3, 0.3),
+      life: rand(l0, l1) * (black ? 1.3 : 1), s0: 0.45 * size, s1: rand(1.8, 2.5) * size, c0: [dark, dark, dark], c1,
+      a0: (black ? EFFECTS.blackAlpha : EFFECTS.residualAlpha) * 1.3, a1: 0, drag: 0.4, buoy: 0.5, wind: 3, spin: rand(-0.3, 0.3) });
+  }
+
   // Lingering battle haze: a big, very faint puff that sinks to hang low and drifts slowly for up to a minute.
   hazePuff(x, y, z, size = 3) {
     const [l0, l1] = EFFECTS.hazeLife, g = rand(0.45, 0.6);
@@ -349,7 +401,7 @@ export class Effects {
           life: rand(0.4, 0.75), s0: 0.75 * b.size * fade, s1: 0.15, c0: [1, 0.72, 0.3], c1: [0.8, 0.18, 0.03], a0: 0.9, a1: 0, buoy: 1, spin: rand(-3, 3) });
       }
       b.sAcc += dt * 2 * b.size;
-      while (b.sAcc >= 1) { b.sAcc -= 1; this.smokePuff(b.x, b.y + 1.2 * b.size, b.z, b.size, 0.12, b.black); }
+      while (b.sAcc >= 1) { b.sAcc -= 1; this.plume(b.x, b.y + 1.2 * b.size, b.z, b.size, 0.12, b.black); }
       return true;
     });
     const trail = (x, y, z, s) => {
@@ -368,6 +420,6 @@ export class Effects {
   }
 
   // Live particles per pool (tests / debug).
-  counts() { return { haze: this.haze.alive, smoke: this.smoke.alive, trails: this.trails.alive, fire: this.fire.alive, sparks: this.sparks.alive, debris: this.debris.alive, rings: this.rings.alive, burners: this.burners.length }; }
+  counts() { return { plumes: this.plumes.alive, haze: this.haze.alive, smoke: this.smoke.alive, trails: this.trails.alive, fire: this.fire.alive, sparks: this.sparks.alive, debris: this.debris.alive, rings: this.rings.alive, burners: this.burners.length }; }
   activeCount() { return this.pools.reduce((s, p) => s + p.alive, 0) + this.burners.length; }
 }

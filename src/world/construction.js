@@ -20,6 +20,7 @@ import { FEATURE } from '../terrain/surface.js';
 import { flattenFootprint } from './buildings.js';
 
 let nextJob = 1;
+export const newJobId = () => nextJob++;
 
 export class Construction {
   // world: { hf, surface, water, buildings, nav, units }   pay(team, cost): true if paid (sandbox: always)
