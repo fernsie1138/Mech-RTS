@@ -1,5 +1,19 @@
 # Changelog
 
+## v27 — Your Heavy Mech and turret models
+- **The Heavy Mech now uses your model** (`assets/heavy-mech.gltf`): body, rocket pod, both arms, hips, thighs, calves and feet.
+  - It is the same size as before (4.1 tall).
+  - Its legs walk with normal, forward-bending knees, and the feet stay flat.
+  - The upper body (body, rocket pod, arms) turns on its own to aim.
+  - It crouches in Defend.
+  - Wrecks use the model too.
+  - Shots come out of the forearm guns.
+- **The auto turret now uses your model** (`assets/turret.gltf`): the tower stands still, and the head and both barrels turn to aim. Shots come out of the barrels. It still rises out of the ground while a Builder builds it.
+- Like the Medium Mech, the models have no textures. Team colours, panel seams and grime are painted in code: the Heavy's body and thighs and the turret's head are in team colour, the rest in greys.
+- The new `units/modelview.js` draws any glTF model with named parts, so later models can be added the same way.
+- **Fixed: mechs could get stuck in a flooded crater.** A mech crawling out of a steep, flooded crater could be pushed back in by another mech pressing against it, again and again. Now a mech on much harder ground is barely pushed by others, so it can crawl out. (The simulated AI-vs-AI match found this.)
+- Tests: new `tests/models.mjs` checks that both models load and are drawn, their sizes, that the legs move when walking, that shots leave from the barrels with the torso or head turned, and that wrecks use the model.
+
 ## v26 — Battle Value replaces the unit cap
 - **Battle Value (BV)** replaces the old limit of 40 mechs a side. Every unit has a BV, and bigger, stronger units cost more of it: Turret 1, Light Mech 1, Medium Mech 2, Builder 3, Heavy Mech 4, Assault Mech 6.
 - **Each side may field 30 BV at the start, plus 5 for each capture point it holds.** Mechs alive and in the build queue count, and so do turrets (standing, being built, or ordered). So nobody can build only Assault Mechs.

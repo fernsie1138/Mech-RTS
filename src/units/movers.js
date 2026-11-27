@@ -212,7 +212,13 @@ export class Movers {
       if (d2 >= min * min) continue;
       const d = Math.sqrt(d2) || 0.01, push = (min - d) / 2, ux = d2 ? dx / d : 1, uz = d2 ? dz / d : 0;
       // Moving units shove idle ones more than the other way round.
-      const wa = A.state === 'moving' && B.state !== 'moving' ? 0.3 : B.state === 'moving' && A.state !== 'moving' ? 1.7 : 1;
+      let wa = A.state === 'moving' && B.state !== 'moving' ? 0.3 : B.state === 'moving' && A.state !== 'moving' ? 1.7 : 1;
+      // One on much harder ground (deep mud, a flooded crater wall) is barely pushed: it can hardly move, and being
+      // shoved back by a mech pressing against it would undo what little progress it makes, so it would never get out.
+      if (wa === 1) {
+        const ca = G.costAt(A.cls, A.x, A.z), cb = G.costAt(B.cls, B.x, B.z);
+        if (ca > cb * 2) wa = 0.2; else if (cb > ca * 2) wa = 1.8;
+      }
       const ax = A.x - ux * push * wa, az = A.z - uz * push * wa, bx = B.x + ux * push * (2 - wa), bz = B.z + uz * push * (2 - wa);
       if (G.passable(A.cls, ax, az)) { A.x = ax; A.z = az; }
       if (G.passable(B.cls, bx, bz)) { B.x = bx; B.z = bz; }

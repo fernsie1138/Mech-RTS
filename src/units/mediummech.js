@@ -141,7 +141,7 @@ export class MediumMechView {
 const WHITE = new THREE.Color(1, 0.95, 0.8);
 
 // Flat-shaded armour with panel lines and grime painted from the model-space position (no textures needed).
-function paintedMaterial() {
+export function paintedMaterial() {
   const m = new THREE.MeshLambertMaterial({ flatShading: true });
   m.onBeforeCompile = sh => {
     sh.vertexShader = sh.vertexShader
