@@ -32,8 +32,8 @@ await page.evaluate(() => {
 });
 let u = await mine();
 check(u.length === 6 && u.filter(x => x.type === 'scout').length === 2, `two player squads on the field (${u.map(x => x.type).join(', ')})`);
-const parts = await page.evaluate(() => window.__game.mechView.parts.count);
-check(parts > 6 * 10, `mechs are drawn from instanced box parts (${parts} parts for 6 mechs)`);
+const drawn = await page.evaluate(() => { const V = window.__game.mechView; return Object.values(V.models).reduce((s, m) => s + (m.ready ? m.meshes.body?.count || 0 : 0), 0) + V.medium.n + V.parts.count / 15; });
+check(drawn >= 6, `all 6 mechs are drawn (from their models, instanced)`);
 await page.screenshot({ path: join(out, 'combat-squads.png') });
 
 // Tap a Titan: just it. Double tap a Scout: both Scouts.

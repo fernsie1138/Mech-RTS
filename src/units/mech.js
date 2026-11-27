@@ -65,8 +65,8 @@ export class MechView {
     this.inView = () => true;
     this.group = new THREE.Group();
     this.medium = new MediumMechView(this.group);     // Medium Mechs use David's model (loaded by the game: loadModels)
-    // Heavy Mechs and turrets too (until their models are loaded they are drawn from boxes).
-    this.models = { assault: new ModelView(this.group, MODELS.heavy), turret: new ModelView(this.group, MODELS.turret, 120) };
+    // Light, Heavy and Assault Mechs and turrets too (until their models are loaded they are drawn from boxes).
+    this.models = { scout: new ModelView(this.group, MODELS.light), assault: new ModelView(this.group, MODELS.heavy), titan: new ModelView(this.group, MODELS.assault), turret: new ModelView(this.group, MODELS.turret, 120) };
     this.group.name = 'mechs';
     scene.add(this.group);
     this.parts = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshLambertMaterial({ flatShading: true }), MAX_PARTS);
@@ -255,7 +255,9 @@ export class MechView {
       c.set(u.x, u.y + u.height * 0.55, u.z);
       ray.closestPointToPoint(c, p);
       const d = p.distanceTo(c);
-      if (d < Math.max(u.radius, u.height * (slack < 0.5 ? 0.4 : 0.5)) + slack && d < bd) { bd = d; best = u; }
+      // A sphere round the mech (tall mechs are slim: not much more than their height x 0.4, or a tall Heavy Mech
+      // would catch taps meant for the small mech beside it).
+      if (d < Math.max(u.radius, u.height * (slack < 0.5 ? 0.35 : 0.4)) + slack && d < bd) { bd = d; best = u; }
     }
     return best;
   }

@@ -73,7 +73,7 @@ export const UNIT_TYPES = {
   scout:   { name: 'Light Mech', short: 'Light', cls: 0, detect: 75, bv: 1, cost: 100, build: 4,  hp: 140, range: 18, sight: 46,  dmg: 9,   rof: 0.22, proj: 'mg',     projSpeed: 90, splash: 0,   scale: 0.8,  turn: 6, accuracy: 0.75 },
   // Medium Mech (David's model, units/mediummech.js): between the Light and Heavy. Autocannon, digitigrade legs.
   medium:  { name: 'Medium Mech', short: 'Medium', cls: 1, detect: 100, bv: 2, cost: 160, build: 5.5, hp: 250, range: 21, sight: 40, dmg: 15, rof: 0.45, proj: 'autocannon', projSpeed: 75, splash: 0.6, scale: 1, turn: 5, accuracy: 0.78, speed: 1.25 },
-  assault: { name: 'Heavy Mech', short: 'Heavy', cls: 1, detect: 100, bv: 4, cost: 220, build: 7,  hp: 360, range: 23, sight: 36,  dmg: 28,  rof: 0.9,  proj: 'cannon', projSpeed: 60, splash: 1.5, scale: 1.15, turn: 4, accuracy: 0.8 },
+  assault: { name: 'Heavy Mech', short: 'Heavy', cls: 1, detect: 100, bv: 4, cost: 220, build: 7,  hp: 360, range: 23, sight: 36,  dmg: 28,  rof: 0.9,  proj: 'cannon', projSpeed: 60, splash: 1.5, scale: 1.84, turn: 4, accuracy: 0.8 },
   titan:   { name: 'Assault Mech', short: 'Assault', cls: 2, detect: 100, bv: 6, cost: 420, build: 12, hp: 950, range: 32, sight: 34,  dmg: 110, rof: 2.6,  proj: 'shell',  projSpeed: 32, splash: 5,   scale: 1.6,  turn: 2, accuracy: 1, indirect: true },
   // Unarmed: builds walls and turrets and digs trenches (see BUILD). Spots for Titans like any mech.
   builder: { name: 'Builder', short: 'Builder', cls: 0, detect: 100, bv: 3, cost: 150, build: 6,  hp: 220, range: 0, sight: 30,  dmg: 0,   rof: 1,    proj: null,     projSpeed: 0,  splash: 0,   scale: 0.85, turn: 5, accuracy: 0, unarmed: true, speed: 0.7, repair: 25 },   // repair: hp per second it mends
@@ -128,7 +128,6 @@ export const BUILD = {
   turret: { name: 'Turret', cost: 180, work: 12 },
   trench: { name: 'Trench', cost: 30,  work: 7,  len: 10, depth: 1.4, halfWidth: 1.7, bank: 0.7 },
   reach: 3,                  // a Builder works from this close to the site
-  repairAuto: 10,            // an idle Builder repairs damaged friendly mechs and turrets this close by itself
 };
 export const BUILD_KEYS = ['wall', 'turret', 'trench'];
 

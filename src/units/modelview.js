@@ -1,5 +1,6 @@
 // Units drawn from David's glTF models (assets/*.gltf, one mesh per named part): one InstancedMesh per part.
-// Used for the Heavy Mech (assets/heavy-mech.gltf) and the auto turret (assets/turret.gltf). (The Medium Mech, with
+// Used for the Light Mech (assets/light-mech.gltf), Heavy Mech (assets/heavy-mech.gltf), Assault Mech
+// (assets/assault-mech.gltf) and the auto turret (assets/turret.gltf). (The Medium Mech, with
 // its digitigrade legs, has its own view: mediummech.js.)
 //
 // A model spec says which node is which part, how big the model is in the world, where its feet are, which way it
@@ -8,8 +9,9 @@
 //   group 'body'   moves with the body (bobs, crouches) but doesn't turn with the torso (hips)
 //   group 'root'   stays put (a turret's tower)
 //   leg parts      'thigh0/1', 'calf0/1', 'foot0/1': normal (forward-bending) knees. Each joint is at the top of
-//                  its part (hip = top of the thigh, knee = top of the calf, ankle = top of the foot). The walk swings
-//                  the thigh, bends the knee and keeps the foot flat.
+//                  its part (hip = top of the thigh, knee = top of the calf, ankle = top of the foot: the middle of the
+//                  part's highest points). The walk swings the thigh, bends the knee and keeps the foot flat. Works for
+//                  backward (digitigrade) knees too, as on the Light Mech.
 // The models have no textures: team colours, panel seams and grime are painted in the shader (paintedMaterial).
 import * as THREE from 'three';
 import { paintedMaterial } from './mediummech.js';
@@ -19,9 +21,32 @@ const WHITE = new THREE.Color(1, 0.95, 0.8);
 
 // Specs. size: model units -> world units; origin: model point that stands on the unit's position; yaw: turn the
 // model so its front faces +z; parts: key -> [node name, group, colour ('team' or hex)].
+// Heights match the old box models (3.6 x the unit's scale), so the game's sizes are unchanged; the Heavy Mech is
+// 60% bigger (scale 1.84).
 export const MODELS = {
+  light: {
+    url: 'assets/light-mech.gltf', height: 2.88, origin: [0, -1.3124, 0], yaw: 0,
+    parts: {
+      body: ['Body', 'torso', 'team'], gun: ['Gun', 'torso', 0x3a3f45],
+      thigh0: ['Left_thigh', 'leg', 0x59616a], calf0: ['Left_Calf', 'leg', 'team'], foot0: ['Left_Foot', 'leg', 0x2e3338],
+      thigh1: ['Right_thigh', 'leg', 0x59616a], calf1: ['Right_calf', 'leg', 'team'], foot1: ['Right_foot', 'leg', 0x2e3338],
+    },
+    walk: { bob: 0.12, hip: 0.45, knee: 0.7 }, crouch: { drop: 0.5, hip: 0.6, knee: 1.1 },
+    torsoPivot: 'body',
+  },
+  assault: {
+    url: 'assets/assault-mech.gltf', height: 5.76, origin: [0, -1.0943, 0], yaw: 0,
+    parts: {
+      body: ['Body', 'torso', 'team'], sh0: ['Left_shoulder', 'torso', 'team'], sh1: ['Right_shoulder', 'torso', 'team'],
+      arm0: ['Left_arm', 'torso', 0x3a3f45], arm1: ['Right_arm', 'torso', 0x3a3f45], hips: ['Hips', 'body', 0x2e3338],
+      thigh0: ['left_thigh_', 'leg', 0x59616a], calf0: ['Left_calf', 'leg', 0x8a949c], foot0: ['Left_foot', 'leg', 0x2e3338],
+      thigh1: ['Right_thigh', 'leg', 0x59616a], calf1: ['Right_calf', 'leg', 0x8a949c], foot1: ['Right_foot', 'leg', 0x2e3338],
+    },
+    walk: { bob: 0.2, hip: 0.4, knee: 0.65 }, crouch: { drop: 1.0, hip: 0.75, knee: 1.4 },
+    torsoPivot: 'body',
+  },
   heavy: {
-    url: 'assets/heavy-mech.gltf', height: 4.14, origin: [0, -23.55, 0], yaw: 0,
+    url: 'assets/heavy-mech.gltf', height: 6.62, origin: [0, -23.55, 0], yaw: 0,
     parts: {
       body: ['Body', 'torso', 'team'], pod: ['Rocket_Pod', 'torso', 0x3a3f45], arm0: ['Left_Arm', 'torso', 0x59616a], arm1: ['Right_Arm', 'torso', 0x59616a],
       hips: ['Hips', 'body', 0x2e3338],
@@ -68,10 +93,11 @@ export class ModelView {
     for (const [key, [name]] of Object.entries(S.parts)) {
       const node = g.nodes.find(n => n.name === name);
       if (!node) throw new Error(`${S.url}: no part "${name}"`);
-      const prim = g.meshes[node.mesh].primitives[0];
+      // A part may be several primitives sharing one vertex list (one per material): draw them as one.
+      const prims = g.meshes[node.mesh].primitives, prim = prims[0];
       const geo = new THREE.BufferGeometry();
       geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(acc(prim.attributes.POSITION)), 3));
-      if (prim.indices !== undefined) geo.setIndex(new THREE.BufferAttribute(new Uint32Array(acc(prim.indices)), 1));
+      if (prim.indices !== undefined) geo.setIndex(new THREE.BufferAttribute(Uint32Array.from(prims.flatMap(p => [...acc(p.indices)])), 1));
       geo.applyMatrix4(new THREE.Matrix4().compose(new THREE.Vector3(...(node.translation || [0, 0, 0])), new THREE.Quaternion(...(node.rotation || [0, 0, 0, 1])), new THREE.Vector3(...(node.scale || [1, 1, 1]))));
       geo.applyMatrix4(new THREE.Matrix4().makeTranslation(-S.origin[0], -S.origin[1], -S.origin[2]));
       geo.applyMatrix4(new THREE.Matrix4().makeRotationY(S.yaw || 0));
@@ -85,7 +111,11 @@ export class ModelView {
       geo.applyMatrix4(new THREE.Matrix4().makeScale(K, K, K));
       geo.computeBoundingBox();
       const b = geo.boundingBox;
-      this.joints[key] = new THREE.Vector3((b.min.x + b.max.x) / 2, b.max.y - (b.max.y - b.min.y) * 0.08, (b.min.z + b.max.z) / 2);   // top of the part
+      // Joint: the middle of the part's highest points (the top 12% of its height).
+      const pos = geo.attributes.position, top = b.max.y - (b.max.y - b.min.y) * 0.12, j = new THREE.Vector3();
+      let n = 0;
+      for (let k = 0; k < pos.count; k++) if (pos.getY(k) >= top) { j.x += pos.getX(k); j.z += pos.getZ(k); n++; }
+      this.joints[key] = new THREE.Vector3(j.x / n, b.max.y - (b.max.y - b.min.y) * 0.06, j.z / n);
       let flat = geo.toNonIndexed();
       flat.computeVertexNormals();
       const mesh = new THREE.InstancedMesh(flat, this.material, this.max);

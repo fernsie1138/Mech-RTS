@@ -1,6 +1,7 @@
-// David's models for the Heavy Mech (assets/heavy-mech.gltf) and the auto turret (assets/turret.gltf): they load,
-// are drawn for every Heavy Mech, turret and wreck, are the right size, walk (legs move), turn their torso / head,
-// and shots come out of the gun barrels. No errors.
+// David's models for the Light, Heavy and Assault Mechs (assets/light-mech.gltf, heavy-mech.gltf, assault-mech.gltf)
+// and the auto turret (assets/turret.gltf): they load, are drawn for every unit and wreck, are the right size (the
+// Heavy Mech 60% bigger than before), walk (legs move), turn their torso / head, and shots come out of the gun
+// barrels. No errors.
 // Run: node tests/models.mjs
 import { serve, outDir, playwright, checker, watchPage } from './harness.mjs';
 import { join } from 'node:path';
@@ -15,8 +16,46 @@ const page = await ctx.newPage();
 const w = watchPage(page, server.url);
 await page.goto(server.url + '?sandbox');
 await page.waitForFunction(() => window.__game?.ready, null, { timeout: 30000 });
-const loaded = await page.waitForFunction(() => { const M = window.__game.mechView.models; return M.assault.ready && M.turret.ready; }, null, { timeout: 30000 }).then(() => true, () => false);
-check(loaded, 'both models load');
+const loaded = await page.waitForFunction(() => Object.values(window.__game.mechView.models).every(m => m.ready), null, { timeout: 30000 }).then(() => true, () => false);
+check(loaded, 'all four models load');
+
+// Each mech model: size, feet on the ground, shots from its guns (torso turned), legs moving as it walks.
+const mechs = await page.evaluate(() => {
+  const G = window.__game, THREE = G.THREE, M = G.mechView.models;
+  G.pause();
+  for (const u of [...G.units.list]) G.movers.remove(u.mover);
+  G.units.list.length = 0;
+  const out = {};
+  for (const [type, guns] of [['scout', ['gun']], ['assault', ['arm0', 'arm1']], ['titan', ['arm0', 'arm1']]]) {
+    for (const u of [...G.units.list]) G.movers.remove(u.mover);
+    G.units.list.length = 0;
+    const u = G.units.spawn(type, 0, 20, 20, 0.4);
+    u.torsoYaw = 0.5;
+    G.render();
+    const mv = M[type], m = new THREE.Matrix4(), v = new THREE.Vector3(), all = new THREE.Box3();
+    for (const mesh of Object.values(mv.meshes)) { mesh.getMatrixAt(0, m); const b = (mesh.geometry.boundingBox || (mesh.geometry.computeBoundingBox(), mesh.geometry.boundingBox)).clone().applyMatrix4(m); all.union(b); }
+    const dist = p => {
+      let d = Infinity;
+      for (const g of guns) { const mesh = mv.meshes[g], pos = mesh.geometry.attributes.position; mesh.getMatrixAt(0, m); for (let k = 0; k < pos.count; k++) d = Math.min(d, v.fromBufferAttribute(pos, k).applyMatrix4(m).distanceTo(p)); }
+      return d;
+    };
+    const mz = [];
+    for (let k = 0; k < 4; k++) { const p = G.units.muzzle(u); mz.push(dist(new THREE.Vector3(p.x, p.y, p.z))); }
+    const foot = () => { mv.meshes.foot0.getMatrixAt(0, m); return v.set(0, 0, 0).applyMatrix4(m).sub(new THREE.Vector3(u.x, 0, u.z)).clone(); };
+    const f0 = foot();
+    G.units.order([u], 'move', 20, 60); G.step(0.5); G.render();
+    out[type] = { h: all.max.y - all.min.y, footY: all.min.y - u.y, mz: Math.max(...mz), legMoved: f0.distanceTo(foot()), count: mv.meshes.body.count, want: u.height };
+  }
+  return out;
+});
+for (const [type, r] of Object.entries(mechs)) {
+  const name = { scout: 'Light', assault: 'Heavy', titan: 'Assault' }[type];
+  check(r.count === 1 && Math.abs(r.h - r.want) < 0.3 && Math.abs(r.footY) < 0.25, `${name} Mech: drawn with the model, ${r.h.toFixed(2)} tall (unit height ${r.want.toFixed(2)}), feet on the ground (${r.footY.toFixed(2)})`);
+  check(r.mz < r.want * 0.1, `${name} Mech: shots come out of its guns, torso turned (${r.mz.toFixed(2)} from the barrel's corners; allowed ${(r.want * 0.1).toFixed(2)}, the barrels being that wide)`);
+  check(r.legMoved > 0.05, `${name} Mech: legs move as it walks (${r.legMoved.toFixed(2)})`);
+}
+check(Math.abs(mechs.assault.h / 4.14 - 1.6) < 0.05, `the Heavy Mech is 60% bigger than before (${mechs.assault.h.toFixed(2)} vs 4.14)`);
+check(Math.abs(mechs.scout.h - 2.88) < 0.2 && Math.abs(mechs.titan.h - 5.76) < 0.3, `Light and Assault Mechs are the size of the old ones (${mechs.scout.h.toFixed(2)}, ${mechs.titan.h.toFixed(2)})`);
 
 const r = await page.evaluate(() => {
   const G = window.__game, THREE = G.THREE, M = G.mechView.models;
@@ -66,9 +105,9 @@ const r = await page.evaluate(() => {
   };
 });
 check(r.counts[0] === 1 && r.counts[1] === 1, `one Heavy Mech and one turret drawn with the models (${r.counts.join(', ')})`);
-check(Math.abs(r.h - 4.14) < 0.5 && r.wide > 2 && r.wide < 4.5 && Math.abs(r.footY) < 0.2, `the Heavy Mech is ${r.h.toFixed(2)} tall and ${r.wide.toFixed(2)} wide, feet on the ground`);
+
 check(Math.abs(r.th - 3.4) < 0.3, `the turret is ${r.th.toFixed(2)} tall`);
-check(r.mz.every(d => d < 0.4), `Heavy Mech shots come out of its forearm guns (${r.mz.map(d => d.toFixed(2)).join(', ')} from the barrels), with the torso turned`);
+check(r.mz.every(d => d < 0.66), `Heavy Mech shots come out of its forearm guns (${r.mz.map(d => d.toFixed(2)).join(', ')} from the barrels), with the torso turned`);
 check(r.tz.every(d => d < 0.3), `turret shots come out of its barrels (${r.tz.map(d => d.toFixed(2)).join(', ')}), with the head turned`);
 check(r.legMoved > 0.1, `the legs move as it walks (foot moved ${r.legMoved.toFixed(2)})`);
 check(r.wreck === 1 && r.wrecks === 1, 'a destroyed Heavy Mech is drawn as a wreck with the model');
