@@ -1,5 +1,14 @@
 # Changelog
 
+## v22 — Spotting, stealthier Light Mechs, turret range, slimmer health bars
+- **Light Mechs** now have a **75% detection factor**: enemies spot them only within three quarters of their sight range (a Heavy Mech, sight 36, sees them within 27).
+- **Trenches hide units too:** a unit in a trench has its detection factor x0.8 on top of its own (a Light Mech in a trench: 60%).
+- **No unit's detection factor goes below 40%** in total.
+- **Spotting for each other:** a unit can now fire at any enemy within its weapon range that its side has spotted, even if it can't see that enemy itself (e.g. a Light Mech spotting for a Heavy Mech). Its own line of fire still has to be clear: hills and walls still block direct fire. Assault Mechs still lob shells over obstacles.
+- **Turrets** now reach **35** (their own sight is still 30, so the last stretch needs a spotter).
+- **Health bars are slimmer and float above each mech** instead of over it, including the big ones.
+- Tests: detection, trench, 40% floor, spotter fire (and walls blocking it) and turret range in `tests/vision-unit.mjs`.
+
 ## v21 — Lingering battle haze, black smoke, detection factor
 - **Explosion smoke lasts longer again (6-10 s) but is much more see-through** (it starts at 26% opacity).
 - **Battle haze:** every big blast leaves a little low, very faint smoke that hangs over the battlefield for 35-60 seconds and drifts slowly downwind. Many blasts build up a light haze you can still see mechs through, which then clears within a minute.

@@ -66,7 +66,7 @@ export const SIM = {
 //   detect: detection factor, % (100 = normal). An enemy only spots this unit within its sight x detect / 100, so a
 //   stealthy 50% unit is seen at half the usual distance. (The enemy still clears the fog of war as normal.)
 export const UNIT_TYPES = {
-  scout:   { name: 'Light Mech', short: 'Light', cls: 0, detect: 100, cost: 100, build: 4,  hp: 140, range: 18, sight: 46,  dmg: 9,   rof: 0.22, proj: 'mg',     projSpeed: 90, splash: 0,   scale: 0.8,  turn: 6, accuracy: 0.75 },
+  scout:   { name: 'Light Mech', short: 'Light', cls: 0, detect: 75, cost: 100, build: 4,  hp: 140, range: 18, sight: 46,  dmg: 9,   rof: 0.22, proj: 'mg',     projSpeed: 90, splash: 0,   scale: 0.8,  turn: 6, accuracy: 0.75 },
   // Medium Mech (David's model, units/mediummech.js): between the Light and Heavy. Autocannon, digitigrade legs.
   medium:  { name: 'Medium Mech', short: 'Medium', cls: 1, detect: 100, cost: 160, build: 5.5, hp: 250, range: 21, sight: 40, dmg: 15, rof: 0.45, proj: 'autocannon', projSpeed: 75, splash: 0.6, scale: 1, turn: 5, accuracy: 0.78, speed: 1.25 },
   assault: { name: 'Heavy Mech', short: 'Heavy', cls: 1, detect: 100, cost: 220, build: 7,  hp: 360, range: 23, sight: 36,  dmg: 28,  rof: 0.9,  proj: 'cannon', projSpeed: 60, splash: 1.5, scale: 1.15, turn: 4, accuracy: 0.8 },
@@ -91,6 +91,8 @@ export const COMBAT = {
   guardRadius: 30,           // idle units chase this far from where they were left
   wreckTime: 40,             // seconds a wreck stays before sinking away
   trenchCover: 0.5,          // hit chance x (1 - this) for a mech standing in a trench
+  trenchDetect: 0.8,         // detection factor x this for a unit in a trench (on top of its own)
+  minDetect: 0.4,            // no unit's detection factor ever goes below this in total
   defendHit: 0.55,           // Defend stance: incoming hit chance x this (on top of cover, e.g. a trench)
   defendSplash: 0.65,        // ... and splash damage (shells, cannon bursts) x this
   trenchSplash: 0.6,         // splash damage x this for a mech in a trench
@@ -108,7 +110,7 @@ export const ECONOMY = {
 export const HQ_TYPE = { name: 'HQ', cls: 2, detect: 100, hp: 8000, range: 26, sight: 40, dmg: 26, rof: 0.7, proj: 'cannon', projSpeed: 60, splash: 1.5,
   scale: 1, turn: 2.5, accuracy: 0.8, radius: 6.5, height: 12 };
 // Auto turret, built by Builders: twin machine guns on a pivot. Shoots enemies in range by itself.
-export const TURRET_TYPE = { name: 'Turret', cls: 1, detect: 100, hp: 700, range: 22, sight: 30, dmg: 9, rof: 0.16, proj: 'mg', projSpeed: 90, splash: 0,
+export const TURRET_TYPE = { name: 'Turret', cls: 1, detect: 100, hp: 700, range: 35, sight: 30, dmg: 9, rof: 0.16, proj: 'mg', projSpeed: 90, splash: 0,
   scale: 1, turn: 3, accuracy: 0.75, radius: 1.7, height: 3.4 };
 
 // What Builders make. cost: credits, paid when ordered. work: builder-seconds to finish one (two Builders take half).

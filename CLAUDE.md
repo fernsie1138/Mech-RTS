@@ -214,7 +214,8 @@ The single-file prototype v1 (`prototype/index.html`) contains a working version
   - **Assault Mech** [titan]: slow, arcing splash shells (indirect fire) that can miss fast targets.
 - Mechs have animated walking legs and a **torso that turns independently** of the legs, so they can fire while moving.
 - **Builder:** unarmed; builds walls and auto turrets, digs trenches (cover) and repairs friendly mechs, turrets and the HQ (on order, or by itself when idle and one is close). Walls and trenches are planned first (tap or drag), can be turned in 15° steps, then built. Later: buildings that produce other units (new kinds go in `BUILD` in config.js and `world/construction.js`).
-- **Detection factor** (`detect`, % per unit type, default 100): an enemy spots a unit only within its own sight × that factor (and with a clear line of sight); fog of war still clears as normal. For stealthy units later.
+- **Detection factor** (`detect`, % per unit type; Light Mech 75, others 100): an enemy spots a unit only within its own sight × that factor (and with a clear line of sight); fog of war still clears as normal. In a trench it is ×0.8, and never below 40% in total.
+- **Spotting:** a unit may fire at any enemy in weapon range that its side has spotted (another unit can spot for it); direct fire still needs its own clear line of fire.
 - **Defend** stance: selected mechs crouch and hold; harder to hit (×0.55) and less hurt by splash, stacking with trench cover.
 - **Economy:** base income plus capture points that add income. The HQ produces units from a queue.
 - **Orders:** move (default: a tap on the ground; mechs always obey it, shoot on the way, then hold their ground without chasing), attack-move (the A-Move toggle: stop to fight anything met), and attack a specific target (a tap on the enemy's body). Touch: tap to select, double-tap to select all of a type, one-finger drag to box-select, two-finger pan, pinch zoom, minimap tap to jump.

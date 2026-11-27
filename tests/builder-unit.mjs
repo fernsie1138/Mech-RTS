@@ -36,7 +36,7 @@ const finite = w => w.units.list.every(u => Number.isFinite(u.x + u.y + u.z + u.
 
 // ---------- a Builder doesn't fight ----------
 {
-  const w = world(), b = w.units.spawn('builder', 0, 0, 20), e = w.units.spawn('scout', 1, 0, -6);   // out of the Scout's chase reach
+  const w = world(), b = w.units.spawn('builder', 0, 0, 20), e = w.units.spawn('scout', 1, 0, -1);   // within sight 30 x 75%, beyond the Light's chase reach   // out of the Scout's chase reach
   e.t = { ...e.t, range: 0.1 };
   w.units.stop([e]);
   w.run(5);

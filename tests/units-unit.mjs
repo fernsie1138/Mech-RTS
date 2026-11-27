@@ -166,7 +166,7 @@ const finite = w => w.units.list.every(u => Number.isFinite(u.x + u.y + u.z + u.
   const g = world(), gu = g.units.spawn('assault', 0, 0, 30), gf = g.units.spawn('scout', 1, 0, 0);
   gf.t = { ...gf.t, range: 0.1 }; g.units.order([gf], 'move', 0, 4);
   g.run(6);
-  check(gu.z < 28, `a mech that hasn't been given orders still guards (goes after an enemy 26 away; now at z ${gu.z.toFixed(0)})`);
+  check(gu.z < 29, `a mech that hasn't been given orders still guards (goes after an enemy 26 away; now at z ${gu.z.toFixed(0)})`);
   // Re-ordering mid-fight takes effect at once.
   const r = world(), ra = r.units.spawn('assault', 0, 0, 10), rf = r.units.spawn('titan', 1, 0, -6);
   rf.hp = rf.maxHp = 1e6; r.units.stop([rf]);
