@@ -42,6 +42,24 @@ check(e1.drift > 4, `the smoke drifts downwind (${e1.drift.toFixed(1)} units in 
 check(e1.c17.haze > 0 && Object.entries(e1.c17).every(([k, v]) => k === 'haze' || v === 0), `after ~17 s only a faint battle haze is left (${e1.c17.haze} haze puffs)`);
 check(e1.hazeAlpha < 0.1 && e1.c62.haze === 0, `the haze is very faint (opacity ${e1.hazeAlpha.toFixed(3)}) and gone within a minute`);
 
+// ---- the shockwave is flat and fast; rounds leave smoke trails ----
+const sw = await page.evaluate(() => {
+  const g = window.__game, E = g.effects, h = g.map.markers.playerHQ;
+  for (const p of E.pools) p.update(100, null, null);
+  g.fireAt(h.x + 30, h.z - 30, 'shell');
+  let ring = -1; for (let i = 0; i < E.rings.used; i++) if (E.rings.age[i] < E.rings.life[i]) ring = i;
+  const life = E.rings.life[ring], tilt = Math.abs(E.rings.rot[ring]);
+  // Rounds in flight: a Light, a Heavy and an Assault Mech firing at a tough target.
+  const shooters = ['scout', 'assault', 'titan'].map((t, k) => g.units.spawn(t, 0, h.x + 40 + k * 5, h.z - 60));
+  const tg = g.units.spawn('assault', 1, h.x + 45, h.z - 80); tg.hp = tg.maxHp = 1e6; tg.t = { ...tg.t, range: 0.1 };
+  g.units.stop([...shooters, tg]);
+  const t0 = E.trails.alive;
+  g.step(3);
+  return { life, tilt, trails: E.trails.alive - t0, shots: g.units.stats.shots };
+});
+check(sw.life < 0.2 && sw.tilt === 0, `the shockwave ring lies flat on the ground and races out in ${sw.life.toFixed(2)} s`);
+check(sw.shots > 3 && sw.trails > 10, `rounds in flight leave smoke trails (${sw.trails} trail puffs from ${sw.shots} shots)`);
+
 // ---- a mech blowing up ----
 const md = await page.evaluate(() => {
   const g = window.__game, E = g.effects, h = g.map.markers.playerHQ;
