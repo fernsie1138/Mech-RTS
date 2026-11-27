@@ -52,6 +52,27 @@ const still = (w, ...us) => { for (const u of us) { u.t = { ...u.t, range: 0.1 }
   check(!far.vision.sees(0, q), 'when nothing has sight of it any more, it is hidden again');
 }
 
+// ---------- detection factor (stealth) ----------
+{
+  const w = world(), U = w.units, sc = U.spawn('scout', 0, 0, 40), st = U.spawn('assault', 1, 0, 40 - 30), norm = U.spawn('assault', 1, 25, 40 - 30);
+  st.t = { ...st.t, detect: 50 };                          // a stealthy unit: seen at half the usual distance
+  still(w, sc, st, norm);
+  w.run(1);
+  check(w.vision.sees(0, norm) && !w.vision.sees(0, st), `a stealthy (50%) mech 30 away is not seen by a Light Mech (sight ${sc.t.sight}), a normal one beside it is`);
+  check(w.vision.isVisible(0, st.x, st.z), 'the ground it stands on is still clear of fog');
+  const shots0 = U.stats.shots;
+  const sh = U.spawn('scout', 0, 2, 40); sh.t = { ...sh.t, range: 32 };   // in range, but it can't see it
+  U.attack([sh], st);
+  U.stop([sh]); U.attack([sh], st);
+  w.run(0.5);
+  const fired = U.list.filter(u => u.team === 0).some(u => u.target === st);
+  check(!fired, 'nobody targets the stealthy mech while it is unseen');
+  sc.mover.x = sc.x = 0; sc.mover.z = sc.z = 40 - 30 + 20;   // a Light Mech walks up to 20 away (within 46 x 50% = 23)
+  w.run(1);
+  check(w.vision.sees(0, st), 'within sight x detection factor (23), it is spotted');
+  check(U.stats.shots >= shots0, 'and can then be fired on');
+}
+
 // ---------- walls block sight; trees don't ----------
 {
   const w = world(() => 0, { buildings: [{ type: 'wall', x: 0, z: 0, rot: 0 }, { type: 'wall', x: 10, z: 0, rot: 0 }, { type: 'wall', x: -10, z: 0, rot: 0 }] });

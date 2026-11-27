@@ -96,12 +96,12 @@ export class Damage {
       // The HQ goes up in a chain of blasts and burns for a long time.
       surface.wear(u.x, u.z, 14, 1, 1);
       for (let k = 0; k < 5; k++) effects?.explosion(u.x + (Math.random() - 0.5) * 8, u.y + 2 + Math.random() * 6, u.z + (Math.random() - 0.5) * 8, 2.2);
-      effects?.burn(u.x, u.y + 3, u.z, 3, 60);
+      effects?.burn(u.x, u.y + 3, u.z, 3, 60, null, true);
       return true;
     }
     surface.wear(u.x, u.z, 3 * u.t.scale, 0.6, 0.7);
     effects?.mechDeath(u.x, u.y + u.height * 0.45, u.z, (u.isStructure ? 1.2 : 1) * u.t.scale, u.team);
-    effects?.burn(u.x, u.y + 0.5, u.z, 0.9 * u.t.scale, 8 + Math.random() * 6);
+    effects?.burn(u.x, u.y + 0.5, u.z, 0.9 * u.t.scale, 8 + Math.random() * 6, null, true);   // black smoke
     return true;
   }
 

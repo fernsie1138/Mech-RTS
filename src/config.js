@@ -63,14 +63,16 @@ export const SIM = {
 //   hp, speed (from MOVE.speeds via cls), range, dmg per hit, rof (seconds between shots), proj = weapon
 //   (also its TERRAIN_DAMAGE profile), projSpeed, splash (radius of damage to units), scale (model size),
 //   turn (rad/s legs), spread (miss distance), indirect (lobs shells over obstacles).
+//   detect: detection factor, % (100 = normal). An enemy only spots this unit within its sight x detect / 100, so a
+//   stealthy 50% unit is seen at half the usual distance. (The enemy still clears the fog of war as normal.)
 export const UNIT_TYPES = {
-  scout:   { name: 'Light Mech', short: 'Light', cls: 0, cost: 100, build: 4,  hp: 140, range: 18, sight: 46,  dmg: 9,   rof: 0.22, proj: 'mg',     projSpeed: 90, splash: 0,   scale: 0.8,  turn: 6, accuracy: 0.75 },
+  scout:   { name: 'Light Mech', short: 'Light', cls: 0, detect: 100, cost: 100, build: 4,  hp: 140, range: 18, sight: 46,  dmg: 9,   rof: 0.22, proj: 'mg',     projSpeed: 90, splash: 0,   scale: 0.8,  turn: 6, accuracy: 0.75 },
   // Medium Mech (David's model, units/mediummech.js): between the Light and Heavy. Autocannon, digitigrade legs.
-  medium:  { name: 'Medium Mech', short: 'Medium', cls: 1, cost: 160, build: 5.5, hp: 250, range: 21, sight: 40, dmg: 15, rof: 0.45, proj: 'autocannon', projSpeed: 75, splash: 0.6, scale: 1, turn: 5, accuracy: 0.78, speed: 1.25 },
-  assault: { name: 'Heavy Mech', short: 'Heavy', cls: 1, cost: 220, build: 7,  hp: 360, range: 23, sight: 36,  dmg: 28,  rof: 0.9,  proj: 'cannon', projSpeed: 60, splash: 1.5, scale: 1.15, turn: 4, accuracy: 0.8 },
-  titan:   { name: 'Assault Mech', short: 'Assault', cls: 2, cost: 420, build: 12, hp: 950, range: 32, sight: 34,  dmg: 110, rof: 2.6,  proj: 'shell',  projSpeed: 20, splash: 5,   scale: 1.6,  turn: 2, accuracy: 1, indirect: true },
+  medium:  { name: 'Medium Mech', short: 'Medium', cls: 1, detect: 100, cost: 160, build: 5.5, hp: 250, range: 21, sight: 40, dmg: 15, rof: 0.45, proj: 'autocannon', projSpeed: 75, splash: 0.6, scale: 1, turn: 5, accuracy: 0.78, speed: 1.25 },
+  assault: { name: 'Heavy Mech', short: 'Heavy', cls: 1, detect: 100, cost: 220, build: 7,  hp: 360, range: 23, sight: 36,  dmg: 28,  rof: 0.9,  proj: 'cannon', projSpeed: 60, splash: 1.5, scale: 1.15, turn: 4, accuracy: 0.8 },
+  titan:   { name: 'Assault Mech', short: 'Assault', cls: 2, detect: 100, cost: 420, build: 12, hp: 950, range: 32, sight: 34,  dmg: 110, rof: 2.6,  proj: 'shell',  projSpeed: 20, splash: 5,   scale: 1.6,  turn: 2, accuracy: 1, indirect: true },
   // Unarmed: builds walls and turrets and digs trenches (see BUILD). Spots for Titans like any mech.
-  builder: { name: 'Builder', short: 'Builder', cls: 0, cost: 150, build: 6,  hp: 220, range: 0, sight: 30,  dmg: 0,   rof: 1,    proj: null,     projSpeed: 0,  splash: 0,   scale: 0.85, turn: 5, accuracy: 0, unarmed: true, speed: 0.7, repair: 25 },   // repair: hp per second it mends
+  builder: { name: 'Builder', short: 'Builder', cls: 0, detect: 100, cost: 150, build: 6,  hp: 220, range: 0, sight: 30,  dmg: 0,   rof: 1,    proj: null,     projSpeed: 0,  splash: 0,   scale: 0.85, turn: 5, accuracy: 0, unarmed: true, speed: 0.7, repair: 25 },   // repair: hp per second it mends
 };
 // Internal keys stay as they were (saved stats, tests); the names shown are in `name` / `short`:
 //   scout = Light Mech, medium = Medium Mech, assault = Heavy Mech, titan = Assault Mech.
@@ -103,10 +105,10 @@ export const ECONOMY = {
   unitCap: 40,               // mechs per side (alive + queued); 80 in all is the §10 budget
 };
 // The HQ: produces mechs, defends itself with a twin-cannon turret, and losing it loses the match.
-export const HQ_TYPE = { name: 'HQ', cls: 2, hp: 8000, range: 26, sight: 40, dmg: 26, rof: 0.7, proj: 'cannon', projSpeed: 60, splash: 1.5,
+export const HQ_TYPE = { name: 'HQ', cls: 2, detect: 100, hp: 8000, range: 26, sight: 40, dmg: 26, rof: 0.7, proj: 'cannon', projSpeed: 60, splash: 1.5,
   scale: 1, turn: 2.5, accuracy: 0.8, radius: 6.5, height: 12 };
 // Auto turret, built by Builders: twin machine guns on a pivot. Shoots enemies in range by itself.
-export const TURRET_TYPE = { name: 'Turret', cls: 1, hp: 700, range: 22, sight: 30, dmg: 9, rof: 0.16, proj: 'mg', projSpeed: 90, splash: 0,
+export const TURRET_TYPE = { name: 'Turret', cls: 1, detect: 100, hp: 700, range: 22, sight: 30, dmg: 9, rof: 0.16, proj: 'mg', projSpeed: 90, splash: 0,
   scale: 1, turn: 3, accuracy: 0.75, radius: 1.7, height: 3.4 };
 
 // What Builders make. cost: credits, paid when ordered. work: builder-seconds to finish one (two Builders take half).

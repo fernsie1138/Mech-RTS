@@ -16,9 +16,13 @@ import * as THREE from 'three';
 export const EFFECTS = {
   wind: { x: 3.0, z: 1.4 },          // world units / s that smoke drifts toward, once it has risen a little
   scale: 1.5,                        // overall size of explosion visuals relative to the crater size
-  smokeLife: [3, 5],                 // seconds a big explosion's smoke lasts
-  smokeAlpha: 0.45,                  // starting opacity of explosion smoke (it fades to nothing)
-  residualAlpha: 0.24,               // ... of the smoke from fires, burning trees and wrecks
+  smokeLife: [6, 10],                // seconds a big explosion's smoke lasts
+  smokeAlpha: 0.26,                  // starting opacity of explosion smoke (it fades to nothing)
+  residualAlpha: 0.24,               // ... of the smoke from fires and burning trees
+  hazeLife: [35, 60],                // battle haze: each big blast leaves a little low smoke that lingers this long
+  hazeAlpha: 0.09,                   // ... so faint that mechs beyond it stay visible; layers build up a light haze
+  blackSmoke: 0.04,                  // colour of smoke from burning mechs and wrecks (near black)
+  blackAlpha: 0.48,                  // ... thicker than grey smoke, so it reads as black
 };
 
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -145,7 +149,11 @@ export class Effects {
     this.rings = new Pool(scene, new THREE.RingGeometry(0.8, 1, 40).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }), 48);
     this.smoke.mesh.renderOrder = 3; this.trails.mesh.renderOrder = 3; this.fire.mesh.renderOrder = 4; this.sparks.mesh.renderOrder = 5; this.rings.mesh.renderOrder = 5;
     this.debris.mesh.castShadow = true;
-    this.pools = [this.smoke, this.trails, this.fire, this.sparks, this.debris, this.rings];
+    // Battle haze: few, large, very faint, long-lived puffs that hang low and drift (their own pool, so the
+    // short-lived smoke never pushes them out).
+    this.haze = new Pool(scene, ico1.clone(), new THREE.MeshLambertMaterial({ transparent: true, depthWrite: false, flatShading: true }), 240);
+    this.haze.mesh.renderOrder = 2;
+    this.pools = [this.smoke, this.trails, this.fire, this.sparks, this.debris, this.rings, this.haze];
     // One flash light, moved to the latest big explosion (a fixed light count: no shader recompiles).
     this.light = new THREE.PointLight(0xffb060, 0, 45, 1.4);
     scene.add(this.light);
@@ -205,8 +213,10 @@ export class Effects {
         this.smoke.emit({ x: x + Math.cos(a) * r, y: y + rand(0.2, 1) * S, z: z + Math.sin(a) * r,
           vx: Math.cos(a) * rand(0.5, 2.5), vy: rise * 1.8 * Math.sqrt(size), vz: Math.sin(a) * rand(0.5, 2.5),
           life: rand(l0, l1) * (0.55 + 0.25 * size), s0: 0.3 * S, s1: rand(0.6, 1.1) * S,
-          c0: [g, g * 0.96, g * 0.92], c1: [0.55, 0.54, 0.52], a0: EFFECTS.smokeAlpha, a1: 0, drag: 0.75, buoy: 0.7 * rise, wind: 2.6, spin: rand(-0.6, 0.6) });
+          c0: [g, g * 0.96, g * 0.92], c1: [0.55, 0.54, 0.52], a0: EFFECTS.smokeAlpha, a1: 0, drag: 0.75, buoy: 0.7 * rise, wind: 2.2, spin: rand(-0.6, 0.6) });
       }
+      // Battle haze left behind.
+      if (size >= 1) for (let k = 0, N = size >= 2 ? 2 : 1; k < N; k++) this.hazePuff(x + rand(-1, 1) * S, y + rand(0.8, 2) * S, z + rand(-1, 1) * S, S);
     }
   }
 
@@ -237,6 +247,8 @@ export class Effects {
       this.sparks.emit({ x, y: y + 0.5, z, vx: Math.cos(a) * sp * (1 - up * 0.5), vy: sp * up, vz: Math.sin(a) * sp * (1 - up * 0.5),
         life: rand(0.5, 1.2), s0: rand(1, 2), s1: 0.3, c0: [1, 0.92, 0.55], c1: [1, 0.35, 0.05], a0: 1, a1: 0, grav: 20, drag: 0.5, spin: rand(-12, 12) });
     }
+    // Thick black smoke rolling up from the burning hulk.
+    for (let k = 0, N = Math.round(3 + 3 * scale); k < N; k++) this.smokePuff(x + rand(-0.8, 0.8) * scale, y + rand(0.5, 1.5) * scale, z + rand(-0.8, 0.8) * scale, 1.3 * scale, 0, true);
     // Secondary blasts (ammunition, fuel) over the next second.
     for (let k = 0, N = 2 + Math.round(scale); k < N; k++) {
       const ox = rand(-1, 1) * scale, oz = rand(-1, 1) * scale, oy = rand(0.3, 1.6) * scale;
@@ -271,9 +283,20 @@ export class Effects {
     }
   }
 
-  smokePuff(x, y, z, size = 1, dark = 0.18) {
+  // One drifting smoke puff. black: thick black smoke (burning mechs and wrecks) instead of grey.
+  smokePuff(x, y, z, size = 1, dark = 0.18, black = false) {
+    const c1 = black ? [0.1, 0.1, 0.1] : [0.5, 0.49, 0.47];
+    if (black) dark = EFFECTS.blackSmoke;
     this.smoke.emit({ x: x + rand(-0.3, 0.3) * size, y, z: z + rand(-0.3, 0.3) * size, vx: rand(-0.3, 0.3), vy: rand(1.2, 2.2), vz: rand(-0.3, 0.3),
-      life: rand(2, 3.2), s0: 0.35 * size, s1: rand(1.3, 1.8) * size, c0: [dark, dark, dark], c1: [0.5, 0.49, 0.47], a0: EFFECTS.residualAlpha, a1: 0, drag: 0.4, buoy: 0.5, wind: 3, spin: rand(-0.5, 0.5) });
+      life: rand(2, 3.2) * (black ? 1.3 : 1), s0: 0.35 * size, s1: rand(1.3, 1.8) * size, c0: [dark, dark, dark], c1, a0: black ? EFFECTS.blackAlpha : EFFECTS.residualAlpha, a1: 0, drag: 0.4, buoy: 0.5, wind: 3, spin: rand(-0.5, 0.5) });
+  }
+
+  // Lingering battle haze: a big, very faint puff that sinks to hang low and drifts slowly for up to a minute.
+  hazePuff(x, y, z, size = 3) {
+    const [l0, l1] = EFFECTS.hazeLife, g = rand(0.45, 0.6);
+    this.haze.emit({ x, y, z, vx: rand(-0.5, 0.5), vy: rand(0.1, 0.4), vz: rand(-0.5, 0.5), life: rand(l0, l1),
+      s0: 0.8 * size, s1: rand(2.2, 3.2) * size, c0: [g, g, g * 0.97], c1: [g + 0.1, g + 0.1, g + 0.08], a0: EFFECTS.hazeAlpha, a1: 0,
+      drag: 0.9, buoy: 0, wind: 0.12, spin: rand(-0.1, 0.1) });
   }
 
   dust(x, y, z, size) {
@@ -285,9 +308,9 @@ export class Effects {
   }
 
   // A burning spot for `secs` seconds. alive(): optional, the fire goes out early when it returns false.
-  burn(x, y, z, size, secs, alive = null) {
+  burn(x, y, z, size, secs, alive = null, black = false) {
     if (this.burners.length >= this.maxBurners) this.burners.shift();
-    this.burners.push({ x, y, z, size, t: 0, dur: secs, fAcc: 0, sAcc: Math.random(), alive });
+    this.burners.push({ x, y, z, size, t: 0, dur: secs, fAcc: 0, sAcc: Math.random(), alive, black });
   }
 
   // ---------- per frame ----------
@@ -310,7 +333,7 @@ export class Effects {
           life: rand(0.4, 0.75), s0: 0.75 * b.size * fade, s1: 0.15, c0: [1, 0.72, 0.3], c1: [0.8, 0.18, 0.03], a0: 0.9, a1: 0, buoy: 1, spin: rand(-3, 3) });
       }
       b.sAcc += dt * 2 * b.size;
-      while (b.sAcc >= 1) { b.sAcc -= 1; this.smokePuff(b.x, b.y + 1.2 * b.size, b.z, b.size, 0.12); }
+      while (b.sAcc >= 1) { b.sAcc -= 1; this.smokePuff(b.x, b.y + 1.2 * b.size, b.z, b.size, 0.12, b.black); }
       return true;
     });
     const trail = (x, y, z, s) => {
@@ -319,7 +342,7 @@ export class Effects {
         const f = -s;
         this.fire.emit({ x: x + rand(-0.1, 0.1), y: y + 0.1, z: z + rand(-0.1, 0.1), vx: rand(-0.3, 0.3), vy: rand(1, 2.2), vz: rand(-0.3, 0.3), life: rand(0.25, 0.5),
           s0: f, s1: f * 0.3, c0: [1, 0.5, 0.12], c1: [0.6, 0.1, 0.02], a0: 0.7, a1: 0, buoy: 1.5, spin: rand(-4, 4) });
-        if (Math.random() < 0.3) this.trails.emit({ x, y: y + 0.3, z, vy: 0.8, life: rand(0.6, 1), s0: f * 0.8, s1: f * 2.2, c0: [0.18, 0.17, 0.16], c1: [0.45, 0.44, 0.42], a0: 0.3, a1: 0, wind: 2, drag: 0.5 });
+        if (Math.random() < 0.3) this.trails.emit({ x, y: y + 0.3, z, vy: 0.8, life: rand(0.6, 1), s0: f * 0.8, s1: f * 2.2, c0: [0.03, 0.03, 0.03], c1: [0.12, 0.12, 0.12], a0: 0.35, a1: 0, wind: 2, drag: 0.5 });
         return;
       }
       this.trails.emit({ x, y, z, vy: 0.4, life: rand(0.5, 0.9), s0: s, s1: s * 1.8, c0: [0.25, 0.23, 0.21], c1: [0.45, 0.44, 0.42], a0: 0.35, a1: 0, wind: 1.6, drag: 0.5 });
@@ -329,6 +352,6 @@ export class Effects {
   }
 
   // Live particles per pool (tests / debug).
-  counts() { return { smoke: this.smoke.alive, trails: this.trails.alive, fire: this.fire.alive, sparks: this.sparks.alive, debris: this.debris.alive, rings: this.rings.alive, burners: this.burners.length }; }
+  counts() { return { haze: this.haze.alive, smoke: this.smoke.alive, trails: this.trails.alive, fire: this.fire.alive, sparks: this.sparks.alive, debris: this.debris.alive, rings: this.rings.alive, burners: this.burners.length }; }
   activeCount() { return this.pools.reduce((s, p) => s + p.alive, 0) + this.burners.length; }
 }

@@ -19,6 +19,7 @@ const ROWS = [
   ['Fire every (s)', 'rof', 'seconds between shots'],
   ['Range', 'range', 'how far it shoots'],
   ['Sight', 'sight', 'how far it sees (with a clear line of sight)'],
+  ['Detection (%)', 'detect', 'how easily enemies spot it: 100 = normally; 50 = only within half their sight range'],
   ['Accuracy', 'accuracy', 'chance to hit in the open, 0 to 1'],
   ['Splash radius', 'splash', 'damage to units round the impact'],
   ['Shot speed', 'projSpeed', 'projectile speed'],

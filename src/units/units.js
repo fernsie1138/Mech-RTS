@@ -20,6 +20,8 @@ import { Projectiles } from '../combat/projectiles.js';
 
 // The mover already finished a path to this goal (arrived, or stopped as close as it could get).
 const doneWith = (m, g) => m.state === 'idle' && m.doneGoal && Math.hypot(m.doneGoal.x - g.x, m.doneGoal.z - g.z) < 0.5;
+// Detection factor of a unit or structure, 0..1 (UNIT_TYPES[..].detect is a percentage).
+const detectOf = e => (e.t.detect ?? 100) / 100;
 const wrap = a => { while (a > Math.PI) a -= Math.PI * 2; while (a < -Math.PI) a += Math.PI * 2; return a; };
 const turnToward = (cur, target, step) => { const d = wrap(target - cur); return Math.abs(d) <= step ? target : cur + Math.sign(d) * step; };
 
@@ -122,10 +124,12 @@ export class Units {
   inRange(u, e, range = u.t.range) { return Math.hypot(e.x - u.x, e.z - u.z) - e.radius <= range; }
   canSeeDirect(u, e) { return lineOfSight(this.world, u.x, this.eye(u), u.z, e.x, this.centre(e), e.z).clear; }
   // Can u shoot e now? Direct fire needs its own line of sight; indirect needs anyone on its side to see e.
+  // Can u fire at e now? Its side must have spotted e (detection factor), and direct fire needs a clear line.
   canShoot(u, e) {
     if (!e.alive || !this.inRange(u, e)) return false;
-    if (u.t.indirect) return e.seenBy[u.team] > this.time || this.canSeeDirect(u, e);
-    return this.canSeeDirect(u, e);
+    const spotted = e.seenBy[u.team] > this.time;
+    if (u.t.indirect) return spotted;
+    return spotted && this.canSeeDirect(u, e);
   }
 
   _findTargets(u) {
@@ -137,7 +141,8 @@ export class Units {
       const d = Math.hypot(e.x - u.x, e.z - u.z) - e.radius;
       const sight = u.t.sight || COMBAT.sightRange;
       if (d > Math.max(reach, sight)) continue;
-      const sees = d <= sight && this.canSeeDirect(u, e);
+      // Spotted only within sight x the target's detection factor (stealthy units must be closer to be seen).
+      const sees = d <= sight * detectOf(e) && this.canSeeDirect(u, e);
       if (sees) e.seenBy[u.team] = this.time + 1.0;       // spotted: friendly Titans may shell it for a while
       if (d <= u.t.range && d < bd && (sees || (u.t.indirect && e.seenBy[u.team] > this.time))) { bd = d; best = e; }
       if (d <= reach && d < nd && (sees || e.seenBy[u.team] > this.time)) { nd = d; near = e; }
@@ -231,8 +236,7 @@ export class Units {
   // Cheap re-check between target searches: still in range and (for direct fire) still visible every few frames.
   canShootQuick(u, e) {
     if (!e.alive || !this.inRange(u, e)) return false;
-    if (u.t.indirect) return e.seenBy[u.team] > this.time;
-    return true;
+    return e.seenBy[u.team] > this.time;            // still spotted by this side (detection factor)
   }
 
   muzzle(u) {
