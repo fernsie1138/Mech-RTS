@@ -127,7 +127,7 @@ export class Movers {
           this.stats.replans++; this._request(m); continue;
         }
       }
-      const speed = MOVE.speeds[m.cls] * (m.speedMult || 1) * Math.pow(1 / Math.max(0.3, here), MOVE.costExponent);
+      const speed = MOVE.speeds[m.cls] * (m.speedMult ?? 1) * Math.pow(1 / Math.max(0.3, here), MOVE.costExponent);
       let budget = speed * dt;
       while (budget > 0 && m.state === 'moving') {
         const w = pts[m.wp], d = Math.hypot(w.x - m.x, w.z - m.z);

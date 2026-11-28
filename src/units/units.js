@@ -33,7 +33,8 @@ export const MUZZLES = {
   hq: [[-0.4, 10.3, 2.9], [0.4, 10.3, 2.9]],          // the HQ's roof turret
   turret: [[0.22, 0.62, 1.55], [-0.22, 0.62, 1.55]],          // the two barrels of David's model (assets/turret.gltf)
   builder: [[0.85, 0.4, 1.6]],
-  medium: [[0.91, 0.73, 0.91]],                    // the right-shoulder autocannon (units/mediummech.js MEDIUM_MUZZLE)
+  medium: [[0.91, 0.73, 0.91]],
+  artillery: [[0, 2.6, 5.3]],                      // the end of the barrel, deployed (units/artilleryview.js muzzle())                    // the right-shoulder autocannon (units/mediummech.js MEDIUM_MUZZLE)
 };
 export const TORSO_Y = 2.45;          // torso pivot height in model units (x scale)
 export const MECH_HEIGHT = 3.6;       // model height in model units
@@ -71,6 +72,7 @@ export class Units {
     mover.unit = u;
     mover.speedMult = t.speed || 1;
     if (t.unarmed) u.jobs = [];
+    if (t.deploy) { u.deploy = 0; u.deployWant = false; u.idleT = 0; }    // Artillery: 0 = Travel .. 1 = Deployed
     this.list.push(u);
     return u;
   }
@@ -97,7 +99,7 @@ export class Units {
   // ---------- orders ----------
   order(units, kind, x, z) {
     const live = units.filter(u => u.alive);
-    for (const u of live) { u.order = kind; u.goal = { x, z }; u.attackTarget = null; u.hold = false; u.defend = false; }
+    for (const u of live) { u.order = kind; u.goal = { x, z }; u.attackTarget = null; u.hold = false; u.defend = false; if (u.t.deploy) { u.deployWant = false; u.idleT = 0; } }
     if (live.length) this.movers.order(live.map(u => u.mover), x, z);
     // Remember each unit's formation slot as its goal.
     for (const u of live) if (u.mover.goal) u.goal = { ...u.mover.goal };
@@ -111,9 +113,17 @@ export class Units {
   // Defend stance on or off: on also stops them where they are (they hold their ground and keep firing).
   defend(units, on = true) {
     for (const u of units) {
-      if (!u.alive || u.isStructure) continue;
+      if (!u.alive || u.isStructure || u.t.deploy) continue;
       if (on) this.stop([u]);
       u.defend = on;
+    }
+  }
+  // Artillery: deploy (on) or pack up for travel (off). Deploying also stops it where it is.
+  deploy(units, on = true) {
+    for (const u of units) {
+      if (!u.alive || !u.t.deploy) continue;
+      if (on) this.stop([u]);
+      u.deployWant = on;
     }
   }
   stop(units) { for (const u of units) { u.order = 'idle'; u.goal = null; u.attackTarget = null; u.guard = { x: u.x, z: u.z }; u.hold = true; this.movers.stop(u.mover); } }
@@ -167,6 +177,27 @@ export class Units {
     u.target = best; u.near = near;
   }
 
+  // Artillery: when to deploy and pack up, and the change itself (it can only fire when fully deployed, and only
+  // move when fully packed up).
+  //   move order: pack up and go.   attack order: deployed while the target is in range, else pack up and close in.
+  //   attack-move: deploy on meeting something to shoot; nothing to shoot for 4 s: pack up and carry on.
+  //   idle: deploy when something comes in range (and stay deployed). The Deploy button sets it by hand.
+  _artillery(u, target, dt) {
+    const t = u.t, m = u.mover;
+    if (u.order === 'attack' && u.attackTarget) u.deployWant = !!target;
+    else if (u.order === 'amove') {
+      if (target) { u.deployWant = true; u.idleT = 0; }
+      else if (u.deployWant && (u.idleT += dt) > 4) { u.deployWant = false; u.idleT = 0; if (u.goal) this.movers.order([m], u.goal.x, u.goal.z); }
+    } else if (u.order === 'idle' && target) u.deployWant = true;
+    if (u.deployWant) {
+      // Swing the hull round toward the target first (the anchored hull can't turn once deploying starts).
+      const facing = !target || Math.abs(wrap(Math.atan2(target.x - u.x, target.z - u.z) - u.yaw)) < 0.6;
+      if (m.state === 'moving' && u.deploy === 0 && m.speedNow > 0.1) this.movers.stop(m);
+      if (u.deploy > 0 || (facing && m.speedNow < 0.1)) u.deploy = Math.min(1, u.deploy + dt / t.deploy);
+    } else u.deploy = Math.max(0, u.deploy - dt / t.deploy);
+    m.speedMult = u.deploy > 0 ? 0 : (t.speed || 1);
+  }
+
   _goTo(u, x, z) {
     const m = u.mover, g = m.goal;
     if (m.state !== 'idle' && g && Math.hypot(g.x - x, g.z - z) < 4) return;
@@ -190,6 +221,8 @@ export class Units {
       let target = u.t.unarmed ? null : u.order === 'attack' && u.attackTarget
         ? (this.inRange(u, u.attackTarget) && this.canShoot(u, u.attackTarget) ? u.attackTarget : null)
         : u.target;
+      const art = !!u.t.deploy;
+      if (art) this._artillery(u, target, dt);
       // Movement decisions.
       if (u.order === 'attack' && u.attackTarget) {
         if (target === u.attackTarget) { if (m.state !== 'idle') this.movers.stop(m); }
@@ -205,7 +238,7 @@ export class Units {
       } else if (u.order === 'amove' || u.order === 'idle') {
         const home = u.order === 'amove' ? u.goal : u.guard;
         if (target) { if (m.state !== 'idle') this.movers.stop(m); }
-        else if (u.near && !u.hold && (u.order === 'amove' || Math.hypot(u.near.x - u.guard.x, u.near.z - u.guard.z) < COMBAT.guardRadius)) {
+        else if (u.near && !u.hold && !art && (u.order === 'amove' || Math.hypot(u.near.x - u.guard.x, u.near.z - u.guard.z) < COMBAT.guardRadius)) {
           if ((u.chaseT -= dt) <= 0) { u.chaseT = 1; this._goTo(u, u.near.x, u.near.z); }
         } else if (home && Math.hypot(home.x - u.x, home.z - u.z) > (u.order === 'amove' ? 2.5 : 3) && !doneWith(m, home)) {
           if (m.state === 'idle' && (u.chaseT -= dt) <= 0) { u.chaseT = 1; this.movers.order([m], home.x, home.z); }
@@ -218,12 +251,12 @@ export class Units {
       const moving = m.state === 'moving' && m.speedNow > 0.1;
       const aim = target ? Math.atan2(target.x - u.x, target.z - u.z) : u.yaw + u.torsoYaw;
       if (moving) u.yaw = turnToward(u.yaw, m.heading, u.t.turn * dt);
-      else if (target) u.yaw = turnToward(u.yaw, aim, u.t.turn * 0.5 * dt);
+      else if (target && !(art && u.deploy > 0)) u.yaw = turnToward(u.yaw, aim, u.t.turn * 0.5 * dt);   // a deployed gun's hull is anchored
       const rel = Math.max(-2.3, Math.min(2.3, wrap(aim - u.yaw)));
-      u.torsoYaw = turnToward(u.torsoYaw, target ? rel : 0, u.t.turn * 1.5 * dt);
+      u.torsoYaw = turnToward(u.torsoYaw, target && (!art || u.deploy >= 1) ? rel : 0, u.t.turn * 1.5 * dt);   // Artillery: turret locked in Travel
       // Firing.
       u.cool -= dt;
-      if (target && u.cool <= 0 && Math.abs(wrap(aim - u.yaw - u.torsoYaw)) < 0.2) {
+      if (target && u.cool <= 0 && (!art || u.deploy >= 1) && Math.abs(wrap(aim - u.yaw - u.torsoYaw)) < 0.2) {
         u.cool = u.t.rof * (0.9 + this.rng() * 0.2);
         this._fire(u, target);
       }
@@ -353,7 +386,7 @@ export class Units {
     u.alive = false; u.hp = 0;
     this.stats.kills++;
     this.movers.remove(u.mover);
-    this.wrecks.push({ x: u.x, y: u.y, z: u.z, yaw: u.yaw, torsoYaw: u.torsoYaw, type: u.type, team: u.team, t: 0, tilt: this.rng() < 0.5 ? -1 : 1, phase: u.phase });
+    this.wrecks.push({ x: u.x, y: u.y, z: u.z, yaw: u.yaw, torsoYaw: u.torsoYaw, type: u.type, team: u.team, t: 0, tilt: this.rng() < 0.5 ? -1 : 1, phase: u.phase, deploy: u.deploy });
     this.events.push({ type: 'death', x: u.x, y: u.y + u.height * 0.5, z: u.z, unit: u });
     this.list = this.list.filter(o => o !== u);
   }

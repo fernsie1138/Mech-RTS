@@ -39,7 +39,7 @@ await g(() => { window.__game.pause(); window.__game.setFog(false); });   // fog
 await g(() => window.__game.render());
 await page.waitForTimeout(300);
 const hud = await g(() => ({ c: document.getElementById('credits').textContent, p: document.getElementById('points').textContent, cards: document.querySelectorAll('#build .card').length }));
-check(/⚡ \d+/.test(hud.c) && /0\/5/.test(hud.p) && hud.cards === 5, `HUD: credits "${hud.c}", points "${hud.p}", ${hud.cards} build buttons`);
+check(/⚡ \d+/.test(hud.c) && /0\/5/.test(hud.p) && hud.cards === 6, `HUD: credits "${hud.c}", points "${hud.p}", ${hud.cards} build buttons`);
 check(!(await visible('#btnSpawn')) && (await visible('#btnDev')), 'test tools are tucked away behind Dev');
 await page.tap('#btnDev');
 check(await visible('#btnSpawn') && await visible('[data-weapon="shell"]'), 'Dev shows the test tools');

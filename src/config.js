@@ -78,11 +78,14 @@ export const UNIT_TYPES = {
   assault: { name: 'Heavy Mech', short: 'Heavy', cls: 1, detect: 100, bv: 4, cost: 220, build: 7,  hp: 360, range: 23, minRange: 0, sight: 36,  dmg: 28,  rof: 0.9,  proj: 'cannon', projSpeed: 60, splash: 1.5, scale: 1.84, turn: 4, accuracy: 0.8 },
   titan:   { name: 'Assault Mech', short: 'Assault', cls: 2, detect: 100, bv: 6, cost: 420, build: 12, hp: 950, range: 32, sight: 34,  dmg: 75,  rof: 2.6,  proj: 'missile', projSpeed: 38, splash: 4, minRange: 10, scale: 1.6,  turn: 2, accuracy: 1, indirect: true, salvo: 6, salvoGap: 0.12 },   // dmg: per salvo of `salvo` missiles
   // Unarmed: builds walls and turrets and digs trenches (see BUILD). Spots for Titans like any mech.
+  // Artillery (David's model, assets/artillery.gltf): a tracked gun with two states. Travel: it drives but can't fire.
+  // Deployed (anchors down, barrel raised; `deploy` seconds to change): it fires long-range shells but can't move.
+  artillery: { name: 'Artillery', short: 'Artillery', cls: 2, detect: 100, bv: 6, cost: 500, build: 12, hp: 300, range: 50, minRange: 0, sight: 40, dmg: 200, rof: 3, proj: 'shell', projSpeed: 45, splash: 5, scale: 1, turn: 2, accuracy: 1, indirect: true, speed: 3 / 3.6, deploy: 3, vehicle: true },
   builder: { name: 'Builder', short: 'Builder', cls: 0, detect: 100, bv: 3, cost: 150, build: 6,  hp: 220, range: 0, sight: 30,  dmg: 0,   rof: 1,    proj: null,     projSpeed: 0,  splash: 0,   scale: 0.85, turn: 5, accuracy: 0, unarmed: true, speed: 0.7, repair: 25 },   // repair: hp per second it mends
 };
 // Internal keys stay as they were (saved stats, tests); the names shown are in `name` / `short`:
 //   scout = Light Mech, medium = Medium Mech, assault = Heavy Mech, titan = Assault Mech.
-export const UNIT_KEYS = ['scout', 'medium', 'assault', 'titan', 'builder'];
+export const UNIT_KEYS = ['scout', 'medium', 'assault', 'titan', 'artillery', 'builder'];
 export const COMBAT_KEYS = ['scout', 'medium', 'assault', 'titan'];
 
 export const COMBAT = {

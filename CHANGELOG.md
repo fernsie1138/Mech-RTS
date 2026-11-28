@@ -1,5 +1,22 @@
 # Changelog
 
+## v31 — Artillery
+- **New unit: Artillery**, a tracked gun drawn from your model (`assets/artillery.gltf`), built from the HQ like the mechs. Stats as you gave them: range 50, damage 200, fires every 3 s, speed 3, cost 500, build time 12 s, strength 300, sight 40, detection 100, accuracy 1, splash 5, shot speed 45, turn speed 2. Battle Value 6 (my choice: tell me if you want another).
+- **Two states, Travel and Deployed**, both taken from your file:
+  - **Travel:** gun compact, treads flush with the chassis, anchors raised. It drives but can't fire, and its turret is locked forward.
+  - **Deployed:** treads out, anchors dug in, barrel raised and extended. It fires big arcing shells but can't move, and only the turret turns.
+  - Changing state takes 3 seconds, animated piece by piece: anchors swing down on their hinges, treads slide out, and the barrel lifts and extends.
+- **Deploy / Travel button** in the command bar, shown while Artillery is selected.
+- **It also deploys by itself** when idle or on an attack-move and an enemy it can hit is spotted. On an attack-move it packs up and carries on once there's been nothing to shoot for 4 s. A move order makes it pack up first, then drive. Ordered to attack something out of range, it packs up, closes in, and deploys.
+- Its range (50) is longer than its sight (40), so it needs other units to spot for it.
+- Dev → Stats has its column, and a "Deploy time (s)" row.
+- The enemy AI builds Artillery now and then in the late game.
+- Saved games keep each Artillery's state.
+- **Fixed: a speed of 0 counted as full speed** in the movement code (it never came up before).
+- Tests:
+  - `tests/units-unit.mjs` checks the stats, and that it drives but doesn't fire in Travel. It deploys by itself on arrival with an enemy in range, the Deploy button takes 3 s and it then stays put, a move order packs it up before it drives off, and it hits a target 46 away that a Light Mech spots.
+  - `tests/models.mjs` checks the two shapes and that shells leave the end of the barrel with the turret turned.
+
 ## v30 — Assault Mech minimum range
 - **Assault Mechs have a minimum range of 10.** They can't fire at anything closer, won't pick such targets, and don't walk toward an enemy that's too close.
 - Ordered to attack an enemy that's too close, an Assault Mech backs off to just beyond 10, then fires.

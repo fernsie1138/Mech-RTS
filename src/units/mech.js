@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { TORSO_Y, STRUCTURE_TYPES } from './units.js';
 import { MediumMechView } from './mediummech.js';
 import { ModelView, MODELS } from './modelview.js';
+import { ArtilleryView } from './artilleryview.js';
 import { COMBAT, UNIT_TYPES, BUILD } from '../config.js';
 
 const TEAM = [0x3d8fe0, 0xd9442e];
@@ -66,6 +67,7 @@ export class MechView {
     this.group = new THREE.Group();
     this.medium = new MediumMechView(this.group);     // Medium Mechs use David's model (loaded by the game: loadModels)
     // Light, Heavy and Assault Mechs and turrets too (until their models are loaded they are drawn from boxes).
+    this.artillery = new ArtilleryView(this.group);    // the Artillery (Travel / Deployed)
     this.models = { scout: new ModelView(this.group, MODELS.light), assault: new ModelView(this.group, MODELS.heavy), titan: new ModelView(this.group, MODELS.assault), turret: new ModelView(this.group, MODELS.turret, 120) };
     this.group.name = 'mechs';
     scene.add(this.group);
@@ -123,7 +125,7 @@ export class MechView {
 
   // Load the models that aren't boxes (the Medium Mech). Until then those mechs aren't drawn.
   loadModels(base = '') {
-    return Promise.all([this.medium.load(`${base}assets/medium-mech.gltf`), ...Object.values(this.models).map(m => m.load(base))]);
+    return Promise.all([this.medium.load(`${base}assets/medium-mech.gltf`), this.artillery.load(base), ...Object.values(this.models).map(m => m.load(base))]);
   }
   // The model view drawing a type, if its model is loaded.
   _model(type) { const m = this.models[type]; return m && m.ready ? m : null; }
@@ -131,10 +133,12 @@ export class MechView {
   update(units, selected, camera) {
     let n = 0;
     this.medium.begin();
+    this.artillery.begin();
     for (const m of Object.values(this.models)) m.begin();
     for (const u of units.list) {
       if (!this.shown(u)) continue;
       if (u.type === 'medium') { this.medium.pose(u.team, { x: u.x, y: u.y, z: u.z, yaw: u.yaw, torsoYaw: u.torsoYaw, phase: u.phase, amp: u.amp, flash: u.hitT, crouch: u.crouch }); continue; }
+      if (u.type === 'artillery') { this.artillery.pose(u.team, { x: u.x, y: u.y, z: u.z, yaw: u.yaw, torsoYaw: u.torsoYaw, deploy: u.deploy, phase: u.phase, amp: u.amp, flash: u.hitT }); continue; }
       const mv = this._model(u.type);
       if (mv) { mv.pose(u.team, { x: u.x, y: u.y, z: u.z, yaw: u.yaw, torsoYaw: u.torsoYaw, phase: u.phase, amp: u.amp, flash: u.hitT, crouch: u.crouch }); continue; }
       n = this._pose(n, u.type, u.team, { x: u.x, y: u.y, z: u.z, yaw: u.yaw, torsoYaw: u.torsoYaw, phase: u.phase, amp: u.amp, flash: u.hitT, crouch: u.crouch });
@@ -153,11 +157,13 @@ export class MechView {
       const ws = { x: w.x, y: w.y, z: w.z, yaw: w.yaw, torsoYaw: w.torsoYaw, phase: w.phase, amp: 0.3,
         tiltX: 0.35 * fall, tiltZ: w.tilt * 1.1 * fall, wreck: true, sink: (w.sink0 || 0) + Math.max(0, w.t - COMBAT.wreckTime) * 1.5 };
       if (w.type === 'medium') this.medium.pose(w.team, ws);
+      else if (w.type === 'artillery') this.artillery.pose(w.team, { ...ws, deploy: w.deploy || 0, tiltX: ws.tiltX * 0.3, tiltZ: ws.tiltZ * 0.3 });
       else if (this._model(w.type)) this.models[w.type].pose(w.team, ws);
       else n = this._pose(n, w.type, w.team, ws);
     }
     this.parts.count = n;
     this.medium.end();
+    this.artillery.end();
     for (const m of Object.values(this.models)) m.end();
     this.parts.instanceMatrix.needsUpdate = true;
     if (this.parts.instanceColor) this.parts.instanceColor.needsUpdate = true;

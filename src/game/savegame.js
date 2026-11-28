@@ -57,7 +57,7 @@ export async function captureSave(G) {
     units: units.list.filter(u => u.alive).map(u => ({
       id: idOf(u), type: u.type, team: u.team, x: r2(u.x), z: r2(u.z), yaw: r3(u.yaw), torsoYaw: r3(u.torsoYaw), hp: r2(u.hp), maxHp: u.maxHp,
       order: u.order, goal: u.goal && { x: r2(u.goal.x), z: r2(u.goal.z) }, guard: u.guard && { x: r2(u.guard.x), z: r2(u.guard.z) },
-      hold: !!u.hold, defend: !!u.defend, attack: idOf(u.attackTarget), jobs: u.jobs ? u.jobs.filter(j => jobIds.has(j)).map(j => jobIds.get(j)) : null,
+      hold: !!u.hold, defend: !!u.defend, deploy: u.deploy, deployWant: u.deployWant, attack: idOf(u.attackTarget), jobs: u.jobs ? u.jobs.filter(j => jobIds.has(j)).map(j => jobIds.get(j)) : null,
       selected: G.selected.has(u),
     })),
     wrecks: units.wrecks.map(w => ({ ...w, x: r2(w.x), y: r2(w.y), z: r2(w.z) })),
@@ -150,6 +150,7 @@ export async function applySave(G, save) {
   for (const s of save.units) {
     const u = units.spawn(s.type, s.team, s.x, s.z, s.yaw);
     u.hp = s.hp; u.maxHp = s.maxHp; u.torsoYaw = s.torsoYaw;
+    if (s.deploy !== undefined && u.t.deploy) { u.deploy = s.deploy; u.deployWant = !!s.deployWant; }
     if (s.guard) u.guard = { ...s.guard };
     byId.set(s.id, u);
     if (s.selected) G.selected.add(u);

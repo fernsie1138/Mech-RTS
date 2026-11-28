@@ -111,6 +111,29 @@ check(r.mz.every(d => d < 0.66), `Heavy Mech shots come out of its forearm guns 
 check(r.tz.every(d => d < 0.3), `turret shots come out of its barrels (${r.tz.map(d => d.toFixed(2)).join(', ')}), with the head turned`);
 check(r.legMoved > 0.1, `the legs move as it walks (foot moved ${r.legMoved.toFixed(2)})`);
 check(r.wreck === 1 && r.wrecks === 1, 'a destroyed Heavy Mech is drawn as a wreck with the model');
+// The Artillery: Travel vs Deployed shapes, and shells from the end of its barrel when deployed (turret turned).
+await page.waitForFunction(() => window.__game.mechView.artillery.ready, null, { timeout: 30000 });
+const art = await page.evaluate(() => {
+  const G = window.__game, THREE = G.THREE, V = G.mechView.artillery;
+  for (const u of [...G.units.list]) G.movers.remove(u.mover);
+  G.units.list.length = 0;
+  const a = G.units.spawn('artillery', 0, 40, 40, 0.3);
+  const box = k => { a.deploy = k; G.render(); const b = new THREE.Box3(), m = new THREE.Matrix4(), v = new THREE.Vector3();
+    for (const mesh of Object.values(V.meshes)) { mesh.getMatrixAt(0, m); const p = mesh.geometry.attributes.position, d = mesh.geometry.attributes.aDelta;
+      for (let i = 0; i < p.count; i++) b.expandByPoint(v.set(p.getX(i) + d.getX(i) * k, p.getY(i) + d.getY(i) * k, p.getZ(i) + d.getZ(i) * k).applyMatrix4(m)); }
+    return b; };
+  const travel = box(0), deployed = box(1);
+  a.torsoYaw = 0.5; a.deploy = 1; G.render();
+  const p = G.units.muzzle(a), mesh = V.meshes.ext, m = new THREE.Matrix4(), v = new THREE.Vector3(), pos = mesh.geometry.attributes.position, d = mesh.geometry.attributes.aDelta;
+  mesh.getMatrixAt(0, m);
+  let dist = Infinity;
+  for (let i = 0; i < pos.count; i++) dist = Math.min(dist, v.set(pos.getX(i) + d.getX(i), pos.getY(i) + d.getY(i), pos.getZ(i) + d.getZ(i)).applyMatrix4(m).distanceTo(new THREE.Vector3(p.x, p.y, p.z)));
+  const size = b => b.getSize(new THREE.Vector3());
+  return { tH: size(travel).y, dH: size(deployed).y, tLen: Math.max(size(travel).x, size(travel).z), dLow: deployed.min.y - a.y, tLow: travel.min.y - a.y, dist, n: mesh.count };
+});
+check(art.n === 1 && art.tLen > 4 && art.tLen < 7, `the Artillery is drawn with your model (${art.tLen.toFixed(1)} long in Travel)`);
+check(art.dH > art.tH + 0.8 && art.dLow < art.tLow - 0.1, `Deployed it stands taller (barrel raised: ${art.dH.toFixed(1)} vs ${art.tH.toFixed(1)}) with its anchors dug in below the treads`);
+check(art.dist < 0.4, `deployed, its shells leave the end of the barrel, turret turned (${art.dist.toFixed(2)} from it)`);
 await page.evaluate(() => { const G = window.__game, w0 = G.units.wrecks[0]; G.rts.target.set(w0.x + 5, w0.y + 2, w0.z); G.rts.distance = 22; G.rts.update(0); G.render(); });
 await page.screenshot({ path: join(out, 'models.png') });
 check(w.errors.length === 0, `no console/page errors${w.errors.length ? ':\n   ' + w.errors.join('\n   ') : ''}`);

@@ -26,6 +26,7 @@ const ROWS = [
   ['Splash radius', 'splash', 'damage to units round the impact'],
   ['Shot speed', 'projSpeed', 'projectile speed'],
   ['Turn speed', 'turn', 'radians per second'],
+  ['Deploy time (s)', 'deploy', 'Artillery: seconds to deploy, or to pack up for travel'],
   ['Repair (hp/s)', 'repair', 'how fast a Builder mends a damaged unit'],
 ];
 const MOVING = new Set(UNIT_KEYS);
