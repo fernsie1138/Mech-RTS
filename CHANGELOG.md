@@ -1,5 +1,13 @@
 # Changelog
 
+## v30 — Assault Mech minimum range
+- **Assault Mechs have a minimum range of 10.** They can't fire at anything closer, won't pick such targets, and don't walk toward an enemy that's too close.
+- Ordered to attack an enemy that's too close, an Assault Mech backs off to just beyond 10, then fires.
+- **Assault Mech splash radius 4** (was 3) on each missile.
+- **Dev → Stats has a "Min range" row** for every armed unit and the turret and HQ (all 0 except the Assault Mech).
+- **Fixed: a mech holding its ground could be shoved far off its spot** by other mechs walking past, and never went back (an Assault Mech by the HQ was pushed 13 away). Now it walks back once it's pushed more than 6 from where it was sent.
+- Tests: `tests/units-unit.mjs` checks that it holds fire at a mech inside 10, backs off and fires when ordered to attack it, fires at one just beyond 10, and that other mechs have no minimum range.
+
 ## v29 — Repair fix; Assault Mech missiles
 - **Fixed: an error when ordering a Builder to repair.** With Repair on, a finger that stayed down a moment or drifted a little while tapping the mech was taken as dragging out a wall line, and the game stopped with an error. Now it counts as a tap on the mech, and the Builder goes to repair it. (Reproduced in a headless test before fixing, and covered by `tests/builder.mjs` from now on.)
 - **The Assault Mech fires a stream of small missiles.** Each salvo is 6 missiles, launched 0.12 s apart from its four arm-cannon barrels in turn. They fly in a low arc with thick little smoke trails and burst where they land, each digging a small crater. Fast mechs can still dodge them.

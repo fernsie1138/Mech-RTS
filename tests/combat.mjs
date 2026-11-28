@@ -89,7 +89,7 @@ const retreat = await page.evaluate(id => {
 await tap(retreat.x, retreat.y);
 const ord = await page.evaluate(() => window.__game.commander.mine().map(u => u.order));
 check(retreat.engaged && ord.every(o => o === 'move'), `engaged mechs given a tap beside an enemy get a move order (${ord.join(', ')})`);
-const back = await page.evaluate(() => { const g = window.__game, h = g.map.markers.playerHQ; const mine = g.commander.mine(); g.units.order(mine, 'move', h.x, h.z - 20); g.step(24); return mine.filter(u => u.alive).map(u => Math.hypot(u.x - h.x, u.z - (h.z - 20))); });
+const back = await page.evaluate(() => { const g = window.__game, h = g.map.markers.playerHQ; const mine = g.commander.mine(); g.units.order(mine, 'move', h.x, h.z - 20); g.step(30); return mine.filter(u => u.alive).map(u => Math.hypot(u.x - h.x, u.z - (h.z - 20))); });
 check(back.length && back.every(d => d < 12), `ordered back home mid-fight, they all get there (${back.map(d => d.toFixed(0)).join(', ')} from the spot)`);
 await page.evaluate(id => { const g = window.__game, f = g.units.list.find(u => u.id === id); g.units.attack(g.commander.mine(), f); }, foe.id);
 

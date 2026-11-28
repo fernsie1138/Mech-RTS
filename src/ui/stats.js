@@ -19,6 +19,7 @@ const ROWS = [
   ['Damage', 'dmg', 'damage per hit (Assault Mech: per salvo of missiles; Assault, Heavy and Medium Mechs also splash)'],
   ['Fire every (s)', 'rof', 'seconds between shots'],
   ['Range', 'range', 'how far it shoots'],
+  ['Min range', 'minRange', "can't fire at anything closer than this"],
   ['Sight', 'sight', 'how far it sees (with a clear line of sight)'],
   ['Detection (%)', 'detect', 'how easily enemies spot it: 100 = normally; 50 = only within half their sight range'],
   ['Accuracy', 'accuracy', 'chance to hit in the open, 0 to 1'],
@@ -44,7 +45,7 @@ function fields() {
       const bk = key === 'cost' ? 'cost' : 'work';
       get = () => BUILD.turret[bk]; set = v => { BUILD.turret[bk] = v; };
     } else if ((key === 'cost' || key === 'build' || key === 'bv') && k === 'hq') continue;
-    else if (!ARMED(k) && ['dmg', 'rof', 'range', 'accuracy', 'splash', 'projSpeed'].includes(key)) continue;
+    else if (!ARMED(k) && ['dmg', 'rof', 'range', 'minRange', 'accuracy', 'splash', 'projSpeed'].includes(key)) continue;
     else if (t[key] === undefined) continue;
     else { get = () => t[key]; set = v => { t[key] = v; }; }
     f.push({ id: `${k}.${key}`, k, key, label, get, set });
