@@ -98,8 +98,9 @@
   body.mobile #topleft { top:calc(env(safe-area-inset-top) + 6px); left:calc(env(safe-area-inset-left) + 6px); gap:5px; }
   body.mobile #res { gap:8px; padding:4px 8px; font-size:12px; border-radius:8px; }
   body.mobile #credits { font-size:14px; } body.mobile #income, body.mobile #clock { font-size:11px; }
-  body.mobile #build { top:calc(env(safe-area-inset-top) + 42px); left:calc(env(safe-area-inset-left) + 6px); gap:5px; }
-  body.mobile .card { width:76px; height:35px; padding:0 8px; }
+  body.mobile #build { top:calc(env(safe-area-inset-top) + 42px); left:calc(env(safe-area-inset-left) + 6px); gap:4px; }
+  body.mobile .card { width:72px; height:30px; padding:0 7px; line-height:1.1; }
+  body.mobile #startScreen .tip { display:none; }
   body.mobile .card .nm { font-size:12px; } body.mobile .card .cost { font-size:11px; }
   body.mobile .card .q { font-size:12px; right:6px; top:4px; } body.mobile .card .bv { font-size:10px; right:5px; bottom:4px; } body.mobile .card .pb { height:3px; }
   body.mobile #fire { bottom:calc(env(safe-area-inset-bottom) + 6px); gap:4px; padding:4px; flex-wrap:wrap; justify-content:center;
@@ -251,12 +252,12 @@
   <h1>MECH RTS</h1>
   <p><b>Destroy the enemy HQ</b> (red, north). Hold the yellow capture points for more income.</p>
   <div class="help">
-    <b>Build</b><span>tap Light, Medium, Heavy, Assault or Builder (left). Hold to cancel one.</span>
+    <b>Build</b><span>tap a unit on the left (mechs, Artillery, Builder). Hold to cancel one.</span>
     <b>Select</b><span>tap a mech; double-tap for all of that type; drag one finger to box-select.</span>
     <b>Orders</b><span>tap the ground to go there (they shoot on the way, then hold); <b>A-Move</b> makes them stop to fight; tap an enemy or its HQ to attack.</span>
     <b>Builders</b><span>select one, pick Wall, Turret or Trench, then tap the ground (or drag a line); turn walls and trenches with ⟲ ⟳, then Build.</span>
     <b>Repair</b><span>select Builders, tap Repair, then the damaged mech, turret or HQ. (They don't repair by themselves.)</span>
-    <b>Artillery</b><span>long-range guns. Tap <b>Deploy</b> to dig in and fire (it can't move), <b>Travel</b> to pack up and move (it can't fire). It deploys by itself when an enemy it can hit is spotted. Its range is beyond its sight: other mechs spot for it.</span>
+    <b>Artillery</b><span>tap <b>Deploy</b> to fire (it can't move), <b>Travel</b> to move (it can't fire). Others must spot for it.</span>
     <b>Defend</b><span>selected mechs crouch where they are: harder to hit, even more so in a trench.</span>
     <b>Camera</b><span>two fingers pan, pinch to zoom, twist to turn; tap the map (bottom right) to jump.</span>
   </div>
