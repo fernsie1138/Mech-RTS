@@ -73,6 +73,7 @@ src/
     units.js          mechs: orders, targeting, facing, firing, wrecks (no three.js; stats in config.js)
     mech.js           instanced mech models, walk animation, selection rings, health bars, tracers
     mediummech.js     the Medium Mech's model (assets/medium-mech.gltf): instanced parts, digitigrade walk, painted look
+    artilleryview.js  the Artillery's model (assets/artillery.gltf): Travel / Deployed parts, animated between, turret turn
     modelview.js      glTF models with named parts (Light, Heavy and Assault Mechs, turret: assets/*.gltf): instanced parts, walk, torso turn
   combat/
     projectiles.js    bullets, cannon rounds and arcing shells (no three.js)
@@ -217,6 +218,7 @@ The single-file prototype v1 (`prototype/index.html`) contains a working version
   - **Medium Mech** [medium]: between Light and Heavy; autocannon. David's model (`assets/medium-mech.gltf`, drawn by `units/mediummech.js`): digitigrade legs, walk and crouch animated in code, colours and panel lines painted in the shader.
   - **Heavy Mech** [assault]: twin cannons (forearm guns), scale 1.84 (the tallest). David's model (`assets/heavy-mech.gltf`, drawn by `units/modelview.js`).
   - **Assault Mech** [titan]: slow; fires salvos of small arcing missiles (indirect fire; `salvo` missiles `salvoGap` s apart, together its `dmg`, each with splash) that can miss fast targets. Minimum range 10 (`minRange`): it can't fire at anything closer, and backs off when ordered to attack something that close. David's model (`assets/assault-mech.gltf`, `units/modelview.js`).
+- **Artillery** [artillery]: a tracked gun (`vehicle`), David's model (`assets/artillery.gltf`, drawn by `units/artilleryview.js`; the file holds Travel and Deployed copies of every part, animated between). Two states: Travel (drives, can't fire) and Deployed (fires, can't move); `deploy` seconds to change. Deploy/Travel button; deploys by itself when idle or on attack-move with a target, packs up for move orders. Range 50 beyond sight 40: needs spotters.
 - Mechs have animated walking legs and a **torso that turns independently** of the legs, so they can fire while moving.
 - **Builder:** unarmed; builds walls and auto turrets, digs trenches (cover) and repairs friendly mechs, turrets and the HQ (only when ordered: the player picks the target). Walls and trenches are planned first (tap or drag), can be turned in 15° steps, then built. Later: buildings that produce other units (new kinds go in `BUILD` in config.js and `world/construction.js`).
 - **Detection factor** (`detect`, % per unit type; Light Mech 75, others 100): an enemy spots a unit only within its own sight × that factor (and with a clear line of sight); fog of war still clears as normal. In a trench it is ×0.8, and never below 40% in total.

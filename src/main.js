@@ -401,6 +401,19 @@ function toggleDefend() {
   units.defend(sel, !sel.every(u => u.defend));
 }
 btnDefend.addEventListener('pointerup', toggleDefend);
+// Deploy / Travel: shown while Artillery is selected.
+const btnDeploy = document.getElementById('btnDeploy');
+const selectedArtillery = () => [...selected].filter(u => u.alive && u.t.deploy);
+btnDeploy.addEventListener('pointerup', () => {
+  const arts = selectedArtillery();
+  if (arts.length) units.deploy(arts, !arts.every(u => u.deployWant));
+});
+function updateDeployBtn() {
+  const arts = selectedArtillery(), want = arts.length > 0 && arts.every(u => u.deployWant);
+  btnDeploy.style.display = arts.length ? '' : 'none';
+  btnDeploy.textContent = want ? 'Travel' : 'Deploy';
+  btnDeploy.classList.toggle('on', want);
+}
 function updateDefendBtn() {
   const sel = [...selected].filter(u => u.alive);
   btnDefend.classList.toggle('on', sel.length > 0 && sel.every(u => u.defend));
@@ -530,6 +543,7 @@ function frame(now) {
   if (selected.size !== lastSel) { lastSel = selected.size; updateSelInfo(); }
   updateBuildPanel();
   updateDefendBtn();
+  updateDeployBtn();
   view.render();
   debug.frame(dt);
   requestAnimationFrame(frame);

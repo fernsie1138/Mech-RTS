@@ -263,4 +263,47 @@ const finite = w => w.units.list.every(u => Number.isFinite(u.x + u.y + u.z + u.
   check(['scout', 'medium', 'assault'].every(k => UNIT_TYPES[k].minRange === 0), 'other mechs have no minimum range');
 }
 
+// ---------- Artillery: Travel and Deployed ----------
+{
+  const T = UNIT_TYPES.artillery;
+  check(T && T.range === 50 && T.dmg === 200 && T.rof === 3 && Math.abs(3.6 * T.speed - 3) < 1e-9 && T.cost === 500 && T.build === 12 && T.hp === 300 && T.sight === 40 && T.detect === 100 && T.accuracy === 1 && T.splash === 5 && T.projSpeed === 45 && T.turn === 2,
+    'Artillery stats: range 50, damage 200, every 3 s, speed 3, cost 500, build 12 s, 300 hp, sight 40, detection 100, accuracy 1, splash 5, shot speed 45, turn 2');
+  const w = world(), U = w.units;
+  const a = U.spawn('artillery', 0, 0, 40, Math.PI);
+  check(a.deploy === 0 && !a.deployWant, 'it starts in Travel mode');
+  // Drives (Travel), and can't fire while doing so, even with an enemy in range.
+  const e = U.spawn('assault', 1, 0, 0); e.t = { ...e.t, range: 0.1 }; e.hp = e.maxHp = 1e6; U.stop([e]);
+  const spot = U.spawn('scout', 0, 6, 10); spot.t = { ...spot.t, range: 0.1 }; U.stop([spot]);       // spots for it
+  U.order([a], 'move', 30, 40);
+  let moved = 0, shotsMoving = 0;
+  w.run(5, () => { moved = Math.hypot(a.x, a.z - 40); shotsMoving = U.stats.shots; return false; });
+  check(moved > 8 && shotsMoving === 0 && a.deploy === 0, `in Travel it drives (${moved.toFixed(1)} in 5 s, speed 3) and doesn't fire (${shotsMoving} shots), though an enemy is in range`);
+  w.run(10);
+  check(a.deploy === 1 && U.stats.shots > 0, `arrived with an enemy in range, it deploys by itself and fires (${U.stats.shots} shots)`);
+  // Deploy (the button), with nothing about: it stops, takes 3 s to deploy, and stays put.
+  const w3 = world(), U3 = w3.units, a3 = U3.spawn('artillery', 0, 0, 40);
+  U3.order([a3], 'move', 0, 0); w3.run(1);
+  const x0 = a3.x, z0 = a3.z;
+  U3.deploy([a3]);
+  const t = w3.run(10, () => a3.deploy >= 1);
+  check(Math.abs(t - T.deploy) < 0.15 && Math.hypot(a3.x - x0, a3.z - z0) < 0.5, `Deploy: it stops and takes ${t.toFixed(1)} s to set up (${T.deploy} s)`);
+  w3.run(3);
+  check(Math.hypot(a3.x - x0, a3.z - z0) < 0.5, 'it stays put while deployed');
+  // A move order: it packs up first (can't move while deployed), then drives off.
+  U3.order([a3], 'move', -30, 40);
+  w3.run(T.deploy * 0.9);
+  const stillThere = Math.hypot(a3.x - x0, a3.z - z0);
+  w3.run(6);
+  check(stillThere < 0.3 && a3.deploy === 0 && Math.hypot(a3.x - x0, a3.z - z0) > 5, `a move order: it packs up first (${stillThere.toFixed(2)} moved while packing), then drives off`);
+  // Attack-move into range: it deploys by itself and fires; a far target 48 away is in range.
+  const w2 = world(), U2 = w2.units, a2 = U2.spawn('artillery', 0, 0, 48, Math.PI), e2 = U2.spawn('assault', 1, 0, 0), s2 = U2.spawn('scout', 0, 0, 12);
+  e2.t = { ...e2.t, range: 0.1 }; e2.hp = e2.maxHp = 1e6; s2.t = { ...s2.t, range: 0.1 }; U2.stop([e2, s2]);
+  U2.stop([a2]);
+  w2.run(10, () => U2.stats.shots > 0);
+  check(a2.deploy === 1 && U2.stats.shots > 0, `an enemy ${(Math.hypot(e2.x - a2.x, e2.z - a2.z) - e2.radius).toFixed(0)} away, spotted by a Light Mech: it deploys by itself and fires (range 50, beyond its sight 40)`);
+  w2.run(5);
+  check(e2.hp < e2.maxHp, `its shells land (${(e2.maxHp - e2.hp).toFixed(0)} damage)`);
+  check(finite(w) && finite(w2), 'no NaN');
+}
+
 done();

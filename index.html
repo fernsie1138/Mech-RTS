@@ -9,12 +9,12 @@
 <meta name="apple-mobile-web-app-title" content="Mech RTS">
 <meta name="theme-color" content="#0b1015">
 <!-- Must match VERSION in src/version.js. If they differ, the HUD warns that Safari served stale code. -->
-<meta name="build" content="v30">
+<meta name="build" content="v31">
 <title>Mech RTS</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" type="image/png" href="icons/icon-180.png">
-<link rel="stylesheet" href="style.css?v=30">
+<link rel="stylesheet" href="style.css?v=31">
 <style>
   #topright { position:fixed; top:calc(env(safe-area-inset-top) + 10px); right:calc(env(safe-area-inset-right) + 12px);
               display:flex; gap:8px; z-index:35; }
@@ -141,56 +141,57 @@
 <script type="importmap">
 {
   "imports": {
-    "three": "./lib/three.module.js?v=30",
-    "./editor/editor.js": "./editor/editor.js?v=30",
-    "./editor/history.js": "./editor/history.js?v=30",
-    "./editor/tools/features.js": "./editor/tools/features.js?v=30",
-    "./editor/tools/markers.js": "./editor/tools/markers.js?v=30",
-    "./editor/tools/terrain.js": "./editor/tools/terrain.js?v=30",
-    "./src/ai/enemy.js": "./src/ai/enemy.js?v=30",
-    "./src/combat/damage.js": "./src/combat/damage.js?v=30",
-    "./src/combat/effects.js": "./src/combat/effects.js?v=30",
-    "./src/combat/los.js": "./src/combat/los.js?v=30",
-    "./src/combat/projectiles.js": "./src/combat/projectiles.js?v=30",
-    "./src/config.js": "./src/config.js?v=30",
-    "./src/game/match.js": "./src/game/match.js?v=30",
-    "./src/game/savegame.js": "./src/game/savegame.js?v=30",
-    "./src/game/vision.js": "./src/game/vision.js?v=30",
-    "./src/main.js": "./src/main.js?v=30",
-    "./src/maps/format.js": "./src/maps/format.js?v=30",
-    "./src/maps/imageimport.js": "./src/maps/imageimport.js?v=30",
-    "./src/maps/loader.js": "./src/maps/loader.js?v=30",
-    "./src/nav/navgrid.js": "./src/nav/navgrid.js?v=30",
-    "./src/nav/pathfinding.js": "./src/nav/pathfinding.js?v=30",
-    "./src/terrain/chunks.js": "./src/terrain/chunks.js?v=30",
-    "./src/terrain/heightfield.js": "./src/terrain/heightfield.js?v=30",
-    "./src/terrain/surface.js": "./src/terrain/surface.js?v=30",
-    "./src/terrain/testmap.js": "./src/terrain/testmap.js?v=30",
-    "./src/terrain/water.js": "./src/terrain/water.js?v=30",
-    "./src/terrain/watermesh.js": "./src/terrain/watermesh.js?v=30",
-    "./src/ui/camera.js": "./src/ui/camera.js?v=30",
-    "./src/ui/command.js": "./src/ui/command.js?v=30",
-    "./src/ui/debug.js": "./src/ui/debug.js?v=30",
-    "./src/ui/hud.js": "./src/ui/hud.js?v=30",
-    "./src/ui/minimap.js": "./src/ui/minimap.js?v=30",
-    "./src/ui/mobile.js": "./src/ui/mobile.js?v=30",
-    "./src/ui/stats.js": "./src/ui/stats.js?v=30",
-    "./src/units/mech.js": "./src/units/mech.js?v=30",
-    "./src/units/mediummech.js": "./src/units/mediummech.js?v=30",
-    "./src/units/modelview.js": "./src/units/modelview.js?v=30",
-    "./src/units/movers.js": "./src/units/movers.js?v=30",
-    "./src/units/units.js": "./src/units/units.js?v=30",
-    "./src/version.js": "./src/version.js?v=30",
-    "./src/view.js": "./src/view.js?v=30",
-    "./src/world/buildings.js": "./src/world/buildings.js?v=30",
-    "./src/world/buildingview.js": "./src/world/buildingview.js?v=30",
-    "./src/world/construction.js": "./src/world/construction.js?v=30",
-    "./src/world/decals.js": "./src/world/decals.js?v=30",
-    "./src/world/fogview.js": "./src/world/fogview.js?v=30",
-    "./src/world/forest.js": "./src/world/forest.js?v=30",
-    "./src/world/markers.js": "./src/world/markers.js?v=30",
-    "./src/world/shapes.js": "./src/world/shapes.js?v=30",
-    "./src/world/trees.js": "./src/world/trees.js?v=30"
+    "three": "./lib/three.module.js?v=31",
+    "./editor/editor.js": "./editor/editor.js?v=31",
+    "./editor/history.js": "./editor/history.js?v=31",
+    "./editor/tools/features.js": "./editor/tools/features.js?v=31",
+    "./editor/tools/markers.js": "./editor/tools/markers.js?v=31",
+    "./editor/tools/terrain.js": "./editor/tools/terrain.js?v=31",
+    "./src/ai/enemy.js": "./src/ai/enemy.js?v=31",
+    "./src/combat/damage.js": "./src/combat/damage.js?v=31",
+    "./src/combat/effects.js": "./src/combat/effects.js?v=31",
+    "./src/combat/los.js": "./src/combat/los.js?v=31",
+    "./src/combat/projectiles.js": "./src/combat/projectiles.js?v=31",
+    "./src/config.js": "./src/config.js?v=31",
+    "./src/game/match.js": "./src/game/match.js?v=31",
+    "./src/game/savegame.js": "./src/game/savegame.js?v=31",
+    "./src/game/vision.js": "./src/game/vision.js?v=31",
+    "./src/main.js": "./src/main.js?v=31",
+    "./src/maps/format.js": "./src/maps/format.js?v=31",
+    "./src/maps/imageimport.js": "./src/maps/imageimport.js?v=31",
+    "./src/maps/loader.js": "./src/maps/loader.js?v=31",
+    "./src/nav/navgrid.js": "./src/nav/navgrid.js?v=31",
+    "./src/nav/pathfinding.js": "./src/nav/pathfinding.js?v=31",
+    "./src/terrain/chunks.js": "./src/terrain/chunks.js?v=31",
+    "./src/terrain/heightfield.js": "./src/terrain/heightfield.js?v=31",
+    "./src/terrain/surface.js": "./src/terrain/surface.js?v=31",
+    "./src/terrain/testmap.js": "./src/terrain/testmap.js?v=31",
+    "./src/terrain/water.js": "./src/terrain/water.js?v=31",
+    "./src/terrain/watermesh.js": "./src/terrain/watermesh.js?v=31",
+    "./src/ui/camera.js": "./src/ui/camera.js?v=31",
+    "./src/ui/command.js": "./src/ui/command.js?v=31",
+    "./src/ui/debug.js": "./src/ui/debug.js?v=31",
+    "./src/ui/hud.js": "./src/ui/hud.js?v=31",
+    "./src/ui/minimap.js": "./src/ui/minimap.js?v=31",
+    "./src/ui/mobile.js": "./src/ui/mobile.js?v=31",
+    "./src/ui/stats.js": "./src/ui/stats.js?v=31",
+    "./src/units/artilleryview.js": "./src/units/artilleryview.js?v=31",
+    "./src/units/mech.js": "./src/units/mech.js?v=31",
+    "./src/units/mediummech.js": "./src/units/mediummech.js?v=31",
+    "./src/units/modelview.js": "./src/units/modelview.js?v=31",
+    "./src/units/movers.js": "./src/units/movers.js?v=31",
+    "./src/units/units.js": "./src/units/units.js?v=31",
+    "./src/version.js": "./src/version.js?v=31",
+    "./src/view.js": "./src/view.js?v=31",
+    "./src/world/buildings.js": "./src/world/buildings.js?v=31",
+    "./src/world/buildingview.js": "./src/world/buildingview.js?v=31",
+    "./src/world/construction.js": "./src/world/construction.js?v=31",
+    "./src/world/decals.js": "./src/world/decals.js?v=31",
+    "./src/world/fogview.js": "./src/world/fogview.js?v=31",
+    "./src/world/forest.js": "./src/world/forest.js?v=31",
+    "./src/world/markers.js": "./src/world/markers.js?v=31",
+    "./src/world/shapes.js": "./src/world/shapes.js?v=31",
+    "./src/world/trees.js": "./src/world/trees.js?v=31"
   }
 }
 </script>
@@ -211,6 +212,7 @@
   <div class="btn" id="btnAll">All</div>
   <div class="btn" id="btnStop">Stop</div>
   <div class="btn" id="btnDefend" title="Defend: crouch and hold, harder to hit">Defend</div>
+  <div class="btn" id="btnDeploy" title="Artillery: Deploy to fire (it can't move), Travel to move (it can't fire)" style="display:none">Deploy</div>
   <div class="btn" id="btnDev" title="Test tools">Dev</div>
   <div class="btn dev" id="btnSpawn">+Squad</div>
   <div class="btn dev" id="btnEnemy">+Enemy</div>
@@ -254,6 +256,7 @@
     <b>Orders</b><span>tap the ground to go there (they shoot on the way, then hold); <b>A-Move</b> makes them stop to fight; tap an enemy or its HQ to attack.</span>
     <b>Builders</b><span>select one, pick Wall, Turret or Trench, then tap the ground (or drag a line); turn walls and trenches with ⟲ ⟳, then Build.</span>
     <b>Repair</b><span>select Builders, tap Repair, then the damaged mech, turret or HQ. (They don't repair by themselves.)</span>
+    <b>Artillery</b><span>long-range guns. Tap <b>Deploy</b> to dig in and fire (it can't move), <b>Travel</b> to pack up and move (it can't fire). It deploys by itself when an enemy it can hit is spotted. Its range is beyond its sight: other mechs spot for it.</span>
     <b>Defend</b><span>selected mechs crouch where they are: harder to hit, even more so in a trench.</span>
     <b>Camera</b><span>two fingers pan, pinch to zoom, twist to turn; tap the map (bottom right) to jump.</span>
   </div>
@@ -277,10 +280,10 @@
 <div id="selinfo" class="panel"></div>
 <div id="boxsel"></div>
 </div>
-<div id="ver">v30</div>
+<div id="ver">v31</div>
 <div id="loading">Loading map…</div>
 <div id="fatal"></div>
-<script src="src/ui/page.js?v=30"></script>
-<script type="module" src="src/main.js?v=30"></script>
+<script src="src/ui/page.js?v=31"></script>
+<script type="module" src="src/main.js?v=31"></script>
 </body>
 </html>
