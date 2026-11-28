@@ -19,8 +19,9 @@ import { lineOfSight, coverAt } from '../combat/los.js';
 import { FEATURE } from '../terrain/surface.js';
 import { Projectiles } from '../combat/projectiles.js';
 
-// The mover already finished a path to this goal (arrived, or stopped as close as it could get).
-const doneWith = (m, g) => m.state === 'idle' && m.doneGoal && Math.hypot(m.doneGoal.x - g.x, m.doneGoal.z - g.z) < 0.5;
+// The mover already finished a path to this goal (arrived, or stopped as close as it could get), and is still
+// near it: one shoved well away since (by mechs walking past) goes back.
+const doneWith = (m, g) => m.state === 'idle' && m.doneGoal && Math.hypot(m.doneGoal.x - g.x, m.doneGoal.z - g.z) < 0.5 && Math.hypot(m.x - g.x, m.z - g.z) < 6;
 const wrap = a => { while (a > Math.PI) a -= Math.PI * 2; while (a < -Math.PI) a += Math.PI * 2; return a; };
 const turnToward = (cur, target, step) => { const d = wrap(target - cur); return Math.abs(d) <= step ? target : cur + Math.sign(d) * step; };
 

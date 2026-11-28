@@ -5,6 +5,7 @@
 - Ordered to attack an enemy that's too close, an Assault Mech backs off to just beyond 10, then fires.
 - **Assault Mech splash radius 4** (was 3) on each missile.
 - **Dev → Stats has a "Min range" row** for every armed unit and the turret and HQ (all 0 except the Assault Mech).
+- **Fixed: a mech holding its ground could be shoved far off its spot** by other mechs walking past, and never went back (an Assault Mech by the HQ was pushed 13 away). Now it walks back once it's pushed more than 6 from where it was sent.
 - Tests: `tests/units-unit.mjs` checks that it holds fire at a mech inside 10, backs off and fires when ordered to attack it, fires at one just beyond 10, and that other mechs have no minimum range.
 
 ## v29 — Repair fix; Assault Mech missiles
